@@ -1,0 +1,33 @@
+name: image_gen_via_relay
+kind: code
+description: 调用 OpenAI-compatible 图片中转站生成 PNG 图像,当前验证目标为 aiartmirror gpt-image-2。
+sandbox: L1
+inputs:
+  type: object
+  required: [prompt, size]
+  properties:
+    prompt: { type: string, minLength: 1, maxLength: 2000 }
+    size: { type: string, enum: ["1024x1024", "1792x1024", "1024x1792"] }
+    style: { type: string }
+    raw_prompt: { type: boolean }
+outputs:
+  type: object
+  required: [artifact_ref, width, height, prompt_used, duration_ms]
+  properties:
+    artifact_ref: { type: string }
+    width: { type: integer }
+    height: { type: integer }
+    prompt_used: { type: string }
+    provider: { type: string }
+    model: { type: string }
+    duration_ms: { type: integer }
+permissions:
+  host.network.fetch:
+    - "${agent.config.provider.base_url}"
+  host.artifact.write:
+    scope: run
+generated_by: user
+generated_at: 2026-05-25T00:00:00Z
+reviewed_by: user
+review_decision: accepted
+

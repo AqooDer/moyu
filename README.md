@@ -6,6 +6,7 @@
 
 - `docs/` -> 设计文档目录，已迁移为代码项目内的真实目录
 - `src/` -> 应用源码
+- `agents/` -> 本地 Agent 文件夹,一个 Agent 一个目录
 - `traces/` -> Spike / 运行时 Trace 输出
 - `artifacts/` -> 本地产物输出
 - `assets/` -> 品牌资源、图标、README 图
@@ -16,6 +17,13 @@
 ```text
 moyu/
 ├── docs/
+├── agents/
+│   └── image-gen__prototype-v1/
+│       ├── manifest.yaml
+│       ├── ui.yaml
+│       ├── skills/
+│       ├── history/
+│       └── README.md
 ├── src/
 │   ├── cli.ts
 │   ├── config/
@@ -34,8 +42,9 @@ moyu/
 ## 开发目标
 
 1. 先跑通 `moyu spike image-gen` 的最小闭环。
-2. 再扩展到 Agent manifest、UI schema、热加载与桌面壳。
-3. 设计文档全部保留在 `docs/`，不再通过软链接引用外部目录。
+2. 将 spike 固化为 `agents/image-gen__prototype-v1`。
+3. 再扩展到 Agent manifest 校验、UI schema、热加载与桌面壳。
+4. 设计文档全部保留在 `docs/`，不再通过软链接引用外部目录。
 
 ## 运行方式
 
@@ -43,6 +52,10 @@ moyu/
 pnpm install
 pnpm dev -- help
 pnpm dev -- spike image-gen --prompt "..." --count 4
+pnpm dev -- agent list
+pnpm dev -- agent show image-gen/prototype-v1
+pnpm dev -- agent validate agents/image-gen__prototype-v1
+pnpm dev -- agent run image-gen/prototype-v1 --prompt "a clean app dashboard" --count 1 --raw-prompt --dry-run
 ```
 
 ## Image Relay 配置
@@ -52,10 +65,16 @@ pnpm dev -- spike image-gen --prompt "..." --count 4
 ```bash
 cp .env.example .env
 # 填入你的中转站 Key 后运行：
-MOYU_IMAGE_PROVIDER_BASE_URL=https://www.aiartmirror.com \
-MOYU_IMAGE_PROVIDER_API_KEY=... \
-MOYU_IMAGE_PROVIDER_MODEL=gpt-image-2 \
 npm run dev -- spike image-gen --prompt "a clean app dashboard" --count 1 --raw-prompt
+npm run dev -- agent run image-gen/prototype-v1 --prompt "a clean app dashboard" --count 1 --raw-prompt
 ```
 
-`.env` 已被 `.gitignore` 忽略，不能提交真实 Key。
+`.env` 会被 CLI 自动读取,并已被 `.gitignore` 忽略，不能提交真实 Key。
+
+## 当前开发状态
+
+- `spike image-gen` 已真实跑通并产出 PNG
+- `agents/image-gen__prototype-v1` 已固化为第一个 Agent 文件夹
+- `agent list` / `agent show` / `agent validate` 已可用
+- `agent run image-gen/prototype-v1` 已接入 Runtime 原型
+- 下一步：把 Runtime 原型从 CLI 单点扩展为通用 Run / Step / Artifact 结构

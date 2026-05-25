@@ -1,0 +1,85 @@
+schema_version: "1"
+agent_id: image-gen/prototype-v1
+name: 原型生图 Agent
+description: 通过自然语言描述快速生成候选原型图,支持批量生成与后续项目库扩展。
+version: 0.1.0
+recipe_ref: image-gen/prototype-v1
+ui_ref: ./ui.yaml
+tags: [image-generation, prototype, design]
+
+inputs_schema:
+  type: object
+  required: [prompt]
+  properties:
+    prompt:
+      type: string
+      minLength: 1
+      maxLength: 2000
+    count:
+      type: integer
+      minimum: 1
+      maximum: 32
+      default: 4
+    style:
+      type: string
+      enum: [realistic, cartoon, sketch, anime]
+      default: realistic
+    size:
+      type: string
+      enum: ["1024x1024", "1792x1024", "1024x1792"]
+      default: "1024x1024"
+    reference:
+      type: string
+      format: file-path
+    project:
+      type: string
+    raw_prompt:
+      type: boolean
+      default: false
+
+outputs_schema:
+  type: object
+  required: [images, metadata]
+  properties:
+    images:
+      type: array
+      items:
+        type: object
+        properties:
+          artifact_ref: { type: string }
+          mime: { type: string }
+          width: { type: integer }
+          height: { type: integer }
+          prompt_used: { type: string }
+          provider: { type: string }
+          model: { type: string }
+          duration_ms: { type: integer }
+    metadata:
+      type: object
+      properties:
+        provider_used: { type: string }
+        model_used: { type: string }
+        total_duration_ms: { type: integer }
+
+routing:
+  model_tiers: [image-generation]
+  default_model: gpt-image-2
+
+permissions:
+  host.network.fetch:
+    - "${agent.config.provider.base_url}"
+  host.artifact.write:
+    scope: run
+
+workflow:
+  kind: dag
+  nodes:
+    - id: image_gen
+      skill: ./skills/image_gen_via_relay
+      fanout: per_count
+  edges: []
+
+created_by: user
+created_at: 2026-05-25T00:00:00Z
+updated_at: 2026-05-25T00:00:00Z
+

@@ -1,0 +1,78 @@
+schema_version: 1
+
+intake:
+  layout:
+    kind: form
+    title: 新建原型图
+    fields:
+      - bind: input.prompt
+        control: PromptEditor
+        label: 提示词
+        required: true
+        rows: 4
+      - bind: input.count
+        control: Slider
+        label: 张数
+        min: 1
+        max: 12
+        default: 4
+        marks: [1, 4, 8, 12]
+      - bind: input.style
+        control: Select
+        label: 风格
+        default: realistic
+        options:
+          - { value: realistic, label: 写实 }
+          - { value: cartoon, label: 卡通 }
+          - { value: sketch, label: 线稿 }
+          - { value: anime, label: 二次元 }
+      - bind: input.size
+        control: Select
+        label: 尺寸
+        default: "1024x1024"
+        options:
+          - { value: "1024x1024", label: 方形 1024 }
+          - { value: "1792x1024", label: 横版 1792 }
+          - { value: "1024x1792", label: 竖版 1792 }
+      - bind: input.raw_prompt
+        control: Switch
+        label: 使用原始提示词
+        default: false
+  submit:
+    label: 生成
+    estimate: true
+
+run:
+  layout:
+    kind: split
+    direction: vertical
+    panes:
+      - size: 70
+        content:
+          control: ProgressGrid
+          bind: run.steps.image_gen.fanout_status
+          columns: 4
+      - size: 30
+        content:
+          control: LiveMetric
+          fields: [duration, cost, eta]
+
+output:
+  layout:
+    kind: tabs
+    items:
+      - label: 图集
+        content:
+          control: ImageGrid
+          bind: output.images
+          columns: 4
+          actions:
+            - { kind: download, label: 下载 }
+            - { kind: rerun_step, label: 重生成这张, args: { step: image_gen } }
+            - { kind: copy_to_clipboard, label: 复制 prompt }
+            - { kind: star, label: 收藏 }
+      - label: 元数据
+        content:
+          control: KeyValueTable
+          bind: output.metadata
+
