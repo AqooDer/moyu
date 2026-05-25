@@ -1,0 +1,31 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" rx="36" fill="#071915"/>
+  <circle cx="1050" cy="120" r="220" fill="#0F3833" opacity="0.45"/>
+  <circle cx="240" cy="520" r="200" fill="#0F3833" opacity="0.35"/>
+
+  <rect x="72" y="72" width="486" height="486" rx="96" fill="#0A2621" stroke="#163E38" stroke-width="2"/>
+  <image href="../logo/img_8.png" x="108" y="108" width="414" height="414" preserveAspectRatio="xMidYMid meet"/>
+
+  <text x="630" y="220" fill="#F3F0E6" font-size="88" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-weight="700" letter-spacing="0">
+    Moyu
+  </text>
+  <text x="630" y="286" fill="#8FBDB6" font-size="30" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-weight="500" letter-spacing="0">
+    摸鱼 / 墨鱼
+  </text>
+  <text x="630" y="358" fill="#D8E5DD" font-size="34" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-weight="500" letter-spacing="0">
+    A local-first AI agent platform for finishing work
+  </text>
+  <text x="630" y="418" fill="#8FBDB6" font-size="24" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-weight="400" letter-spacing="0">
+    Multi-agent workflows · document automation · prototype generation
+  </text>
+
+  <rect x="630" y="480" width="184" height="56" rx="28" fill="#173C38"/>
+  <text x="722" y="517" text-anchor="middle" fill="#F3F0E6" font-size="23" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-weight="600">
+    Local-first
+  </text>
+
+  <rect x="826" y="480" width="184" height="56" rx="28" fill="#173C38"/>
+  <text x="918" y="517" text-anchor="middle" fill="#F3F0E6" font-size="23" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-weight="600">
+    Agent factory
+  </text>
+</svg>
