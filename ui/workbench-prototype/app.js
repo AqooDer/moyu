@@ -46,6 +46,12 @@ const messages = {
     callPolicyValue: "串行执行，关键节点等待确认",
     imageAgent: "生图 Agent",
     imageAgentResult: "背景视觉已生成 3 张，我建议选第一张作为主视觉，并继续生成封面与章节页版式。",
+    nextDelivery: "下一步交付队列",
+    nextDeliveryDesc: "确认后由 Recipe 继续调用 Agent，产物仍归属当前任务会话。",
+    deliveryCover: "封面主视觉背景",
+    deliverySections: "章节页背景组",
+    deliveryOutline: "PPT 叙事大纲",
+    deliveryDeck: "完整演示文稿",
     checkpoint: "需要确认",
     checkpointTitle: "是否使用“墨鱼主视觉 + 代码运行平台”作为 PPT 主线？",
     checkpointDesc: "确认后我会继续调用图片 Agent 生成章节页背景，再调用演示文稿 Agent 输出完整 PPT。",
@@ -135,6 +141,12 @@ const messages = {
     callPolicyValue: "Run serially with human checkpoints",
     imageAgent: "Image Agent",
     imageAgentResult: "Three background visuals are ready. I recommend the first as the hero direction, then generating cover and section layouts.",
+    nextDelivery: "Next Delivery Queue",
+    nextDeliveryDesc: "After approval, the Recipe continues calling Agents and keeps outputs attached to this work session.",
+    deliveryCover: "Hero cover background",
+    deliverySections: "Section background pack",
+    deliveryOutline: "Deck narrative outline",
+    deliveryDeck: "Complete presentation deck",
     checkpoint: "Needs confirmation",
     checkpointTitle: "Use “cuttlefish visual + code runtime platform” as the main deck narrative?",
     checkpointDesc: "After approval I will call the Image Agent for section backgrounds, then the Presentation Agent for the full deck.",
@@ -184,7 +196,7 @@ const paneLimits = {
   left: { min: 220, max: 420, fallback: 292 },
   right: { min: 300, max: 460, fallback: 340 },
 };
-const layoutStorageVersion = "4";
+const layoutStorageVersion = "5";
 let currentLang = localStorage.getItem("moyu.prototype.lang") || "zh";
 let workbenchData = null;
 
