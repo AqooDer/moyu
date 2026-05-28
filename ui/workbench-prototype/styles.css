@@ -23,6 +23,8 @@
   --shadow: 0 18px 48px rgba(24, 29, 28, 0.08);
   --left-width: 292px;
   --right-width: 340px;
+  --rail-width: 52px;
+  --content-width: 980px;
   --topbar-height: 52px;
   --radius: 8px;
   font-family:
@@ -91,11 +93,11 @@ textarea:focus-visible {
 .brand-button,
 .engine-pill,
 .work-switcher,
-.conversation-actions,
 .composer-tools,
 .composer-bottom,
 .checkpoint-actions,
 .work-progress,
+.session-meta,
 .artifact-actions,
 .panel-tabs,
 .panel-head,
@@ -272,28 +274,41 @@ textarea:focus-visible {
   transition: grid-template-columns 180ms ease;
 }
 
+.left-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.left-resizer {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.conversation-pane {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.right-resizer {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.right-panel {
+  grid-column: 5;
+  grid-row: 1;
+}
+
 .app-frame.left-collapsed .layout-shell {
-  grid-template-columns: 0 0 minmax(520px, 1fr) 7px minmax(300px, var(--right-width));
+  grid-template-columns: var(--rail-width) 0 minmax(0, 1fr) 7px var(--right-width);
 }
 
 .app-frame.right-collapsed .layout-shell {
-  grid-template-columns: var(--left-width) 7px minmax(0, 1fr) 0 0;
+  grid-template-columns: var(--left-width) 7px minmax(0, 1fr) 0 var(--rail-width);
 }
 
 .app-frame.left-collapsed.right-collapsed .layout-shell {
-  grid-template-columns: 0 0 minmax(0, 1fr) 0 0;
-}
-
-.app-frame.left-collapsed .conversation-header {
-  padding-left: max(72px, clamp(18px, 3vw, 36px));
-}
-
-.app-frame.left-collapsed .message-scroll {
-  padding-left: max(72px, clamp(18px, 5vw, 72px));
-}
-
-.app-frame.left-collapsed .composer {
-  margin-left: max(72px, clamp(12px, 3vw, 36px));
+  grid-template-columns: var(--rail-width) 0 minmax(0, 1fr) 0 var(--rail-width);
 }
 
 .side-panel {
@@ -574,11 +589,11 @@ body.resizing .resize-handle::after {
 }
 
 .left-rail {
-  left: 10px;
+  left: 12px;
 }
 
 .right-rail {
-  right: 10px;
+  right: 12px;
 }
 
 .app-frame.left-collapsed .left-rail,
@@ -598,21 +613,16 @@ body.resizing .resize-handle::after {
 }
 
 .conversation-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: center;
+  display: grid;
+  align-items: start;
   border-bottom: 1px solid var(--line);
-  padding: 18px clamp(18px, 3vw, 36px) 14px;
+  padding: 20px 0 16px;
 }
 
 .conversation-header > div:first-child {
+  width: min(var(--content-width), calc(100% - 72px));
   min-width: 0;
-  flex: 1 1 auto;
-}
-
-.conversation-actions {
-  flex: 0 0 auto;
+  margin: 0 auto;
 }
 
 .eyebrow {
@@ -631,6 +641,30 @@ h1 {
   letter-spacing: 0;
   overflow-wrap: normal;
   word-break: keep-all;
+}
+
+.session-meta {
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.session-meta span {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.58);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 0 9px;
+  white-space: nowrap;
+}
+
+.session-meta span:first-child {
+  border-color: rgba(7, 140, 132, 0.24);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 .work-progress {
@@ -697,7 +731,7 @@ h1 {
 .message-scroll {
   min-height: 0;
   overflow: auto;
-  padding: 24px clamp(18px, 5vw, 72px) 28px;
+  padding: 24px 0 28px;
   scroll-behavior: smooth;
 }
 
@@ -705,6 +739,7 @@ h1 {
   display: grid;
   grid-template-columns: 34px minmax(0, 760px);
   gap: 12px;
+  width: min(var(--content-width), calc(100% - 72px));
   margin: 0 auto 22px;
 }
 
@@ -939,7 +974,9 @@ h1 {
 }
 
 .composer {
-  margin: 0 clamp(12px, 3vw, 36px) 16px;
+  width: min(var(--content-width), calc(100% - 72px));
+  justify-self: center;
+  margin: 0 0 16px;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
@@ -1248,6 +1285,14 @@ kbd {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     height: calc(100vh - var(--topbar-height));
+  }
+
+  .left-panel,
+  .left-resizer,
+  .conversation-pane,
+  .right-resizer,
+  .right-panel {
+    grid-column: 1;
   }
 
   .side-panel,

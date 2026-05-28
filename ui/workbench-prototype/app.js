@@ -25,8 +25,7 @@ const messages = {
     settings: "设置",
     runtimeReady: "Moyu Core 0.3.1 已连接",
     workSession: "任务会话",
-    share: "分享",
-    run: "运行",
+    recipeLoaded: "Recipe 已加载",
     progressContent: "内容稿",
     progressVisual: "背景图",
     progressOutline: "大纲",
@@ -115,8 +114,7 @@ const messages = {
     settings: "Settings",
     runtimeReady: "Moyu Core 0.3.1 connected",
     workSession: "Work Session",
-    share: "Share",
-    run: "Run",
+    recipeLoaded: "Recipe loaded",
     progressContent: "Content",
     progressVisual: "Visuals",
     progressOutline: "Outline",
@@ -186,6 +184,7 @@ const paneLimits = {
   left: { min: 220, max: 420, fallback: 292 },
   right: { min: 300, max: 460, fallback: 340 },
 };
+const layoutStorageVersion = "4";
 let currentLang = localStorage.getItem("moyu.prototype.lang") || "zh";
 let workbenchData = null;
 
@@ -285,6 +284,16 @@ function bindCollapse() {
 function applySavedLayout() {
   if (!layout) {
     return;
+  }
+
+  if (localStorage.getItem("moyu.prototype.layoutVersion") !== layoutStorageVersion) {
+    [
+      "moyu.prototype.leftWidth",
+      "moyu.prototype.rightWidth",
+      "moyu.prototype.left-collapsed",
+      "moyu.prototype.right-collapsed",
+    ].forEach((key) => localStorage.removeItem(key));
+    localStorage.setItem("moyu.prototype.layoutVersion", layoutStorageVersion);
   }
 
   setPaneWidth("left", sanitizePaneWidth("left", localStorage.getItem("moyu.prototype.leftWidth")));
