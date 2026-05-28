@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import path from "node:path";
 import { Command } from "commander";
 import {
   findAgent,
@@ -9,9 +10,23 @@ import {
 import { runImageAgent } from "./agent/run.js";
 import { formatValidationResult, validateAgentFolder } from "./agent/validate.js";
 import { loadLocalEnv } from "./lib/local-env.js";
+import {
+  formatArtifactDetail,
+  formatArtifactList,
+  getArtifactDetail,
+  listArtifacts,
+  openArtifact,
+} from "./runtime/artifacts.js";
+import {
+  formatRunHistoryDetail,
+  formatRunHistoryList,
+  getRunHistoryDetail,
+  listRunHistory,
+} from "./runtime/history.js";
+import { writeWorkbenchData } from "./runtime/workbench-data.js";
 import { runImageGenSpike } from "./spike/image-gen.js";
 
-loadLocalEnv();
+loadLocalEnv(".env", { override: true });
 
 const program = new Command();
 
@@ -110,6 +125,104 @@ agentCommand
     if (!result.ok) {
       process.exitCode = 1;
     }
+  });
+
+const runCommand = program.command("run").description("inspect runtime run history");
+
+runCommand
+  .command("list")
+  .description("list local runtime runs")
+  .option("--limit <number>", "maximum number of runs to show", "20")
+  .option("--traces <path>", "traces root directory", "traces")
+  .action(async (opts) => {
+    const limit = Number(opts.limit);
+    const items = await listRunHistory({
+      limit: Number.isFinite(limit) && limit > 0 ? limit : 20,
+      tracesRoot: opts.traces,
+    });
+    console.log(formatRunHistoryList(items));
+  });
+
+runCommand
+  .command("show")
+  .description("show one runtime run and its artifacts")
+  .argument("<run_id>", "run id")
+  .option("--traces <path>", "traces root directory", "traces")
+  .action(async (runId, opts) => {
+    const detail = await getRunHistoryDetail(runId, { tracesRoot: opts.traces });
+    if (!detail) {
+      console.error(`Run not found: ${runId}`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(formatRunHistoryDetail(detail));
+  });
+
+const artifactCommand = program.command("artifact").description("inspect and open runtime artifacts");
+
+artifactCommand
+  .command("list")
+  .description("list local runtime artifacts")
+  .option("--run <run_id>", "only list artifacts from one run")
+  .option("--limit <number>", "maximum number of artifacts to show", "20")
+  .option("--traces <path>", "traces root directory", "traces")
+  .action(async (opts) => {
+    const limit = Number(opts.limit);
+    const items = await listArtifacts({
+      runId: opts.run,
+      limit: Number.isFinite(limit) && limit > 0 ? limit : 20,
+      tracesRoot: opts.traces,
+    });
+    console.log(formatArtifactList(items));
+  });
+
+artifactCommand
+  .command("show")
+  .description("show one artifact")
+  .argument("<artifact_id>", "artifact id")
+  .option("--traces <path>", "traces root directory", "traces")
+  .action(async (artifactId, opts) => {
+    const artifact = await getArtifactDetail(artifactId, { tracesRoot: opts.traces });
+    if (!artifact) {
+      console.error(`Artifact not found: ${artifactId}`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(formatArtifactDetail(artifact));
+  });
+
+artifactCommand
+  .command("open")
+  .description("open an artifact with the system default app")
+  .argument("<artifact_id>", "artifact id")
+  .option("--traces <path>", "traces root directory", "traces")
+  .action(async (artifactId, opts) => {
+    const artifact = await openArtifact(artifactId, { tracesRoot: opts.traces });
+    if (!artifact) {
+      console.error(`Artifact not found: ${artifactId}`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`opened: ${artifact.path}`);
+  });
+
+const uiCommand = program.command("ui").description("prepare local UI prototype data");
+
+uiCommand
+  .command("export-data")
+  .description("export runtime data for the static Workbench prototype")
+  .option("--out <path>", "output JSON path", "ui/workbench-prototype/data/workbench.json")
+  .option("--traces <path>", "traces root directory", "traces")
+  .option("--limit <number>", "maximum number of artifacts to include", "12")
+  .action(async (opts) => {
+    const limit = Number(opts.limit);
+    const result = await writeWorkbenchData(opts.out, {
+      tracesRoot: opts.traces,
+      artifactLimit: Number.isFinite(limit) && limit > 0 ? limit : 12,
+    });
+    console.log(`workbench_data: ${path.relative(process.cwd(), result.outputPath)}`);
+    console.log(`runs: ${result.data.selectedRun ? 1 : 0}`);
+    console.log(`artifacts: ${result.data.artifacts.length}`);
   });
 
 function optsRawPrompt(opts: { rawPrompt?: boolean }) {

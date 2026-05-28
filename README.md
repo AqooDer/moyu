@@ -56,11 +56,21 @@ pnpm dev -- agent list
 pnpm dev -- agent show image-gen/prototype-v1
 pnpm dev -- agent validate agents/image-gen__prototype-v1
 pnpm dev -- agent run image-gen/prototype-v1 --prompt "a clean app dashboard" --count 1 --raw-prompt --dry-run
+pnpm dev -- run list
+pnpm dev -- run show <run_id>
+pnpm dev -- artifact list
+pnpm dev -- artifact list --run <run_id>
+pnpm dev -- artifact show <artifact_id>
+pnpm dev -- artifact open <artifact_id>
+pnpm dev -- ui export-data
+pnpm prototype:export-data
+pnpm prototype:workbench
 ```
 
 ## Image Relay 配置
 
 当前 spike 使用 OpenAI-compatible 图片协议，默认模型是 `gpt-image-2`。
+`gpt-image-*` 模型默认返回 `b64_json`，CLI 不会向这类模型发送 `response_format` 参数；该参数仅保留给 DALL·E 2/3 兼容场景。
 
 ```bash
 cp .env.example .env
@@ -70,6 +80,7 @@ npm run dev -- agent run image-gen/prototype-v1 --prompt "a clean app dashboard"
 ```
 
 `.env` 会被 CLI 自动读取,并已被 `.gitignore` 忽略，不能提交真实 Key。
+CLI 启动时会让项目内 `.env` 覆盖同名 shell 环境变量，避免终端里残留的旧 Key 抢先被使用。
 
 ## 当前开发状态
 
@@ -77,4 +88,10 @@ npm run dev -- agent run image-gen/prototype-v1 --prompt "a clean app dashboard"
 - `agents/image-gen__prototype-v1` 已固化为第一个 Agent 文件夹
 - `agent list` / `agent show` / `agent validate` 已可用
 - `agent run image-gen/prototype-v1` 已接入 Runtime 原型
-- 下一步：把 Runtime 原型从 CLI 单点扩展为通用 Run / Step / Artifact 结构
+- Runtime trace 已拆成 `Run / Step / Artifact` 结构
+- 真实图片输出已注册为 Artifact,包含路径、大小、sha256
+- `run list` / `run show <run_id>` 已可查询 Run 历史与 Artifact 明细
+- `artifact list` / `artifact show` / `artifact open` 已可查询和打开本地产物
+- Workbench 静态原型已建立在 `ui/workbench-prototype/`,默认中文,支持中文 / English 切换
+- `ui export-data` 已可把 Runtime 数据导出给 Workbench 原型读取
+- 下一步：把 Workbench 原型迁入真实前端框架,复用现有 Run 与 Artifact 查询层

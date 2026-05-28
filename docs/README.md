@@ -72,6 +72,8 @@
 ├── 16-声明式UI Schema.md           # ★ ui.yaml DSL 规格:闭集控件 + layout + Action 绑定 + 兜底渲染
 ├── 17-Skill受控生成与审核.md       # ★ Meta-Agent 现造 Skill 全流程:STATIC_CHECK + SANDBOX_DRY_RUN + HUMAN_REVIEW
 ├── 18-生图原型Recipe规格.md        # ★ 2026-05-21 新首发 Recipe:image-gen/prototype-v1 + 6 个验收 case
+├── 19-产品定位与界面方案调整.md    # ★ 2026-05-26 UI 概念图后收敛:代码驱动 Agent 创建/运行平台,画布降级为可选观察视图
+├── 20-任务会话式Workbench与多产物架构调整.md # ★ 2026-05-28 修正:Workbench 以 Work Conversation 为中心,Artifact/Trace 进入右侧 Inspector
 ├── logo                            # 项目素材
 └── ...
 ```
@@ -102,6 +104,9 @@
 - [x] 新建 `16-声明式UI Schema.md`(ui.yaml DSL 闭集 + 兜底渲染)
 - [x] 新建 `17-Skill受控生成与审核.md`(STATIC_CHECK + SANDBOX_DRY_RUN + HUMAN_REVIEW)
 - [x] 新建 `18-生图原型Recipe规格.md`(新首发 Recipe + 6 个 case)
+- [x] 新建 `19-产品定位与界面方案调整.md`(基于 9 张 UI 概念图,收敛为代码驱动的 Agent 创建平台 + Agent 运行平台;画布不作为 MVP 主路径)
+- [x] 新建 `20-任务会话式Workbench与多产物架构调整.md`(修正 Workbench 方向:对话中心、左右可收起、Artifact 归属当前 Work、多 Agent 调用进入 Trace)
+- [x] 建立 Workbench 静态原型 `ui/workbench-prototype/`,默认中文,支持中文 / English 切换
 - [x] 改 `09-MVP-路线图.md`:加核心铁律 3(ADR-008 硬验收);v0.0 改为生图尖刺;v0.1 首发改为生图原型;v0.2 把写标书 Recipe 纳入;v0.3 加 Meta-Agent 现造 LLM Skill;v0.4 加现造 code Skill
 - [x] 改 `10-v0.0-技术尖刺.md`:从 PDF→docx 换为 prompt → openai-compat 中转站 → PNG;时间盒从 1 周压到 1 天
 - [x] 改 `11-写标书Recipe规格.md`:顶部加 banner,从 v0.1 首发让位为 v0.2+ 候选 Recipe

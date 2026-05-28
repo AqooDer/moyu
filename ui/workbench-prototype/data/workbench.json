@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-05-28T01:34:05.109Z",
+  "selectedRun": null,
+  "artifacts": [
+    {
+      "id": "prototype-1",
+      "runId": "prototype-static",
+      "agentId": "image-gen/prototype-v1",
+      "type": "png",
+      "role": "primary",
+      "name": "moyu-logo-master.png",
+      "url": "../../brand/source/moyu-logo-master.png",
+      "sizeBytes": 1357604,
+      "sha256": null,
+      "createdAt": null
+    },
+    {
+      "id": "prototype-2",
+      "runId": "prototype-static",
+      "agentId": "image-gen/prototype-v1",
+      "type": "png",
+      "role": "intermediate",
+      "name": "image-01.png",
+      "url": "../../artifacts/agent-runs/image-gen__prototype-v1/run-image-gen__prototype-v1-mplf2lfk-ako86f/image-01.png",
+      "sizeBytes": 869307,
+      "sha256": null,
+      "createdAt": null
+    },
+    {
+      "id": "prototype-3",
+      "runId": "prototype-static",
+      "agentId": "image-gen/prototype-v1",
+      "type": "png",
+      "role": "intermediate",
+      "name": "artifact-detail-02.png",
+      "url": "../../artifacts/ui-concepts/artifact-detail-02/image-01.png",
+      "sizeBytes": 1154115,
+      "sha256": null,
+      "createdAt": null
+    }
+  ],
+  "agents": [
+    {
+      "id": "image-gen/prototype-v1",
+      "title": {
+        "zh": "生图原型 Agent",
+        "en": "Image Prototype Agent"
+      },
+      "description": {
+        "zh": "根据提示词生成界面概念图",
+        "en": "Generate UI concepts from prompts"
+      }
+    },
+    {
+      "id": "code-review/draft",
+      "title": {
+        "zh": "代码审查 Agent",
+        "en": "Code Review Agent"
+      },
+      "description": {
+        "zh": "阅读代码并给出风险建议",
+        "en": "Inspect code and surface risks"
+      }
+    },
+    {
+      "id": "docs-organizer/draft",
+      "title": {
+        "zh": "文档整理 Agent",
+        "en": "Documentation Agent"
+      },
+      "description": {
+        "zh": "整理需求、Trace 与产物说明",
+        "en": "Organize requirements, traces, and artifacts"
+      }
+    },
+    {
+      "id": "research/draft",
+      "title": {
+        "zh": "资料研究 Agent",
+        "en": "Research Agent"
+      },
+      "description": {
+        "zh": "检索、归纳并输出结构化结论",
+        "en": "Search, summarize, and structure findings"
+      }
+    }
+  ]
+}

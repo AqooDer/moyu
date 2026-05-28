@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { AgentManifestSummary } from "./registry.js";
 import { readImageRelayConfig } from "../lib/env.js";
 import { generateImagesWithRelay } from "../lib/openai-compat-image.js";
-import { writeTrace } from "../lib/trace.js";
+import { RuntimeStore } from "../runtime/store.js";
 
 const AgentRunOptions = z.object({
   prompt: z.string().min(1),
@@ -27,39 +27,50 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
   await mkdir(outputDir, { recursive: true });
 
   const prompt = options.rawPrompt ? options.prompt : normalizePrompt(options.prompt, options.style);
-  const trace = {
-    run_id: runId,
-    kind: "agent-run",
-    status: "running",
+  const runtime = RuntimeStore.createRun({
+    id: runId,
+    agentId: agent.agentId,
+    agentVersion: agent.version,
+    recipeId: agent.recipeRef,
+    dryRun: options.dryRun,
     input: {
-      agent_id: agent.agentId,
-      agent_version: agent.version,
       prompt,
       count: options.count,
       size: options.size,
       style: options.style,
       raw_prompt: options.rawPrompt,
     },
-    notes: [] as string[],
-    outputs: [] as Array<Record<string, unknown>>,
-  };
+  });
+  runtime.setRunState("running");
+
+  const step = runtime.startStep({
+    id: "step-image-gen",
+    name: "image_gen",
+    kind: "skill",
+    inputSummary: {
+      prompt_chars: prompt.length,
+      count: options.count,
+      size: options.size,
+    },
+  });
 
   const config = readImageRelayConfig();
   if (options.dryRun || !config) {
-    trace.status = "dry-run";
-    trace.notes.push(
+    runtime.addNote(
       options.dryRun
         ? "Dry-run requested; provider call skipped."
         : "Missing image relay config; provider call skipped.",
     );
-    const traceFile = await writeTrace(runId, trace);
+    runtime.finishStep(step.id, "skipped", { reason: "provider call skipped" });
+    runtime.setRunState("succeeded");
+    const traceFile = await runtime.writeTrace();
     const summary = formatRunSummary({
       agent,
       runId,
       prompt,
       count: options.count,
       size: options.size,
-      status: trace.status,
+      status: "dry-run",
       traceFile,
       outputDir,
       files: [],
@@ -75,25 +86,30 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     outDir: outputDir,
   });
 
-  trace.status = "succeeded";
-  trace.notes.push("Generated via agent runtime prototype.");
-  trace.outputs.push(
-    ...result.files.map((file) => ({
-      kind: "image",
-      file,
-      model: result.model,
-      provider: result.provider,
-      duration_ms: result.durationMs,
-    })),
-  );
-  const traceFile = await writeTrace(runId, trace);
+  for (const file of result.files) {
+    await runtime.addArtifact({
+      producerStepId: step.id,
+      type: "png",
+      role: "primary",
+      filePath: file,
+    });
+  }
+  runtime.finishStep(step.id, "succeeded", {
+    files: result.files.length,
+    model: result.model,
+    provider: result.provider,
+    duration_ms: result.durationMs,
+  });
+  runtime.addNote("Generated via agent runtime prototype.");
+  runtime.setRunState("succeeded");
+  const traceFile = await runtime.writeTrace();
   const summary = formatRunSummary({
     agent,
     runId,
     prompt,
     count: options.count,
     size: options.size,
-    status: trace.status,
+    status: "succeeded",
     traceFile,
     outputDir,
     files: result.files,
@@ -158,4 +174,3 @@ function formatRunSummary(input: {
 
   return lines.join("\n");
 }
-

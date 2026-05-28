@@ -1,7 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-export function loadLocalEnv(filePath = ".env") {
+export interface LocalEnvOptions {
+  override?: boolean;
+}
+
+export function loadLocalEnv(filePath = ".env", options: LocalEnvOptions = {}) {
   const resolved = path.resolve(filePath);
   if (!existsSync(resolved)) {
     return;
@@ -21,7 +25,7 @@ export function loadLocalEnv(filePath = ".env") {
 
     const key = line.slice(0, eq).trim();
     const value = stripQuotes(line.slice(eq + 1).trim());
-    if (!process.env[key]) {
+    if (options.override || !process.env[key]) {
       process.env[key] = value;
     }
   }
@@ -37,4 +41,3 @@ function stripQuotes(value: string) {
 
   return value;
 }
-

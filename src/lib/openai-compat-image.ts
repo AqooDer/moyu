@@ -22,19 +22,23 @@ export async function generateImagesWithRelay(
 ): Promise<ImageGenerationResult> {
   const start = Date.now();
   const endpoint = toImageEndpoint(config.baseUrl);
+  const body: Record<string, unknown> = {
+    model: config.model,
+    prompt: request.prompt,
+    size: request.size,
+    n: request.count,
+  };
+  if (supportsResponseFormat(config.model)) {
+    body.response_format = config.responseFormat;
+  }
+
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${config.apiKey}`,
     },
-    body: JSON.stringify({
-      model: config.model,
-      prompt: request.prompt,
-      size: request.size,
-      n: request.count,
-      response_format: config.responseFormat,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
@@ -81,6 +85,11 @@ function toImageEndpoint(baseUrl: string): string {
     return `${trimmed}/images/generations`;
   }
   return `${trimmed}/v1/images/generations`;
+}
+
+function supportsResponseFormat(model: string) {
+  const normalized = model.toLowerCase();
+  return normalized === "dall-e-2" || normalized === "dall-e-3";
 }
 
 async function imageItemToBuffer(item: { b64_json?: string; url?: string }): Promise<Buffer> {
