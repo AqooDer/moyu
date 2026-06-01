@@ -10,6 +10,8 @@ import {
 import { runImageAgent } from "./agent/run.js";
 import { formatValidationResult, validateAgentFolder } from "./agent/validate.js";
 import { loadLocalEnv } from "./lib/local-env.js";
+import { createAgentWithMeta, formatMetaCreateAgentResult } from "./meta/create-agent.js";
+import { InstallConflictError, installAgentDraft } from "./meta/install-agent.js";
 import {
   formatArtifactDetail,
   formatArtifactList,
@@ -25,6 +27,7 @@ import {
 } from "./runtime/history.js";
 import { writeWorkbenchData } from "./runtime/workbench-data.js";
 import { runImageGenSpike } from "./spike/image-gen.js";
+import { serveWorkbench } from "./ui/server.js";
 
 loadLocalEnv(".env", { override: true });
 
@@ -127,6 +130,67 @@ agentCommand
     }
   });
 
+const metaCommand = program.command("meta").description("run Meta-Agent authoring flows");
+
+metaCommand
+  .command("create-agent")
+  .description("create a reviewable Agent folder scaffold from a natural-language requirement")
+  .requiredOption("--prompt <text>", "natural-language requirement for the new Agent")
+  .option("--id <id>", "target Agent id, for example image-gen/prototype-v1")
+  .option("--name <name>", "Agent display name")
+  .option("--description <text>", "Agent description")
+  .option("--out <path>", "draft output root; ignored when --persist is set")
+  .option("--root <path>", "installed Agents root directory", "agents")
+  .option("--persist", "write directly into the Agents root instead of a draft directory")
+  .option("--force", "allow overwriting an existing draft or Agent folder")
+  .action(async (opts) => {
+    const result = await createAgentWithMeta({
+      prompt: opts.prompt,
+      agentId: opts.id,
+      name: opts.name,
+      description: opts.description,
+      outDir: opts.out,
+      rootDir: opts.root,
+      persist: Boolean(opts.persist),
+      force: Boolean(opts.force),
+    });
+    console.log(formatMetaCreateAgentResult(result));
+    if (!result.validation.ok) {
+      process.exitCode = 1;
+    }
+  });
+
+metaCommand
+  .command("install-agent")
+  .description("install a generated Agent draft from a Meta-Agent run into the local Agents root")
+  .requiredOption("--run <run_id>", "Meta-Agent create run id")
+  .option("--root <path>", "installed Agents root directory", "agents")
+  .option("--force", "overwrite an existing Agent folder")
+  .action(async (opts) => {
+    try {
+      const result = await installAgentDraft({
+        runId: opts.run,
+        rootDir: opts.root,
+        force: Boolean(opts.force),
+      });
+      console.log(`agent_id: ${result.agentId}`);
+      console.log(`source: ${path.relative(process.cwd(), result.sourcePath)}`);
+      console.log(`target: ${path.relative(process.cwd(), result.targetPath)}`);
+      console.log(`installed: ${result.installed ? "yes" : "no"}`);
+      console.log(`validation: ${result.validation.ok ? "ok" : "failed"}`);
+      if (!result.installed) {
+        process.exitCode = 1;
+      }
+    } catch (error) {
+      if (error instanceof InstallConflictError) {
+        console.error(`${error.message}. Pass --force to overwrite after reviewing the draft.`);
+        process.exitCode = 1;
+        return;
+      }
+      throw error;
+    }
+  });
+
 const runCommand = program.command("run").description("inspect runtime run history");
 
 runCommand
@@ -223,6 +287,24 @@ uiCommand
     console.log(`workbench_data: ${path.relative(process.cwd(), result.outputPath)}`);
     console.log(`runs: ${result.data.selectedRun ? 1 : 0}`);
     console.log(`artifacts: ${result.data.artifacts.length}`);
+  });
+
+uiCommand
+  .command("serve")
+  .description("serve the Workbench prototype with local runtime APIs")
+  .option("--host <host>", "host to bind", "127.0.0.1")
+  .option("--port <number>", "port to listen on", "4177")
+  .action(async (opts) => {
+    const port = Number(opts.port);
+    const server = await serveWorkbench({
+      host: opts.host,
+      port: Number.isFinite(port) && port > 0 ? port : 4177,
+    });
+    if (server.port !== server.requestedPort) {
+      console.log(`port ${server.requestedPort} is busy, using ${server.port} instead`);
+    }
+    console.log(`workbench: ${server.url}`);
+    console.log("api: /api/workbench, /api/artifact-content, /api/artifact/open, /api/meta/create-agent, /api/meta/install-agent");
   });
 
 function optsRawPrompt(opts: { rawPrompt?: boolean }) {

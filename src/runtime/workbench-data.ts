@@ -60,7 +60,11 @@ export async function buildWorkbenchData(
   const artifactLimit = input.artifactLimit ?? 12;
   const runs = await listRunHistory({ tracesRoot, limit: 1 });
   const selectedRun = runs[0] ? await getWorkbenchRun(runs[0].id, tracesRoot) : null;
-  const artifacts = await listArtifacts({ tracesRoot, limit: artifactLimit });
+  const artifacts = await listArtifacts({
+    tracesRoot,
+    runId: selectedRun?.id,
+    limit: artifactLimit,
+  });
   const workbenchArtifacts =
     artifacts.length > 0
       ? artifacts.map((artifact) => toWorkbenchArtifact(artifact, prototypeRoot))

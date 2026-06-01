@@ -7,6 +7,7 @@
 > 代码目录: `/Users/zlj/code/my_github/moyu`
 > 文档目录: `/Users/zlj/code/my_github/moyu/docs`
 > 迁移说明: 设计文档已从 `007-docs-moyu` 迁入代码项目,不再通过软链接引用外部目录。
+> 工程状态: 项目已进入原型实现阶段,运行命令与当前状态见 `21-工程运行与状态.md`。
 
 ## 1. 项目目标
 
@@ -22,7 +23,7 @@
 
 ## 2. 技术栈
 
-> 当前为**纯设计阶段**(无可运行代码),但技术栈已与用户对齐:**产品化定位、Node/TS 单语言栈、云 API、首发任务"生图原型"(2026-05-21 切换)、按完整方案推进**(不考虑时间)。
+> 当前已进入**原型实现阶段**。技术栈已与用户对齐:**产品化定位、Node/TS 单语言栈、云 API、首发任务"生图原型"(2026-05-21 切换)、按完整方案推进**。实际运行命令与工程状态见 `21-工程运行与状态.md`。
 
 | 维度 | 选型 | 备注 |
 | --- | --- | --- |
@@ -43,11 +44,24 @@
 
 ## 3. 启动与运行
 
-本阶段无可运行代码。所有交付物为 Markdown 设计文档。
+工程已具备可运行 CLI 与 Workbench 原型。常用入口:
+
+```bash
+npm install
+npm run dev -- help
+npm run prototype:workbench
+```
+
+完整命令见 `21-工程运行与状态.md`。
 
 ## 4. 测试
 
-不适用(设计阶段)。
+当前以 TypeScript 类型检查和构建检查为主:
+
+```bash
+npm run typecheck
+npm run build
+```
 
 ## 5. 目录结构
 
@@ -74,6 +88,7 @@
 ├── 18-生图原型Recipe规格.md        # ★ 2026-05-21 新首发 Recipe:image-gen/prototype-v1 + 6 个验收 case
 ├── 19-产品定位与界面方案调整.md    # ★ 2026-05-26 UI 概念图后收敛:代码驱动 Agent 创建/运行平台,画布降级为可选观察视图
 ├── 20-任务会话式Workbench与多产物架构调整.md # ★ 2026-05-28 修正:Workbench 以 Work Conversation 为中心,Artifact/Trace 进入右侧 Inspector
+├── 21-工程运行与状态.md            # ★ 从根 README 迁移出的工程入口:目录、命令、配置、当前实现状态
 ├── logo                            # 项目素材
 └── ...
 ```
@@ -106,6 +121,7 @@
 - [x] 新建 `18-生图原型Recipe规格.md`(新首发 Recipe + 6 个 case)
 - [x] 新建 `19-产品定位与界面方案调整.md`(基于 9 张 UI 概念图,收敛为代码驱动的 Agent 创建平台 + Agent 运行平台;画布不作为 MVP 主路径)
 - [x] 新建 `20-任务会话式Workbench与多产物架构调整.md`(修正 Workbench 方向:对话中心、左右可收起、Artifact 归属当前 Work、多 Agent 调用进入 Trace)
+- [x] 根目录 `README.md` 改为面向大众的项目介绍;原工程运行内容迁移到 `21-工程运行与状态.md`
 - [x] 建立 Workbench 静态原型 `ui/workbench-prototype/`,默认中文,支持中文 / English 切换
 - [x] 改 `09-MVP-路线图.md`:加核心铁律 3(ADR-008 硬验收);v0.0 改为生图尖刺;v0.1 首发改为生图原型;v0.2 把写标书 Recipe 纳入;v0.3 加 Meta-Agent 现造 LLM Skill;v0.4 加现造 code Skill
 - [x] 改 `10-v0.0-技术尖刺.md`:从 PDF→docx 换为 prompt → openai-compat 中转站 → PNG;时间盒从 1 周压到 1 天

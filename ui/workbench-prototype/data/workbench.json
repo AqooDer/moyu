@@ -1,43 +1,172 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-28T01:34:05.109Z",
-  "selectedRun": null,
+  "generatedAt": "2026-05-28T15:03:29.492Z",
+  "selectedRun": {
+    "id": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+    "agentId": "meta/create-agent",
+    "state": "succeeded",
+    "startedAt": "2026-05-28T14:47:36.870Z",
+    "durationMs": 14,
+    "prompt": "创建一个生图原型 Agent，调用 gpt-image-2 中转接口，默认生成 3 张 UI 概念图，保存图片、Trace 和提示词",
+    "steps": [
+      {
+        "id": "intake",
+        "name": "INTAKE",
+        "state": "succeeded",
+        "durationMs": 0
+      },
+      {
+        "id": "spec-draft",
+        "name": "SPEC_DRAFT",
+        "state": "succeeded",
+        "durationMs": 0
+      },
+      {
+        "id": "persist",
+        "name": "PERSIST",
+        "state": "succeeded",
+        "durationMs": 9
+      },
+      {
+        "id": "validate",
+        "name": "VALIDATE",
+        "state": "succeeded",
+        "durationMs": 1
+      }
+    ]
+  },
   "artifacts": [
     {
-      "id": "prototype-1",
-      "runId": "prototype-static",
-      "agentId": "image-gen/prototype-v1",
-      "type": "png",
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-1",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "yaml",
       "role": "primary",
-      "name": "moyu-logo-master.png",
-      "url": "../../brand/source/moyu-logo-master.png",
-      "sizeBytes": 1357604,
-      "sha256": null,
-      "createdAt": null
+      "name": "manifest.yaml",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/manifest.yaml",
+      "sizeBytes": 1491,
+      "sha256": "33b045399caed78dee554c5dbb16e21d866359e88cfd2d23dc8512c598b3f0ea",
+      "createdAt": "2026-05-28T14:47:36.884Z"
     },
     {
-      "id": "prototype-2",
-      "runId": "prototype-static",
-      "agentId": "image-gen/prototype-v1",
-      "type": "png",
-      "role": "intermediate",
-      "name": "image-01.png",
-      "url": "../../artifacts/agent-runs/image-gen__prototype-v1/run-image-gen__prototype-v1-mplf2lfk-ako86f/image-01.png",
-      "sizeBytes": 869307,
-      "sha256": null,
-      "createdAt": null
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-2",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "yaml",
+      "role": "primary",
+      "name": "ui.yaml",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/ui.yaml",
+      "sizeBytes": 760,
+      "sha256": "d802bde2fe0598f67c6e2a9341cc558069a429ccf169bc60dc7ecc0c882bdf14",
+      "createdAt": "2026-05-28T14:47:36.884Z"
     },
     {
-      "id": "prototype-3",
-      "runId": "prototype-static",
-      "agentId": "image-gen/prototype-v1",
-      "type": "png",
-      "role": "intermediate",
-      "name": "artifact-detail-02.png",
-      "url": "../../artifacts/ui-concepts/artifact-detail-02/image-01.png",
-      "sizeBytes": 1154115,
-      "sha256": null,
-      "createdAt": null
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-3",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "md",
+      "role": "primary",
+      "name": "README.md",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/README.md",
+      "sizeBytes": 912,
+      "sha256": "f407a7c152b43c7abdbfdf002f9831e521890d4a8efeecd72c524a172278b5f4",
+      "createdAt": "2026-05-28T14:47:36.884Z"
+    },
+    {
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-4",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "text",
+      "role": "primary",
+      "name": ".agentignore",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/.agentignore",
+      "sizeBytes": 44,
+      "sha256": "79f4f2e5622cc672154c1c0a475291dc821381aee47ceefb955d476d53d3ae0a",
+      "createdAt": "2026-05-28T14:47:36.884Z"
+    },
+    {
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-5",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "md",
+      "role": "primary",
+      "name": "system.md",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/prompts/system.md",
+      "sizeBytes": 318,
+      "sha256": "80806d91076e96572da0ef708921c34b401bd31969a777a15d8d3f6046cda764",
+      "createdAt": "2026-05-28T14:47:36.884Z"
+    },
+    {
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-6",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "ts",
+      "role": "primary",
+      "name": "agent.recipe.ts",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/agent.recipe.ts",
+      "sizeBytes": 215,
+      "sha256": "d25b7edf47987109b261b8e023deb4ba42ab333a5e301431c46aa034bb60d5a0",
+      "createdAt": "2026-05-28T14:47:36.884Z"
+    },
+    {
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-7",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "yaml",
+      "role": "primary",
+      "name": "skill.yaml",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/skills/image_gen_via_relay/skill.yaml",
+      "sizeBytes": 512,
+      "sha256": "aa009b467332bc6631288a90018cf165ff15f5c2d4666bbd967a11760574aed8",
+      "createdAt": "2026-05-28T14:47:36.884Z"
+    },
+    {
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-8",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "ts",
+      "role": "primary",
+      "name": "index.ts",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/skills/image_gen_via_relay/index.ts",
+      "sizeBytes": 393,
+      "sha256": "4171d7b220b691b24695f840f536846383316da72ff97b54bace43020f64e315",
+      "createdAt": "2026-05-28T14:47:36.884Z"
+    },
+    {
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-9",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "json",
+      "role": "primary",
+      "name": "20260528T144736Z-initial-create.meta.json",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/history/20260528T144736Z-initial-create.meta.json",
+      "sizeBytes": 157,
+      "sha256": "c934be9742c086ac187404d84cbd0943be018c432138357de74b34c090b3707c",
+      "createdAt": "2026-05-28T14:47:36.884Z"
+    },
+    {
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-10",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "patch",
+      "role": "primary",
+      "name": "20260528T144736Z-initial-create.patch",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/history/20260528T144736Z-initial-create.patch",
+      "sizeBytes": 153,
+      "sha256": "0087f788384de847068c07bc316a60707a97308eedcc5ead0ac824538b1ae217",
+      "createdAt": "2026-05-28T14:47:36.884Z"
+    },
+    {
+      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-11",
+      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
+      "agentId": "meta/create-agent",
+      "type": "json",
+      "role": "log",
+      "name": "verification.trace.json",
+      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/verification.trace.json",
+      "sizeBytes": 425,
+      "sha256": "ecfb2bf1e6634dd6a35c85079b5648125cbcb4275ef3fb1b5b8b162e7c7e6d4f",
+      "createdAt": "2026-05-28T14:47:36.884Z"
     }
   ],
   "agents": [

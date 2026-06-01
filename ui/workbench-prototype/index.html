@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Moyu Workbench Prototype</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=16" />
   </head>
   <body>
     <div class="app-frame" data-layout>
@@ -22,7 +22,7 @@
         <div class="work-switcher" aria-label="Current work">
           <span class="work-state-dot"></span>
           <div>
-            <strong data-i18n="currentWork">制作智能体平台介绍 PPT</strong>
+            <strong data-i18n="currentWork">创建生图原型 Agent</strong>
             <small data-i18n="localWorkspace">本地工作区 / moyu</small>
           </div>
         </div>
@@ -63,15 +63,15 @@
               <button class="work-item active" type="button">
                 <span class="work-icon">P</span>
                 <span>
-                  <strong data-i18n="pptWork">制作平台介绍 PPT</strong>
-                  <small data-i18n="pptWorkDesc">4 个产物 · 等待确认大纲</small>
+                  <strong data-i18n="pptWork">创建生图原型 Agent</strong>
+                  <small data-i18n="pptWorkDesc">Agent 产物 · 等待创建确认</small>
                 </span>
               </button>
               <button class="work-item" type="button">
                 <span class="work-icon soft">图</span>
                 <span>
-                  <strong data-i18n="visualWork">品牌视觉探索</strong>
-                  <small data-i18n="visualWorkDesc">生图 Agent · 已完成</small>
+                  <strong data-i18n="visualWork">制作平台介绍 PPT</strong>
+                  <small data-i18n="visualWorkDesc">调用多个 Agent · 规划中</small>
                 </span>
               </button>
               <button class="work-item" type="button">
@@ -96,7 +96,14 @@
             </label>
             <div class="agent-list" data-agent-list>
               <button class="agent-item active" type="button">
-                <span class="agent-mark">图</span>
+                <span class="agent-mark">元</span>
+                <span>
+                  <strong data-i18n="agentMeta">元智能体</strong>
+                  <small data-i18n="agentMetaDesc">通过对话创建、改造和验证 Agent</small>
+                </span>
+              </button>
+              <button class="agent-item" type="button">
+                <span class="agent-mark blue">图</span>
                 <span>
                   <strong data-i18n="agentImage">生图原型 Agent</strong>
                   <small data-i18n="agentImageDesc">生成图片、界面概念与品牌视觉</small>
@@ -137,16 +144,16 @@
           <section class="conversation-header">
             <div>
               <span class="eyebrow" data-i18n="workSession">任务会话</span>
-              <h1 data-i18n="currentWork">制作智能体平台介绍 PPT</h1>
+              <h1 data-i18n="currentWork">创建生图原型 Agent</h1>
               <div class="session-meta">
                 <span data-i18n="waitingConfirm">等待确认</span>
                 <span data-i18n="recipeLoaded">Recipe 已加载</span>
               </div>
               <div class="work-progress" aria-label="Work progress">
-                <span class="done" data-i18n="progressContent">内容稿</span>
-                <span class="active" data-i18n="progressVisual">背景图</span>
-                <span data-i18n="progressOutline">大纲</span>
-                <span data-i18n="progressDeck">完整 PPT</span>
+                <span class="done" data-i18n="progressContent">需求澄清</span>
+                <span class="active" data-i18n="progressVisual">能力契约</span>
+                <span data-i18n="progressOutline">文件骨架</span>
+                <span data-i18n="progressDeck">验证发布</span>
               </div>
             </div>
           </section>
@@ -157,7 +164,7 @@
               <div class="message-body">
                 <div class="message-meta"><strong data-i18n="you">你</strong><span>10:20</span></div>
                 <p data-i18n="userAsk">
-                  帮我制作一份 Moyu 智能体平台介绍 PPT。先整理内容，再生成背景图，最后输出完整 PPT。
+                  帮我创建一个生图原型 Agent。它要能调用 gpt-image-2 中转接口，支持生成 3 张 UI 概念图，并把图片、Trace 和提示词都保存下来。
                 </p>
               </div>
             </article>
@@ -170,12 +177,12 @@
                   <div>
                     <span class="detail-kicker" data-i18n="orchestrationTitle">代码编排正在运行</span>
                     <p data-i18n="orchestrationDesc">
-                      这个任务不是画布节点流，而是由 Recipe 和 Agent 代码串联：文档 Agent 产出内容稿，生图 Agent 生成视觉素材，演示文稿 Agent 汇总为 PPT。
+                      元智能体不会让你拖节点画布，而是通过对话生成 Agent 规格、代码和验证任务。生成后的 Agent 再由 Moyu Runtime 加载并参与后续任务编排。
                     </p>
                   </div>
                   <dl>
-                    <div><dt data-i18n="recipeFile">Recipe</dt><dd>recipes/platform-intro-deck.ts</dd></div>
-                    <div><dt data-i18n="callPolicy">调用策略</dt><dd data-i18n="callPolicyValue">串行执行，关键节点等待确认</dd></div>
+                    <div><dt data-i18n="recipeFile">Recipe</dt><dd>recipes/meta/create-agent.ts</dd></div>
+                    <div><dt data-i18n="callPolicy">创建策略</dt><dd data-i18n="callPolicyValue">先生成契约，确认后写入 Agent 文件</dd></div>
                   </dl>
                 </div>
               </div>
@@ -185,12 +192,12 @@
               <div class="avatar-bubble moyu">墨</div>
               <div class="message-body">
                 <div class="message-meta"><strong>Moyu</strong><span>10:21</span></div>
-                <p data-i18n="agentPlanIntro">我会把这个任务拆成一组可追踪的交付步骤，每一步都可以调用专门 Agent，并把产物沉淀在当前任务里。</p>
+                <p data-i18n="agentPlanIntro">我会先把你的自然语言需求转成 Agent 契约，再生成代码文件、Recipe 和验证用例。这里的产物不是一次任务结果，而是一个可运行、可热加载的 Agent。</p>
                 <div class="plan-block">
-                  <div class="plan-step done"><span></span><strong data-i18n="planMd">整理 Markdown 内容稿</strong><small>docs-agent</small></div>
-                  <div class="plan-step active"><span></span><strong data-i18n="planImage">生成 PPT 背景图</strong><small>image-gen/prototype-v1</small></div>
-                  <div class="plan-step"><span></span><strong data-i18n="planOutline">输出 PPT 大纲</strong><small>presentation-agent</small></div>
-                  <div class="plan-step"><span></span><strong data-i18n="planDeck">生成完整 PPT</strong><small>presentation-agent</small></div>
+                  <div class="plan-step done"><span></span><strong data-i18n="planMd">澄清目标、输入和输出</strong><small>meta/create-agent</small></div>
+                  <div class="plan-step active"><span></span><strong data-i18n="planImage">生成 Agent 能力契约</strong><small>agent-spec</small></div>
+                  <div class="plan-step"><span></span><strong data-i18n="planOutline">创建 Agent 文件骨架</strong><small>codegen</small></div>
+                  <div class="plan-step"><span></span><strong data-i18n="planDeck">运行验证并注册 Agent</strong><small>runtime</small></div>
                 </div>
               </div>
             </article>
@@ -198,22 +205,22 @@
             <article class="message agent-message">
               <div class="avatar-bubble moyu">墨</div>
               <div class="message-body">
-                <div class="message-meta"><strong data-i18n="imageAgent">生图 Agent</strong><span>10:24</span></div>
-                <p data-i18n="imageAgentResult">背景视觉已生成 3 张，我建议选第一张作为主视觉，并继续生成封面与章节页版式。</p>
+                <div class="message-meta"><strong data-i18n="imageAgent">元智能体</strong><span>10:24</span></div>
+                <p data-i18n="imageAgentResult">我已经整理出生图原型 Agent 的能力契约草案：输入是提示词与数量，输出是图片文件、Trace 和可复用提示词记录。</p>
                 <div class="artifact-strip" data-conversation-artifacts>
                   <article class="mini-artifact selected">
-                    <img src="../../brand/source/moyu-logo-master.png" alt="" />
-                    <strong>moyu-logo-master.png</strong>
-                    <small>PNG · 1.3MB</small>
+                    <span class="file-preview">YAML</span>
+                    <strong>agent.yaml</strong>
+                    <small>能力契约</small>
                   </article>
                   <article class="mini-artifact">
-                    <span class="file-preview">MD</span>
-                    <strong>platform-story.md</strong>
-                    <small>内容稿</small>
+                    <span class="file-preview">TS</span>
+                    <strong>handler.ts</strong>
+                    <small>执行入口</small>
                   </article>
                   <article class="mini-artifact">
-                    <span class="file-preview">PPT</span>
-                    <strong>outline.pptx</strong>
+                    <span class="file-preview">JSON</span>
+                    <strong>verification.trace.json</strong>
                     <small>待生成</small>
                   </article>
                 </div>
@@ -226,25 +233,25 @@
                 <div class="message-meta"><strong>Moyu Runtime</strong><span>10:25</span></div>
                 <div class="delivery-card">
                   <div class="delivery-head">
-                    <span class="detail-kicker" data-i18n="nextDelivery">下一步交付队列</span>
-                    <small data-i18n="nextDeliveryDesc">确认后由 Recipe 继续调用 Agent，产物仍归属当前任务会话。</small>
+                    <span class="detail-kicker" data-i18n="nextDelivery">Agent 创建队列</span>
+                    <small data-i18n="nextDeliveryDesc">确认后由元智能体继续生成 Agent 文件、Recipe、测试夹具，并把新 Agent 注册到本地运行时。</small>
                   </div>
-                  <ol class="delivery-list">
-                    <li>
+                  <ol class="delivery-list" data-delivery-list>
+                    <li data-delivery-step="cover">
                       <span>1</span>
-                      <div><strong>cover-background.png</strong><small data-i18n="deliveryCover">封面主视觉背景</small></div>
+                      <div><strong>agent.yaml</strong><small data-i18n="deliveryCover">agent.yaml 能力契约</small></div>
                     </li>
-                    <li>
+                    <li data-delivery-step="sections">
                       <span>2</span>
-                      <div><strong>section-backgrounds.zip</strong><small data-i18n="deliverySections">章节页背景组</small></div>
+                      <div><strong>handler.ts</strong><small data-i18n="deliverySections">handler.ts 执行入口</small></div>
                     </li>
-                    <li>
+                    <li data-delivery-step="outline">
                       <span>3</span>
-                      <div><strong>deck-outline.md</strong><small data-i18n="deliveryOutline">PPT 叙事大纲</small></div>
+                      <div><strong>recipe.ts</strong><small data-i18n="deliveryOutline">recipe.ts 示例编排</small></div>
                     </li>
-                    <li>
+                    <li data-delivery-step="deck">
                       <span>4</span>
-                      <div><strong>moyu-intro.pptx</strong><small data-i18n="deliveryDeck">完整演示文稿</small></div>
+                      <div><strong>verification.trace.json</strong><small data-i18n="deliveryDeck">verification.trace.json 验证记录</small></div>
                     </li>
                   </ol>
                 </div>
@@ -256,11 +263,11 @@
               <div class="message-body">
                 <div class="checkpoint-card">
                   <span class="checkpoint-label" data-i18n="checkpoint">需要确认</span>
-                  <strong data-i18n="checkpointTitle">是否使用“墨鱼主视觉 + 代码运行平台”作为 PPT 主线？</strong>
-                  <p data-i18n="checkpointDesc">确认后我会继续调用图片 Agent 生成章节页背景，再调用演示文稿 Agent 输出完整 PPT。</p>
+                  <strong data-i18n="checkpointTitle">是否按这个契约创建 image-gen/prototype-v1 Agent？</strong>
+                  <p data-i18n="checkpointDesc">确认后我会写入 Agent 文件骨架、示例 Recipe 和验证 Trace，并把它加入 Agents 列表。</p>
                   <div class="checkpoint-actions">
-                    <button class="primary-action" type="button" data-i18n="approve">确认继续</button>
-                    <button class="ghost-button" type="button" data-i18n="adjust">调整方向</button>
+                    <button class="primary-action" type="button" data-run-action="approve" data-i18n="approve">确认创建</button>
+                    <button class="ghost-button" type="button" data-run-action="adjust" data-i18n="adjust">修改契约</button>
                   </div>
                 </div>
               </div>
@@ -272,14 +279,14 @@
               <button type="button" title="Attach">＋</button>
               <button type="button" title="Agent">@</button>
               <button type="button" title="Context">#</button>
-              <span data-i18n="composerHint">可直接描述任务，也可以指定 Agent 或引用已有产物</span>
+              <span data-i18n="composerHint">描述你想创建的 Agent，或补充输入、输出、工具和验证要求</span>
             </div>
             <label>
               <span class="visually-hidden" data-i18n="messageInput">消息输入</span>
-              <textarea data-i18n-placeholder="composerPlaceholder" placeholder="告诉 Moyu 下一步要做什么..."></textarea>
+              <textarea data-i18n-placeholder="composerPlaceholder" placeholder="告诉元智能体这个 Agent 应该具备什么能力..."></textarea>
             </label>
             <div class="composer-bottom">
-              <span data-i18n="selectedAgent">当前：自动选择 Agent</span>
+              <span data-i18n="selectedAgent">当前：元智能体 / create-agent</span>
               <button class="send-button" type="button" data-send-message><span data-i18n="send">发送</span><kbd>⌘↵</kbd></button>
             </div>
           </section>
@@ -297,13 +304,13 @@
           <div class="panel-head">
             <div>
               <strong data-i18n="inspector">检查器</strong>
-              <small data-i18n="currentWorkArtifacts">当前任务的产物与运行上下文</small>
+              <small data-i18n="currentWorkArtifacts">当前 Agent 的产物、Trace 与运行上下文</small>
             </div>
             <button class="collapse-button" type="button" data-collapse="right" aria-label="Collapse right panel">〉</button>
           </div>
 
           <div class="panel-tabs inspector-tabs" role="tablist" aria-label="Inspector tabs">
-            <button class="active" type="button" data-inspector-tab="artifacts" data-i18n="artifacts">产物</button>
+            <button class="active" type="button" data-inspector-tab="artifacts" data-i18n="artifacts">Agent 产物</button>
             <button type="button" data-inspector-tab="trace" data-i18n="trace">Trace</button>
             <button type="button" data-inspector-tab="context" data-i18n="context">上下文</button>
             <button type="button" data-inspector-tab="details" data-i18n="details">详情</button>
@@ -312,29 +319,40 @@
           <section class="inspector-panel active" data-inspector-panel="artifacts">
             <div class="artifact-list" data-artifact-list>
               <article class="artifact-row selected">
-                <img src="../../brand/source/moyu-logo-master.png" alt="" />
-                <span><strong>moyu-logo-master.png</strong><small>PNG · 当前任务</small></span>
+                <span class="file-preview">YAML</span>
+                <span><strong>agent.yaml</strong><small>YAML · 当前 Agent</small></span>
               </article>
               <article class="artifact-row">
-                <span class="file-preview">MD</span>
-                <span><strong>platform-story.md</strong><small data-i18n="draftContent">内容稿</small></span>
+                <span class="file-preview">TS</span>
+                <span><strong>handler.ts</strong><small data-i18n="draftContent">执行入口</small></span>
               </article>
               <article class="artifact-row">
                 <span class="file-preview">JSON</span>
-                <span><strong>run.json</strong><small>Trace</small></span>
+                <span><strong>agent.recipe.ts</strong><small>Recipe</small></span>
               </article>
             </div>
             <article class="artifact-detail" data-artifact-detail>
               <div class="artifact-detail-preview">
-                <img src="../../brand/source/moyu-logo-master.png" alt="" />
+                <span class="file-preview large">YAML</span>
               </div>
               <div class="artifact-detail-body">
                 <span class="detail-kicker" data-i18n="selectedArtifact">已选择产物</span>
-                <strong>moyu-logo-master.png</strong>
-                <small>PNG · 1.3MB · 当前任务</small>
+                <strong>agent.yaml</strong>
+                <small>YAML · 2.4KB · 当前 Agent</small>
                 <div class="artifact-actions">
-                  <button type="button" data-i18n="open">打开</button>
-                  <button type="button" data-i18n="useAsContext">作为上下文</button>
+                  <button type="button" data-open-artifact data-i18n="open">打开</button>
+                  <button type="button" data-use-artifact-context data-i18n="useAsContext">作为上下文</button>
+                  <button class="install-agent-button" type="button" data-install-agent data-i18n="installAgent">安装 Agent</button>
+                </div>
+                <p class="install-status" data-install-status aria-live="polite"></p>
+                <div class="artifact-code-panel">
+                  <div class="artifact-code-head">
+                    <span data-i18n="previewContent">文件内容预览</span>
+                    <small data-artifact-preview-status></small>
+                  </div>
+                  <pre data-artifact-code>agent_id: image-gen/prototype-v1
+name: 生图原型 Agent
+status: waiting_review</pre>
                 </div>
               </div>
             </article>
@@ -342,9 +360,9 @@
 
           <section class="inspector-panel" data-inspector-panel="trace">
             <ol class="timeline" data-timeline>
-              <li class="done"><span></span><div><strong data-i18n="traceStarted">任务启动</strong><small>10:20:31</small></div><em>0ms</em></li>
-              <li class="done"><span></span><div><strong data-i18n="traceAgentCall">调用文档 Agent</strong><small>docs-agent</small></div><em>1.6s</em></li>
-              <li class="active"><span></span><div><strong data-i18n="traceImageCall">调用生图 Agent</strong><small>image-gen/prototype-v1</small></div><em>4.2s</em></li>
+              <li class="done"><span></span><div><strong data-i18n="traceStarted">创建会话启动</strong><small>10:20:31</small></div><em>0ms</em></li>
+              <li class="done"><span></span><div><strong data-i18n="traceAgentCall">解析 Agent 需求</strong><small>meta/create-agent</small></div><em>1.6s</em></li>
+              <li class="active"><span></span><div><strong data-i18n="traceImageCall">生成能力契约</strong><small>agent-spec</small></div><em>4.2s</em></li>
               <li><span></span><div><strong data-i18n="traceCheckpoint">等待用户确认</strong><small>checkpoint</small></div><em>-</em></li>
             </ol>
           </section>
@@ -352,17 +370,17 @@
           <section class="inspector-panel" data-inspector-panel="context">
             <dl class="info-list">
               <div><dt data-i18n="workspace">工作区</dt><dd>/Users/zlj/code/my_github/moyu</dd></div>
-              <div><dt data-i18n="recipe">Recipe</dt><dd>recipes/platform-intro-deck.ts</dd></div>
-              <div><dt data-i18n="contextFiles">上下文文件</dt><dd>4 docs, 2 images, 1 trace</dd></div>
-              <div><dt data-i18n="policy">运行策略</dt><dd data-i18n="policyValue">自动路由 Agent，关键节点人工确认</dd></div>
+              <div><dt data-i18n="recipe">Recipe</dt><dd>recipes/meta/create-agent.ts</dd></div>
+              <div><dt data-i18n="contextFiles">上下文文件</dt><dd>18 docs, .env schema, image relay docs</dd></div>
+              <div><dt data-i18n="policy">运行策略</dt><dd data-i18n="policyValue">元智能体生成代码，关键文件写入前人工确认</dd></div>
             </dl>
           </section>
 
           <section class="inspector-panel" data-inspector-panel="details">
             <dl class="info-list">
-              <div><dt data-i18n="workId">任务 ID</dt><dd>work_ppt_intro_0428</dd></div>
+              <div><dt data-i18n="workId">Agent ID</dt><dd>image-gen/prototype-v1</dd></div>
               <div><dt data-i18n="state">状态</dt><dd data-i18n="waitingConfirm">等待确认</dd></div>
-              <div><dt data-i18n="model">模型</dt><dd>auto / gpt-image-2</dd></div>
+              <div><dt data-i18n="model">模型</dt><dd>meta-agent / gpt-image-2 relay</dd></div>
               <div><dt data-i18n="duration">累计耗时</dt><dd>8.4s</dd></div>
             </dl>
             <button class="full-width-button" type="button" data-i18n="openTrace">打开原始 Trace</button>
@@ -370,6 +388,6 @@
         </aside>
       </div>
     </div>
-    <script src="./app.js"></script>
+    <script src="./app.js?v=16"></script>
   </body>
 </html>

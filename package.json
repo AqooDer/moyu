@@ -14,7 +14,7 @@
     "start": "node dist/cli.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prototype:export-data": "tsx src/cli.ts ui export-data",
-    "prototype:workbench": "open ui/workbench-prototype/index.html"
+    "prototype:workbench": "tsx src/cli.ts ui serve"
   },
   "dependencies": {
     "commander": "^12.1.0",

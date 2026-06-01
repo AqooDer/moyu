@@ -10,10 +10,32 @@
 - 左侧区域：任务会话与 Agent 入口
 - 右侧区域：当前任务的产物、Trace、上下文和详情
 - 暂不做节点画布编辑器；Agent 调用 Agent 以运行步骤和 Trace 呈现
+- 当前演示主线：用户通过对话让“元智能体”创建一个可运行的 `image-gen/prototype-v1` Agent，产物是 Agent 契约、执行入口、示例 Recipe 与验证 Trace
 
 ## 打开方式
 
-建议从仓库根目录启动本地静态服务：
+建议从仓库根目录启动带本地 API 的 Workbench 服务：
+
+```bash
+npm run prototype:workbench
+```
+
+然后访问：
+
+```text
+http://127.0.0.1:4177/ui/workbench-prototype/
+```
+
+如果 `4177` 已被普通静态服务占用，命令会自动换到下一个可用端口，并在终端打印真实地址，例如：
+
+```text
+port 4177 is busy, using 4178 instead
+workbench: http://127.0.0.1:4178/ui/workbench-prototype/
+```
+
+此时必须打开终端打印的 `workbench:` 地址；继续停留在旧的 `4177` 静态页面时，创建、打开和安装 Agent 的 API 动作不会生效。
+
+如果只想看静态页面，也可以启动普通静态服务：
 
 ```bash
 python3 -m http.server 4177 --bind 127.0.0.1
@@ -33,16 +55,53 @@ npm run prototype:export-data
 
 `prototype:export-data` 会生成 `ui/workbench-prototype/data/workbench.json`。原型页面会优先读取这份数据；如果没有生成数据，则使用页面内置的静态演示内容。
 
+`prototype:workbench` 会额外提供本地 API：
+
+- `GET /api/workbench`：读取最新 Run、Trace 和产物
+- `GET /api/artifact-content?id=<artifact_id>`：读取文本产物内容，用于右侧检查器审核草案文件
+- `POST /api/artifact/open`：用系统默认应用打开某个本地产物文件
+- `POST /api/meta/create-agent`：通过元智能体创建 Agent 草案，并返回最新 Workbench 数据
+- `POST /api/meta/install-agent`：把某次元智能体 Run 生成的 Agent 草案安装到正式 `agents/`；默认拒绝覆盖已存在的 Agent
+
+## 元智能体创建 Agent
+
+原型里的“确认创建”现在对应一个最小可执行的 CLI 闭环：
+
+```bash
+npm run dev -- meta create-agent \
+  --prompt "创建一个生图原型 Agent，调用 gpt-image-2 中转接口，默认生成 3 张 UI 概念图，保存图片、Trace 和提示词" \
+  --id custom/meta-image-prototype-v1 \
+  --name "元智能体生成的生图 Agent" \
+  --out /private/tmp/moyu-meta-create-agent \
+  --force
+```
+
+默认生成的是可审核草案，不会直接写入 `agents/`。审核通过后使用安装命令把草案复制到正式 `agents/`，目标目录由 `--root agents` 控制：
+
+```bash
+npm run dev -- meta install-agent --run <meta_create_run_id>
+```
+
+如果正式 Agent 已存在，安装会失败并提示冲突；当前阶段不自动覆盖，后续需要设计版本升级或差异合并流程。只有在明确接受覆盖风险时才使用 `--force`。
+
+生成后可以用现有校验器验证：
+
+```bash
+npm run dev -- agent validate /private/tmp/moyu-meta-create-agent/custom__meta-image-prototype-v1
+```
+
 ## 原型范围
 
 - Codex 式三栏工作台
 - 左右侧栏折叠，折叠后保留稳定窄轨道
 - 左右区域拖拽调整宽度
-- 中心任务会话与消息输入框
-- 会话内展示 Recipe 驱动的下一步交付队列
-- 当前任务产物列表
-- 当前任务 Trace
-- 任务上下文与运行详情
+- 中心任务会话与 Codex 风格消息输入框，既保留输入呼吸感，也尽量把纵向空间留给对话流
+- 会话内展示元智能体驱动的下一步 Agent 创建队列
+- 点击确认后推进创建状态：更新队列、Trace、会话消息和当前 Agent 产物
+- 前端使用集中式 `prototypeState` 驱动阶段、产物、Trace 和选中产物渲染
+- 当前 Agent 产物列表
+- 当前 Agent 创建 Trace
+- Agent 上下文与运行详情
 - 中英文切换
 - 读取 `data/workbench.json` 中的运行与产物数据
 

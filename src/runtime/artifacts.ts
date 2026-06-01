@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { platform } from "node:os";
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { getRunHistoryDetail, listRunHistory } from "./history.js";
 import type { ArtifactRecord, RuntimeTrace } from "./types.js";
@@ -52,6 +52,36 @@ export async function getArtifactDetail(
 ) {
   const artifacts = await listArtifacts({ tracesRoot: input.tracesRoot });
   return artifacts.find((artifact) => artifact.id === artifactId) ?? null;
+}
+
+export async function readArtifactText(
+  artifactId: string,
+  input: { tracesRoot?: string; maxBytes?: number } = {},
+) {
+  const artifact = await getArtifactDetail(artifactId, { tracesRoot: input.tracesRoot });
+  if (!artifact) {
+    return null;
+  }
+
+  if (isBinaryArtifact(artifact)) {
+    return {
+      artifact,
+      text: null,
+      truncated: false,
+      binary: true,
+    };
+  }
+
+  await assertFileExists(artifact.path);
+  const maxBytes = input.maxBytes ?? 64 * 1024;
+  const content = await readFile(artifact.path);
+  const slice = content.subarray(0, maxBytes);
+  return {
+    artifact,
+    text: slice.toString("utf8"),
+    truncated: content.length > slice.length,
+    binary: false,
+  };
 }
 
 export async function openArtifact(artifactId: string, input: { tracesRoot?: string } = {}) {
@@ -172,6 +202,10 @@ function fromLegacyOutput(
       schema: "legacy",
     },
   ];
+}
+
+function isBinaryArtifact(artifact: ArtifactHistoryItem) {
+  return /png|jpe?g|webp|gif|zip|pdf|pptx|docx|xlsx/i.test(artifact.type || artifact.name);
 }
 
 function isRuntimeTrace(trace: unknown): trace is RuntimeTrace {
