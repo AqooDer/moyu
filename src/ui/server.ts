@@ -1,9 +1,13 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFile, stat } from "node:fs/promises";
+import type { AddressInfo } from "node:net";
 import path from "node:path";
+import { findAgent } from "../agent/registry.js";
+import { runImageAgent } from "../agent/run.js";
 import { createAgentWithMeta } from "../meta/create-agent.js";
 import { InstallConflictError, installAgentDraft } from "../meta/install-agent.js";
 import { openArtifact, readArtifactText } from "../runtime/artifacts.js";
+import { openRunTrace } from "../runtime/history.js";
 import { buildWorkbenchData } from "../runtime/workbench-data.js";
 
 interface ServeWorkbenchOptions {
@@ -28,6 +32,20 @@ interface MetaInstallRequest {
 
 interface ArtifactOpenRequest {
   artifactId?: string;
+}
+
+interface RunOpenTraceRequest {
+  runId?: string;
+}
+
+interface AgentRunRequest {
+  agentId?: string;
+  prompt?: string;
+  count?: number;
+  size?: string;
+  style?: string;
+  rawPrompt?: boolean;
+  dryRun?: boolean;
 }
 
 export async function serveWorkbench(input: ServeWorkbenchOptions = {}) {
@@ -70,7 +88,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
   }
 
   if (method === "GET" && url.pathname === "/api/workbench") {
-    writeJson(response, 200, await buildWorkbenchData());
+    writeJson(response, 200, await buildWorkbenchData({ selectedRunId: url.searchParams.get("runId") || undefined }));
     return;
   }
 
@@ -104,6 +122,23 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       return;
     }
     writeJson(response, 200, { ok: true, artifact });
+    return;
+  }
+
+  if (method === "POST" && url.pathname === "/api/run/open-trace") {
+    const payload = await readJsonBody<RunOpenTraceRequest>(request);
+    const runId = payload.runId?.trim();
+    if (!runId) {
+      writeJson(response, 400, { ok: false, error: "runId is required" });
+      return;
+    }
+
+    const run = await openRunTrace(runId);
+    if (!run) {
+      writeJson(response, 404, { ok: false, error: "run not found" });
+      return;
+    }
+    writeJson(response, 200, { ok: true, run });
     return;
   }
 
@@ -160,6 +195,42 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
     return;
   }
 
+  if (method === "POST" && url.pathname === "/api/agent/run") {
+    const payload = await readJsonBody<AgentRunRequest>(request);
+    const agentId = payload.agentId?.trim();
+    const prompt = payload.prompt?.trim();
+    if (!agentId) {
+      writeJson(response, 400, { ok: false, error: "agentId is required" });
+      return;
+    }
+    if (!prompt) {
+      writeJson(response, 400, { ok: false, error: "prompt is required" });
+      return;
+    }
+
+    const agent = await findAgent(agentId);
+    if (!agent) {
+      writeJson(response, 404, { ok: false, error: `Agent not found: ${agentId}` });
+      return;
+    }
+
+    const summary = await runImageAgent(agent, {
+      prompt,
+      count: normalizeCount(payload.count),
+      size: normalizeSize(payload.size),
+      style: payload.style?.trim() || "realistic",
+      rawPrompt: Boolean(payload.rawPrompt),
+      dryRun: payload.dryRun ?? true,
+    });
+    writeJson(response, 200, {
+      ok: true,
+      result: parseRunSummary(summary),
+      summary,
+      workbench: await buildWorkbenchData(),
+    });
+    return;
+  }
+
   if (method !== "GET" && method !== "HEAD") {
     writeJson(response, 405, { ok: false, error: "method not allowed" });
     return;
@@ -181,7 +252,7 @@ async function listenWithFallback(
     const port = requestedPort + offset;
     try {
       await listenOnce(server, host, port);
-      return port;
+      return getListeningPort(server, port);
     } catch (error) {
       lastError = error;
       if (!isAddressInUse(error)) {
@@ -191,6 +262,11 @@ async function listenWithFallback(
   }
 
   throw lastError;
+}
+
+function getListeningPort(server: ReturnType<typeof createServer>, fallbackPort: number) {
+  const address = server.address();
+  return typeof address === "object" && address ? (address as AddressInfo).port : fallbackPort;
 }
 
 async function listenOnce(server: ReturnType<typeof createServer>, host: string, port: number) {
@@ -295,4 +371,25 @@ function getContentType(filePath: string) {
     ".yml": "text/yaml; charset=utf-8",
   };
   return types[extension] ?? "application/octet-stream";
+}
+
+function normalizeCount(value: unknown) {
+  const count = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(count) && count > 0 ? Math.min(Math.floor(count), 12) : 1;
+}
+
+function normalizeSize(value: unknown): "1024x1024" | "1792x1024" | "1024x1792" {
+  return value === "1792x1024" || value === "1024x1792" ? value : "1024x1024";
+}
+
+function parseRunSummary(summary: string) {
+  const result: Record<string, string> = {};
+  for (const line of summary.split("\n")) {
+    const separator = line.indexOf(":");
+    if (separator <= 0) {
+      continue;
+    }
+    result[line.slice(0, separator).trim()] = line.slice(separator + 1).trim();
+  }
+  return result;
 }

@@ -419,6 +419,30 @@ textarea:focus-visible {
   margin-top: 10px;
 }
 
+.list-loading {
+  display: grid;
+  gap: 4px;
+  min-height: 50px;
+  align-content: center;
+  border: 1px dashed rgba(15, 32, 36, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--muted);
+  padding: 10px;
+  font-size: 12px;
+}
+
+.list-loading strong {
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.list-loading small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
 .work-item,
 .agent-item,
 .artifact-row {
@@ -1145,6 +1169,49 @@ h1 {
   display: none;
 }
 
+.meta-agent-design-card,
+.conversation-run-card {
+  display: grid;
+  gap: 11px;
+  border: 1px solid rgba(7, 140, 132, 0.2);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(247, 246, 242, 0.72)),
+    var(--surface-solid);
+  padding: 13px;
+}
+
+.meta-agent-design-card p,
+.conversation-run-card p {
+  color: var(--muted);
+}
+
+.meta-design-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.meta-design-steps span {
+  display: grid;
+  place-items: center;
+  min-height: 28px;
+  border: 1px solid rgba(7, 140, 132, 0.16);
+  border-radius: 7px;
+  background: rgba(224, 244, 241, 0.48);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.conversation-run-card .run-options {
+  max-width: 360px;
+}
+
+.conversation-run-card .install-status {
+  margin-top: 0;
+}
+
 .composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1257,6 +1324,29 @@ kbd {
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.42);
   padding: 5px;
+}
+
+.artifact-empty-state {
+  display: grid;
+  gap: 5px;
+  border: 1px dashed rgba(31, 35, 34, 0.14);
+  border-radius: 7px;
+  background: rgba(247, 246, 242, 0.58);
+  color: var(--muted);
+  padding: 12px;
+}
+
+.artifact-empty-state strong {
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.artifact-empty-state small,
+.artifact-empty-mini small {
+  color: var(--muted);
+  line-height: 1.45;
+  white-space: normal;
 }
 
 .artifact-row {
@@ -1423,6 +1513,50 @@ kbd {
   font-size: 12px;
 }
 
+.run-options {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.run-real-toggle,
+.run-count-control {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  border: 1px solid rgba(31, 35, 34, 0.1);
+  border-radius: 7px;
+  background: rgba(247, 246, 242, 0.72);
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.run-real-toggle {
+  gap: 7px;
+  padding: 0 9px;
+}
+
+.run-real-toggle input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+}
+
+.run-count-control {
+  gap: 6px;
+  padding: 0 7px;
+}
+
+.run-count-control input {
+  width: 40px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  text-align: right;
+}
+
 .artifact-actions {
   flex-wrap: wrap;
   gap: 6px;
@@ -1440,11 +1574,18 @@ kbd {
   padding: 0 9px;
 }
 
-.artifact-actions .install-agent-button {
+.artifact-actions .install-agent-button,
+.artifact-actions .run-agent-button {
   border-color: rgba(7, 140, 132, 0.28);
   background: var(--accent-soft);
   color: var(--accent-ink);
   font-weight: 620;
+}
+
+.artifact-actions .run-agent-button {
+  border-color: rgba(40, 72, 93, 0.18);
+  background: rgba(237, 242, 242, 0.9);
+  color: #243d48;
 }
 
 .install-status {
@@ -1478,6 +1619,10 @@ kbd {
   border-color: rgba(239, 96, 89, 0.24);
   background: #fff0ef;
   color: #9b3631;
+}
+
+.run-detail-status {
+  margin-top: 12px;
 }
 
 .artifact-code-panel {
@@ -1664,7 +1809,7 @@ kbd {
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 860px) {
   .topbar {
     grid-template-columns: auto minmax(0, 1fr) auto;
     height: var(--topbar-height);
@@ -1695,7 +1840,7 @@ kbd {
   .app-frame.right-collapsed .layout-shell,
   .app-frame.left-collapsed.right-collapsed .layout-shell {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) !important;
     height: calc(100vh - var(--topbar-height));
   }
 
@@ -1853,6 +1998,10 @@ kbd {
 
   .orchestration-card dl {
     grid-template-columns: 1fr;
+  }
+
+  .meta-design-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .delivery-head {

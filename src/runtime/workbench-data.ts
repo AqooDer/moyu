@@ -1,13 +1,15 @@
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { listAgents } from "../agent/registry.js";
 import { listArtifacts, type ArtifactHistoryItem } from "./artifacts.js";
-import { getRunHistoryDetail, listRunHistory } from "./history.js";
+import { getRunHistoryDetail, listRunHistory, type RunHistoryItem } from "./history.js";
 import type { RuntimeTrace, StepRecord } from "./types.js";
 
 export interface WorkbenchData {
   schemaVersion: 1;
   generatedAt: string;
   selectedRun: WorkbenchRun | null;
+  works: WorkbenchWork[];
   artifacts: WorkbenchArtifact[];
   agents: WorkbenchAgent[];
 }
@@ -15,10 +17,15 @@ export interface WorkbenchData {
 export interface WorkbenchRun {
   id: string;
   agentId: string;
+  agentVersion: string | null;
+  recipeId: string | null;
   state: string;
+  dryRun: boolean;
   startedAt: string | null;
   durationMs: number | null;
   prompt: string | null;
+  tracePath: string;
+  artifactCount: number;
   steps: WorkbenchStep[];
 }
 
@@ -42,6 +49,17 @@ export interface WorkbenchArtifact {
   createdAt: string | null;
 }
 
+export interface WorkbenchWork {
+  id: string;
+  title: { zh: string; en: string };
+  description: { zh: string; en: string };
+  state: string;
+  agentId: string;
+  runId: string;
+  updatedAt: string | null;
+  active: boolean;
+}
+
 export interface WorkbenchAgent {
   id: string;
   title: { zh: string; en: string };
@@ -53,29 +71,35 @@ export async function buildWorkbenchData(
     tracesRoot?: string;
     artifactLimit?: number;
     prototypeRoot?: string;
+    selectedRunId?: string;
   } = {},
 ): Promise<WorkbenchData> {
   const tracesRoot = input.tracesRoot ?? "traces";
   const prototypeRoot = path.resolve(input.prototypeRoot ?? "ui/workbench-prototype");
   const artifactLimit = input.artifactLimit ?? 12;
-  const runs = await listRunHistory({ tracesRoot, limit: 1 });
-  const selectedRun = runs[0] ? await getWorkbenchRun(runs[0].id, tracesRoot) : null;
+  const runs = await listRunHistory({ tracesRoot, limit: 8 });
+  const selectedRunId = input.selectedRunId || runs[0]?.id;
+  const selectedRun = selectedRunId ? await getWorkbenchRun(selectedRunId, tracesRoot) : null;
   const artifacts = await listArtifacts({
     tracesRoot,
     runId: selectedRun?.id,
     limit: artifactLimit,
   });
+  const agents = await getWorkbenchAgents();
   const workbenchArtifacts =
     artifacts.length > 0
       ? artifacts.map((artifact) => toWorkbenchArtifact(artifact, prototypeRoot))
-      : await fallbackWorkbenchArtifacts(prototypeRoot);
+      : selectedRun
+        ? []
+        : await fallbackWorkbenchArtifacts(prototypeRoot);
 
   return {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     selectedRun,
+    works: getWorkbenchWorks(runs, selectedRun),
     artifacts: workbenchArtifacts,
-    agents: defaultAgents,
+    agents,
   };
 }
 
@@ -104,10 +128,15 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
     return {
       id: detail.trace.run.id,
       agentId: detail.trace.run.agentId,
+      agentVersion: detail.trace.run.agentVersion,
+      recipeId: detail.trace.run.recipeId,
       state: detail.trace.run.state,
+      dryRun: detail.trace.run.dryRun,
       startedAt: detail.trace.run.startedAt,
       durationMs: detail.trace.run.durationMs,
       prompt: getPrompt(detail.trace.run.input),
+      tracePath: path.relative(process.cwd(), detail.item.traceFile),
+      artifactCount: detail.trace.artifacts.length,
       steps: detail.trace.steps.map(toWorkbenchStep),
     };
   }
@@ -116,10 +145,15 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
   return {
     id: detail.item.id,
     agentId: detail.item.agentId,
+    agentVersion: null,
+    recipeId: null,
     state: detail.item.state,
+    dryRun: detail.item.dryRun,
     startedAt: detail.item.startedAt,
     durationMs: detail.item.durationMs,
     prompt: typeof trace.prompt === "string" ? trace.prompt : null,
+    tracePath: path.relative(process.cwd(), detail.item.traceFile),
+    artifactCount: detail.item.artifactCount,
     steps: [],
   };
 }
@@ -159,6 +193,123 @@ function toRelativeUrl(filePath: string, fromDir: string) {
 function getPrompt(input: Record<string, unknown>) {
   const prompt = input.prompt;
   return typeof prompt === "string" ? prompt : null;
+}
+
+function getWorkbenchWorks(runs: RunHistoryItem[], selectedRun: WorkbenchRun | null): WorkbenchWork[] {
+  if (runs.length === 0) {
+    return [
+      {
+        id: "meta-create-agent",
+        title: { zh: "创建生图原型 Agent", en: "Create Image Prototype Agent" },
+        description: {
+          zh: "等待通过元智能体开启第一个创建会话",
+          en: "Waiting for the first Meta Agent creation session",
+        },
+        state: "waiting",
+        agentId: "meta/create-agent",
+        runId: "",
+        updatedAt: null,
+        active: true,
+      },
+    ];
+  }
+
+  const selectedRunId = selectedRun?.id || runs[0]?.id;
+  return runs.map((run) => ({
+    id: `run-${run.id}`,
+    title: getWorkbenchWorkTitle(run, selectedRun),
+    description: getWorkbenchWorkDescription(run),
+    state: run.state,
+    agentId: run.agentId,
+    runId: run.id,
+    updatedAt: run.startedAt,
+    active: run.id === selectedRunId,
+  }));
+}
+
+function getWorkbenchWorkTitle(run: RunHistoryItem, selectedRun: WorkbenchRun | null) {
+  if (run.id === selectedRun?.id && selectedRun.prompt) {
+    const promptTitle = compactText(selectedRun.prompt, 22);
+    return {
+      zh: promptTitle,
+      en: compactText(selectedRun.prompt, 34),
+    };
+  }
+
+  const agentName = getAgentDisplayName(run.agentId);
+  return {
+    zh: `${agentName.zh} 运行`,
+    en: `${agentName.en} run`,
+  };
+}
+
+function getWorkbenchWorkDescription(run: RunHistoryItem) {
+  const zhParts = [formatRunState(run.state, "zh"), `${run.artifactCount} 个产物`];
+  const enParts = [formatRunState(run.state, "en"), `${run.artifactCount} artifacts`];
+
+  if (run.dryRun) {
+    zhParts.push("dry-run");
+    enParts.push("dry-run");
+  }
+  const zhTime = formatWorkTime(run.startedAt, "zh");
+  const enTime = formatWorkTime(run.startedAt, "en");
+  if (zhTime) {
+    zhParts.push(zhTime);
+  }
+  if (enTime) {
+    enParts.push(enTime);
+  }
+
+  return {
+    zh: zhParts.join(" · "),
+    en: enParts.join(" · "),
+  };
+}
+
+function getAgentDisplayName(agentId: string) {
+  if (agentId === "meta/create-agent") {
+    return { zh: "元智能体", en: "Meta Agent" };
+  }
+  if (agentId.includes("image") || agentId.includes("image-gen")) {
+    return { zh: "生图 Agent", en: "Image Agent" };
+  }
+  return { zh: agentId, en: agentId };
+}
+
+function formatRunState(state: string, lang: "zh" | "en") {
+  const stateMap = {
+    succeeded: { zh: "已完成", en: "Completed" },
+    failed: { zh: "失败", en: "Failed" },
+    running: { zh: "运行中", en: "Running" },
+    created: { zh: "已创建", en: "Created" },
+    waiting: { zh: "等待中", en: "Waiting" },
+    "dry-run": { zh: "Dry run", en: "Dry run" },
+  } as const;
+  return stateMap[state as keyof typeof stateMap]?.[lang] || state;
+}
+
+function formatWorkTime(value: string | null, lang: "zh" | "en") {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString(lang === "zh" ? "zh-CN" : "en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function compactText(value: string, maxLength: number) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, Math.max(0, maxLength - 1))}...`;
 }
 
 async function fallbackWorkbenchArtifacts(prototypeRoot: string): Promise<WorkbenchArtifact[]> {
@@ -258,3 +409,22 @@ const defaultAgents: WorkbenchAgent[] = [
     },
   },
 ];
+
+async function getWorkbenchAgents() {
+  const installed = await listAgents();
+  const mapped = installed.map((agent): WorkbenchAgent => {
+    const title = agent.name || agent.agentId;
+    const description = agent.description || agent.recipeRef || agent.path;
+    return {
+      id: agent.agentId,
+      title: { zh: title, en: title },
+      description: { zh: description, en: description },
+    };
+  });
+
+  const seen = new Set(mapped.map((agent) => agent.id));
+  return [
+    ...mapped,
+    ...defaultAgents.filter((agent) => !seen.has(agent.id) && agent.id.endsWith("/draft")),
+  ].sort((left, right) => left.id.localeCompare(right.id));
+}

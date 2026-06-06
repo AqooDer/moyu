@@ -10,8 +10,9 @@
   "packageManager": "npm@10.9.2",
   "scripts": {
     "dev": "tsx src/cli.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/cli.js",
+    "test": "node --import tsx --test src/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "prototype:export-data": "tsx src/cli.ts ui export-data",
     "prototype:workbench": "tsx src/cli.ts ui serve"

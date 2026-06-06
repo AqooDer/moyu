@@ -36,7 +36,7 @@ interface AgentSpec {
 }
 
 export async function createAgentWithMeta(options: MetaCreateAgentOptions): Promise<MetaCreateAgentResult> {
-  const spec = deriveAgentSpec(options);
+  const spec = await deriveAgentSpec(options);
   const runId = createMetaRunId(spec);
   const agentPath = resolveAgentPath(spec, runId, options);
   const runtime = RuntimeStore.createRun({
@@ -154,11 +154,15 @@ export function formatMetaCreateAgentResult(result: MetaCreateAgentResult) {
   return lines.join("\n");
 }
 
-function deriveAgentSpec(options: MetaCreateAgentOptions): AgentSpec {
+async function deriveAgentSpec(options: MetaCreateAgentOptions): Promise<AgentSpec> {
   const prompt = options.prompt.trim();
   const name = options.name?.trim() || inferName(prompt);
-  const agentId = normalizeAgentId(options.agentId || `custom/${slugify(name || prompt)}-v1`);
   const isImageAgent = /image|图片|生图|gpt-image|视觉|ui/i.test(prompt);
+  const baseSlug = isImageAgent ? "image-prototype" : slugify(name || prompt);
+  const requestedAgentId = normalizeAgentId(options.agentId || `custom/${baseSlug}-v1`);
+  const agentId = options.agentId
+    ? requestedAgentId
+    : await chooseAvailableAgentId(requestedAgentId, options.rootDir || "agents");
   const skillName = isImageAgent ? "image_gen_via_relay" : "run_task";
 
   return {
@@ -170,6 +174,18 @@ function deriveAgentSpec(options: MetaCreateAgentOptions): AgentSpec {
     skillName,
     tags: isImageAgent ? ["image-generation", "prototype", "meta-agent-generated"] : ["meta-agent-generated"],
   };
+}
+
+async function chooseAvailableAgentId(baseAgentId: string, rootDir: string) {
+  for (let index = 1; index <= 50; index += 1) {
+    const candidate =
+      index === 1 ? baseAgentId : baseAgentId.replace(/-v\d+$/, "") + `-v${index}`;
+    const folder = path.resolve(rootDir, agentIdToFolderName(candidate));
+    if (!(await exists(folder))) {
+      return candidate;
+    }
+  }
+  throw new Error(`Unable to find an available Agent id for base id: ${baseAgentId}`);
 }
 
 function resolveAgentPath(spec: AgentSpec, runId: string, options: MetaCreateAgentOptions) {
@@ -189,6 +205,15 @@ async function assertWritableTarget(agentPath: string, force: boolean) {
     if (error instanceof Error && error.message.startsWith("Target Agent folder already exists")) {
       throw error;
     }
+  }
+}
+
+async function exists(filePath: string) {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
   }
 }
 

@@ -304,7 +304,9 @@ uiCommand
       console.log(`port ${server.requestedPort} is busy, using ${server.port} instead`);
     }
     console.log(`workbench: ${server.url}`);
-    console.log("api: /api/workbench, /api/artifact-content, /api/artifact/open, /api/meta/create-agent, /api/meta/install-agent");
+    console.log(
+      "api: /api/workbench, /api/artifact-content, /api/artifact/open, /api/run/open-trace, /api/meta/create-agent, /api/meta/install-agent, /api/agent/run",
+    );
   });
 
 function optsRawPrompt(opts: { rawPrompt?: boolean }) {

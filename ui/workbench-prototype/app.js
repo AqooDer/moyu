@@ -9,6 +9,11 @@ const messages = {
     agents: "Agents",
     searchWorks: "搜索任务...",
     searchAgents: "搜索 Agent...",
+    loadingWorks: "正在加载任务...",
+    loadingAgents: "正在加载 Agents...",
+    noWorks: "暂无任务记录",
+    noAgents: "暂无可用 Agents",
+    workFallbackDesc: "通过对话创建或运行 Agent 后会出现在这里",
     pptWork: "创建生图原型 Agent",
     pptWorkDesc: "Agent 产物 · 等待创建确认",
     visualWork: "制作平台介绍 PPT",
@@ -69,8 +74,8 @@ const messages = {
     generatedAssets: "已生成 Agent 文件",
     outlineRunning: "验证运行中",
     checkpoint: "需要确认",
-    checkpointTitle: "是否按这个契约创建 image-gen/prototype-v1 Agent？",
-    checkpointDesc: "确认后我会写入 Agent 文件骨架、示例 Recipe 和验证 Trace，并把它加入 Agents 列表。",
+    checkpointTitle: "是否按这个契约创建新的生图原型 Agent？",
+    checkpointDesc: "确认后我会自动选择未占用的 Agent ID，写入文件骨架、示例 Recipe 和验证 Trace，并把它加入待安装队列。",
     approve: "确认创建",
     adjust: "修改契约",
     composerHint: "描述你想创建的 Agent，或补充输入、输出、工具和验证要求",
@@ -97,11 +102,27 @@ const messages = {
     policyValue: "元智能体生成代码，关键文件写入前人工确认",
     recipe: "Recipe",
     workId: "Agent ID",
+    runId: "Run ID",
     state: "状态",
     waitingConfirm: "等待确认",
     model: "模型",
     duration: "累计耗时",
+    prompt: "提示词",
+    dryRun: "Dry run",
+    startedAt: "开始时间",
+    traceFile: "Trace 文件",
+    artifactCount: "产物数",
+    agentVersion: "Agent 版本",
+    recipeId: "Recipe",
+    yes: "是",
+    no: "否",
+    notAvailable: "-",
     openTrace: "打开原始 Trace",
+    openTraceSucceeded: "已交给系统打开原始 Trace。",
+    openTraceFailed: "打开 Trace 失败，请确认运行记录仍在本地。",
+    openTraceApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run prototype:workbench` 后再打开 Trace。",
+    noArtifactsTitle: "本次运行没有产物",
+    noArtifactsDesc: "这是一次 dry-run 或无输出运行。Trace 已记录执行过程，但没有写入文件产物。",
     unknownSize: "未知大小",
     currentTask: "当前 Agent",
     generatedFromRun: "来自元智能体运行",
@@ -124,6 +145,23 @@ const messages = {
     installConflict: "正式 Agent 已存在，当前草案不会覆盖。下一步需要做版本更新或差异合并。",
     installFailed: "安装失败，请查看 Trace 或本地终端后重试。",
     installApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run prototype:workbench` 后再安装。",
+    runAgent: "运行 Agent",
+    runningAgent: "正在运行...",
+    runAgentSucceeded: "Agent dry-run 已完成，Run 与 Trace 已刷新。",
+    runAgentRealSucceeded: "Agent 真实运行已完成，Run、Trace 与产物已刷新。",
+    runAgentFailed: "运行失败，请查看 Trace 或本地终端后重试。",
+    runAgentApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run prototype:workbench` 后再运行。",
+    runAgentNoSelection: "请先在左侧选择一个已安装 Agent。",
+    realRunMode: "真实运行",
+    runCount: "数量",
+    metaDesignTitle: "元智能体设计入口",
+    metaDesignDesc: "你通过对话描述 Agent，元智能体负责澄清目标、生成契约、写入文件、运行验证，并在你确认后安装到本地 Agents。",
+    metaDesignSpec: "规格",
+    metaDesignFiles: "文件",
+    metaDesignVerify: "验证",
+    metaDesignInstall: "安装",
+    agentRunTitle: "运行已安装 Agent",
+    agentRunDesc: "运行也是对话的一部分。你可以在这里提交参数；右侧检查器只负责显示 Trace、产物和上下文。",
   },
   en: {
     currentWork: "Create Image Prototype Agent",
@@ -135,6 +173,11 @@ const messages = {
     agents: "Agents",
     searchWorks: "Search works...",
     searchAgents: "Search agents...",
+    loadingWorks: "Loading works...",
+    loadingAgents: "Loading Agents...",
+    noWorks: "No works yet",
+    noAgents: "No Agents available",
+    workFallbackDesc: "Created or run Agents will appear here",
     pptWork: "Create image prototype Agent",
     pptWorkDesc: "Agent artifact · waiting for approval",
     visualWork: "Create platform intro deck",
@@ -195,8 +238,8 @@ const messages = {
     generatedAssets: "Agent files generated",
     outlineRunning: "Verification running",
     checkpoint: "Needs confirmation",
-    checkpointTitle: "Create image-gen/prototype-v1 from this contract?",
-    checkpointDesc: "After approval I will write the Agent skeleton, sample Recipe, and verification trace, then add it to the Agents list.",
+    checkpointTitle: "Create a new image prototype Agent from this contract?",
+    checkpointDesc: "After approval I will choose an available Agent ID, write the skeleton, sample Recipe, and verification trace, then queue it for installation.",
     approve: "Create",
     adjust: "Revise contract",
     composerHint: "Describe the Agent you want to create, or add inputs, outputs, tools, and verification rules",
@@ -223,11 +266,27 @@ const messages = {
     policyValue: "Meta Agent generates code with human approval before key file writes",
     recipe: "Recipe",
     workId: "Agent ID",
+    runId: "Run ID",
     state: "State",
     waitingConfirm: "Waiting for confirmation",
     model: "Model",
     duration: "Total duration",
+    prompt: "Prompt",
+    dryRun: "Dry run",
+    startedAt: "Started at",
+    traceFile: "Trace file",
+    artifactCount: "Artifacts",
+    agentVersion: "Agent version",
+    recipeId: "Recipe",
+    yes: "Yes",
+    no: "No",
+    notAvailable: "-",
     openTrace: "Open raw Trace",
+    openTraceSucceeded: "Sent the raw Trace to the system opener.",
+    openTraceFailed: "Failed to open Trace. Make sure the run still exists locally.",
+    openTraceApiUnavailable: "This page is not served by the Workbench API. Start `npm run prototype:workbench` before opening Trace.",
+    noArtifactsTitle: "No artifacts for this run",
+    noArtifactsDesc: "This was a dry-run or no-output run. The Trace recorded execution, but no files were written.",
     unknownSize: "unknown size",
     currentTask: "Current Agent",
     generatedFromRun: "From Meta Agent run",
@@ -250,6 +309,23 @@ const messages = {
     installConflict: "A formal Agent already exists, so this draft was not overwritten. Next we need versioning or a diff-merge flow.",
     installFailed: "Install failed. Check the Trace or local terminal, then retry.",
     installApiUnavailable: "This page is not served by the Workbench API. Start `npm run prototype:workbench` before installing.",
+    runAgent: "Run Agent",
+    runningAgent: "Running...",
+    runAgentSucceeded: "Agent dry-run completed. Run and Trace were refreshed.",
+    runAgentRealSucceeded: "Agent real run completed. Run, Trace, and artifacts were refreshed.",
+    runAgentFailed: "Run failed. Check the Trace or local terminal, then retry.",
+    runAgentApiUnavailable: "This page is not served by the Workbench API. Start `npm run prototype:workbench` before running.",
+    runAgentNoSelection: "Select an installed Agent from the left panel first.",
+    realRunMode: "Real run",
+    runCount: "Count",
+    metaDesignTitle: "Meta Agent design entry",
+    metaDesignDesc: "Describe an Agent through conversation. The Meta Agent clarifies goals, generates the contract, writes files, runs verification, and installs it after your approval.",
+    metaDesignSpec: "Spec",
+    metaDesignFiles: "Files",
+    metaDesignVerify: "Verify",
+    metaDesignInstall: "Install",
+    agentRunTitle: "Run installed Agent",
+    agentRunDesc: "Running is part of the conversation. Submit parameters here; the inspector only shows Trace, artifacts, and context.",
   },
 };
 
@@ -274,6 +350,9 @@ const prototypeState = {
   apiAvailable: false,
   isSubmitting: false,
   isInstalling: false,
+  isRunningAgent: false,
+  selectedWorkId: "",
+  selectedAgentId: "",
   previewRequestId: 0,
   lastRuntimeMessageKey: "runAdvanceReply",
 };
@@ -517,16 +596,18 @@ function bindStaticSelection() {
 function bindRunActions() {
   document.querySelector("[data-run-action='approve']")?.addEventListener("click", advanceDemoRun);
   document.querySelector("[data-install-agent]")?.addEventListener("click", installAgentDraftFromCurrentRun);
+  document.querySelector("[data-run-agent]")?.addEventListener("click", runSelectedAgentFromWorkbench);
   document.querySelector("[data-open-artifact]")?.addEventListener("click", openSelectedArtifact);
+  document.querySelector("[data-open-trace]")?.addEventListener("click", openCurrentRunTrace);
   document.querySelector("[data-use-artifact-context]")?.addEventListener("click", useSelectedArtifactAsContext);
-  document.querySelector("[data-run-action='adjust']")?.addEventListener("click", () => {
+  document.querySelectorAll("[data-run-action='adjust']").forEach((button) => button.addEventListener("click", () => {
     const textarea = document.querySelector(".composer textarea");
     if (textarea) {
       textarea.value = currentLang === "en" ? "Revise the contract: add a provider health check and clearer failure messages." : "修改契约：增加 provider 健康检查，并把失败原因说清楚。";
       textarea.dispatchEvent(new Event("input"));
       textarea.focus();
     }
-  });
+  }));
 }
 
 async function loadWorkbenchData() {
@@ -559,7 +640,7 @@ async function loadWorkbenchDataFromApi() {
   }
 
   try {
-    const response = await fetch("/api/workbench", { cache: "no-store" });
+    const response = await fetch(getWorkbenchApiUrl(), { cache: "no-store" });
     if (!response.ok) {
       prototypeState.apiAvailable = false;
       return null;
@@ -574,32 +655,38 @@ async function loadWorkbenchDataFromApi() {
   }
 }
 
+function getWorkbenchApiUrl(runId) {
+  const selectedRunId = runId || getSelectedWorkRunId();
+  return selectedRunId ? `/api/workbench?runId=${encodeURIComponent(selectedRunId)}` : "/api/workbench";
+}
+
 function renderWorkbenchData() {
   if (!workbenchData) {
     return;
   }
 
   const run = workbenchData.selectedRun;
-  const isRealMetaRun = isMetaAgentRun(run);
   const realArtifacts = normalizeWorkbenchArtifacts(workbenchData.artifacts || []);
   const realTimeline = getTimelineFromRun(run);
 
-  prototypeState.usesRealRun = isRealMetaRun && (realArtifacts.length > 0 || realTimeline.length > 0);
+  prototypeState.usesRealRun = Boolean(run && (realArtifacts.length > 0 || realTimeline.length > 0));
   prototypeState.runState = run?.state || "";
   if (prototypeState.usesRealRun) {
     prototypeState.phase = run?.state === "created" || run?.state === "running" ? "waiting" : "outline";
-    prototypeState.baseArtifacts = realArtifacts.length > 0 ? realArtifacts : getBaseAgentArtifacts();
+    prototypeState.baseArtifacts = realArtifacts;
     prototypeState.baseTimeline = realTimeline.length > 0 ? realTimeline : getBaseTimelineSteps(run);
   } else {
     prototypeState.baseArtifacts = getBaseAgentArtifacts();
     prototypeState.baseTimeline = getBaseTimelineSteps(run);
   }
   currentArtifacts = getVisibleArtifacts();
+  renderWorks(workbenchData.works || []);
   renderAgents(workbenchData.agents || []);
   renderArtifacts(currentArtifacts);
   renderConversationArtifacts(currentArtifacts);
   updateArtifactDetail(getSelectedArtifact(currentArtifacts));
   renderTimelineSteps(getVisibleTimelineSteps());
+  renderRunDetails(run, currentArtifacts);
   renderRunState();
   renderStateMessages();
 }
@@ -827,6 +914,53 @@ function createTimelineItem(step) {
   return item;
 }
 
+function renderRunDetails(run, artifacts) {
+  const list = document.querySelector("[data-run-details]");
+  const button = document.querySelector("[data-open-trace]");
+  if (!list) {
+    return;
+  }
+
+  const dict = messages[currentLang] ?? messages.zh;
+  if (!run) {
+    list.replaceChildren(
+      createRunDetailItem(dict.workId, "meta/create-agent"),
+      createRunDetailItem(dict.state, dict.waitingConfirm),
+      createRunDetailItem(dict.duration, dict.notAvailable),
+      createRunDetailItem(dict.traceFile, dict.notAvailable),
+    );
+    if (button) {
+      button.disabled = true;
+    }
+    return;
+  }
+
+  const artifactCount =
+    typeof run.artifactCount === "number" ? run.artifactCount : Array.isArray(artifacts) ? artifacts.length : 0;
+  list.replaceChildren(
+    createRunDetailItem(dict.workId, run.agentId || dict.notAvailable),
+    createRunDetailItem(dict.runId, run.id || dict.notAvailable),
+    createRunDetailItem(dict.state, run.state || dict.notAvailable),
+    createRunDetailItem(dict.dryRun, run.dryRun ? dict.yes : dict.no),
+    createRunDetailItem(dict.prompt, run.prompt || dict.notAvailable),
+    createRunDetailItem(dict.traceFile, run.tracePath || dict.notAvailable),
+    createRunDetailItem(dict.artifactCount, String(artifactCount)),
+    createRunDetailItem(dict.startedAt, formatDateTime(run.startedAt)),
+    createRunDetailItem(dict.agentVersion, run.agentVersion || dict.notAvailable),
+    createRunDetailItem(dict.recipeId, run.recipeId || dict.notAvailable),
+    createRunDetailItem(dict.duration, formatDuration(run.durationMs)),
+  );
+  if (button) {
+    button.disabled = !run.id || !canUseWorkbenchApi();
+  }
+}
+
+function createRunDetailItem(label, value) {
+  const item = document.createElement("div");
+  item.append(createText("dt", label), createText("dd", value));
+  return item;
+}
+
 function getBaseAgentArtifacts() {
   return [
     {
@@ -938,8 +1072,11 @@ function getMetaCreatePayload() {
   const promptNode = document.querySelector("[data-i18n='userAsk']");
   return {
     prompt: promptNode?.textContent?.trim() || messages.zh.userAsk,
-    agentId: "image-gen/prototype-v1",
     name: currentLang === "en" ? "Image Prototype Agent" : "生图原型 Agent",
+    description:
+      currentLang === "en"
+        ? "Generate UI concept images through an OpenAI-compatible image relay and keep traceable artifacts."
+        : "通过 OpenAI-compatible 图片中转接口生成 UI 概念图，并保存可追踪产物。",
     persist: false,
   };
 }
@@ -1029,6 +1166,114 @@ function setActiveInspectorTab(target) {
   showPanel(`[data-inspector-panel="${target}"]`, "[data-inspector-panel]");
 }
 
+function renderWorks(works) {
+  const list = document.querySelector("[data-work-list]");
+  if (!list) {
+    return;
+  }
+
+  if (!Array.isArray(works) || works.length === 0) {
+    list.replaceChildren(createListEmptyState("noWorks", "workFallbackDesc"));
+    renderCurrentWork(null);
+    return;
+  }
+
+  if (!prototypeState.selectedWorkId || !works.some((work) => work.id === prototypeState.selectedWorkId)) {
+    prototypeState.selectedWorkId = works.find((work) => work.active)?.id || works[0].id;
+  }
+
+  const selectedWork = works.find((work) => work.id === prototypeState.selectedWorkId) || works[0];
+  list.replaceChildren(...works.map((work, index) => createWorkListItem(work, index, work.id === selectedWork.id)));
+  renderCurrentWork(selectedWork);
+}
+
+function createWorkListItem(work, index, selected) {
+  const button = document.createElement("button");
+  button.className = `work-item${selected ? " active" : ""}`;
+  button.type = "button";
+  button.dataset.workId = work.id;
+  if (work.runId) {
+    button.dataset.runId = work.runId;
+  }
+
+  const icon = document.createElement("span");
+  icon.className = `work-icon${index % 3 === 1 ? " soft" : index % 3 === 2 ? " warm" : ""}`;
+  icon.textContent = getWorkInitial(work, index);
+
+  const body = document.createElement("span");
+  body.append(createText("strong", localize(work.title, work.id)), createText("small", localize(work.description, work.state || "")));
+  button.append(icon, body);
+  button.addEventListener("click", () => {
+    selectWorkbenchWork(work);
+  });
+  return button;
+}
+
+async function selectWorkbenchWork(work) {
+  prototypeState.selectedWorkId = work.id;
+  if (work.agentId) {
+    prototypeState.selectedAgentId = work.agentId;
+  }
+  renderWorks(workbenchData?.works || []);
+  renderAgents(workbenchData?.agents || []);
+
+  if (!work.runId || !canUseWorkbenchApi()) {
+    return;
+  }
+
+  try {
+    const response = await fetch(getWorkbenchApiUrl(work.runId), { cache: "no-store" });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || data?.schemaVersion !== 1) {
+      return;
+    }
+    workbenchData = data;
+    prototypeState.selectedWorkId = work.id;
+    prototypeState.selectedAgentId = data.selectedRun?.agentId || prototypeState.selectedAgentId;
+    prototypeState.selectedArtifactId = "";
+    prototypeState.selectedArtifactName = "";
+    renderWorkbenchData();
+  } catch {
+    // Keep the current view; the local service may have stopped while the static prototype remains usable.
+  }
+}
+
+function getSelectedWorkRunId() {
+  const selectedWork = workbenchData?.works?.find((work) => work.id === prototypeState.selectedWorkId);
+  return selectedWork?.runId || "";
+}
+
+function renderCurrentWork(work) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const title = work ? localize(work.title, work.id) : dict.currentWork;
+  const description = work ? localize(work.description, dict.localWorkspace) : dict.localWorkspace;
+
+  document.querySelectorAll("[data-i18n='currentWork']").forEach((node) => {
+    node.textContent = title;
+  });
+
+  const switcherDescription = document.querySelector(".work-switcher small");
+  if (switcherDescription) {
+    switcherDescription.textContent = description;
+  }
+}
+
+function createListEmptyState(titleKey, descriptionKey) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const state = document.createElement("div");
+  state.className = "list-loading empty";
+  state.append(createText("strong", dict[titleKey]), createText("small", dict[descriptionKey]));
+  return state;
+}
+
+function getWorkInitial(work, index) {
+  const title = localize(work.title, work.id).trim();
+  if (!title) {
+    return String(index + 1);
+  }
+  return title.slice(0, 1).toUpperCase();
+}
+
 function renderAgents(agents) {
   const list = document.querySelector("[data-agent-list]");
   if (!list) {
@@ -1043,12 +1288,22 @@ function renderAgents(agents) {
     },
     ...agents.filter((agent) => agent.id !== "meta/create-agent"),
   ];
+  if (!prototypeState.selectedAgentId || !visibleAgents.some((agent) => agent.id === prototypeState.selectedAgentId)) {
+    const currentRunAgentId = workbenchData?.selectedRun?.agentId;
+    const runAgent = visibleAgents.find((agent) => agent.id === currentRunAgentId);
+    const imageAgent = visibleAgents.find(
+      (agent) => agent.id.startsWith("custom/") || agent.id.startsWith("image-gen/"),
+    );
+    prototypeState.selectedAgentId =
+      runAgent?.id || imageAgent?.id || visibleAgents.find((agent) => agent.id !== "meta/create-agent")?.id || "meta/create-agent";
+  }
 
   list.replaceChildren(
     ...visibleAgents.map((agent, index) => {
       const button = document.createElement("button");
-      button.className = `agent-item${index === 0 ? " active" : ""}`;
+      button.className = `agent-item${agent.id === prototypeState.selectedAgentId ? " active" : ""}`;
       button.type = "button";
+      button.dataset.agentId = agent.id;
 
       const mark = document.createElement("span");
       mark.className = `agent-mark${index === 1 ? " dark" : index === 2 ? " blue" : ""}`;
@@ -1058,16 +1313,24 @@ function renderAgents(agents) {
       body.append(createText("strong", localize(agent.title, agent.id)), createText("small", localize(agent.description, agent.id)));
       button.append(mark, body);
       button.addEventListener("click", () => {
+        prototypeState.selectedAgentId = agent.id;
         document.querySelectorAll(".agent-item").forEach((node) => node.classList.toggle("active", node === button));
+        syncRunAgentButton();
       });
       return button;
     }),
   );
+  syncRunAgentButton();
 }
 
 function renderArtifacts(artifacts) {
   const list = document.querySelector("[data-artifact-list]");
-  if (!list || artifacts.length === 0) {
+  if (!list) {
+    return;
+  }
+
+  if (artifacts.length === 0) {
+    list.replaceChildren(createEmptyArtifactState());
     return;
   }
 
@@ -1075,6 +1338,14 @@ function renderArtifacts(artifacts) {
   const tree = buildArtifactTree(artifacts.slice(0, 24));
   const root = createArtifactFolderRow(tree.rootName, 0, artifacts.length);
   list.replaceChildren(root, ...tree.children.flatMap((node) => renderArtifactTreeNode(node, selectedArtifact, 1)));
+}
+
+function createEmptyArtifactState() {
+  const dict = messages[currentLang] ?? messages.zh;
+  const state = document.createElement("article");
+  state.className = "artifact-empty-state";
+  state.append(createText("strong", dict.noArtifactsTitle), createText("small", dict.noArtifactsDesc));
+  return state;
 }
 
 function selectArtifact(row, artifact) {
@@ -1206,7 +1477,12 @@ function getCommonDirectoryParts(paths) {
 
 function updateArtifactDetail(artifact) {
   const detail = document.querySelector("[data-artifact-detail]");
-  if (!detail || !artifact) {
+  if (!detail) {
+    return;
+  }
+
+  if (!artifact) {
+    renderEmptyArtifactDetail(detail);
     return;
   }
 
@@ -1241,7 +1517,45 @@ function updateArtifactDetail(artifact) {
   }
 
   loadArtifactPreview(artifact, { codePanel, code, previewStatus });
+  setArtifactActionDisabled(false);
   syncInstallButton();
+  syncRunAgentButton();
+}
+
+function renderEmptyArtifactDetail(detail) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const preview = detail.querySelector(".artifact-detail-preview");
+  const title = detail.querySelector(".artifact-detail-body strong");
+  const meta = detail.querySelector(".artifact-detail-body small");
+  const codePanel = detail.querySelector(".artifact-code-panel");
+  const code = detail.querySelector("[data-artifact-code]");
+  const previewStatus = detail.querySelector("[data-artifact-preview-status]");
+
+  detail.classList.remove("image-artifact");
+  preview?.replaceChildren(createText("span", "TRACE"));
+  if (title) {
+    title.textContent = dict.noArtifactsTitle;
+  }
+  if (meta) {
+    meta.textContent = dict.noArtifactsDesc;
+  }
+  if (codePanel) {
+    codePanel.hidden = true;
+  }
+  if (code) {
+    code.textContent = "";
+  }
+  if (previewStatus) {
+    previewStatus.textContent = "";
+  }
+  setArtifactActionDisabled(true);
+  syncInstallButton();
+  syncRunAgentButton();
+}
+
+function setArtifactActionDisabled(disabled) {
+  document.querySelector("[data-open-artifact]")?.toggleAttribute("disabled", disabled);
+  document.querySelector("[data-use-artifact-context]")?.toggleAttribute("disabled", disabled);
 }
 
 async function loadArtifactPreview(artifact, nodes) {
@@ -1331,6 +1645,7 @@ async function installAgentDraftFromCurrentRun() {
     }
     if (data.workbench) {
       workbenchData = data.workbench;
+      prototypeState.selectedAgentId = data.result?.agentId || prototypeState.selectedAgentId;
       renderWorkbenchData();
     }
     setInstallStatus(dict.installSucceeded, "success");
@@ -1349,7 +1664,122 @@ function syncInstallButton() {
   }
   const dict = messages[currentLang] ?? messages.zh;
   button.textContent = prototypeState.isInstalling ? dict.installingAgent : dict.installAgent;
-  button.disabled = prototypeState.isInstalling || !workbenchData?.selectedRun?.id;
+  button.disabled = prototypeState.isInstalling || !isMetaAgentRun(workbenchData?.selectedRun);
+}
+
+async function runSelectedAgentFromWorkbench() {
+  const dict = messages[currentLang] ?? messages.zh;
+  const agentId = prototypeState.selectedAgentId;
+  if (!canUseWorkbenchApi()) {
+    setInstallStatus(dict.runAgentApiUnavailable, "warning");
+    return;
+  }
+  if (!agentId || agentId === "meta/create-agent") {
+    setInstallStatus(dict.runAgentNoSelection, "warning");
+    return;
+  }
+  if (prototypeState.isRunningAgent) {
+    return;
+  }
+
+  prototypeState.isRunningAgent = true;
+  syncRunAgentButton();
+  setInstallStatus(dict.runningAgent, "info");
+
+  try {
+    const runOptions = getAgentRunOptions();
+    const response = await fetch("/api/agent/run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agentId,
+        prompt: getRunPrompt(),
+        count: runOptions.count,
+        size: "1024x1024",
+        style: "realistic",
+        rawPrompt: true,
+        dryRun: runOptions.dryRun,
+      }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok) {
+      setInstallStatus(data?.error || dict.runAgentFailed, "error");
+      return;
+    }
+    if (data.workbench) {
+      workbenchData = data.workbench;
+      prototypeState.selectedAgentId = agentId;
+      prototypeState.selectedArtifactId = "";
+      prototypeState.selectedArtifactName = "";
+      renderWorkbenchData();
+      setActiveInspectorTab("trace");
+    }
+    setInstallStatus(runOptions.dryRun ? dict.runAgentSucceeded : dict.runAgentRealSucceeded, "success");
+  } catch {
+    setInstallStatus(dict.runAgentFailed, "error");
+  } finally {
+    prototypeState.isRunningAgent = false;
+    syncRunAgentButton();
+  }
+}
+
+function syncRunAgentButton() {
+  const button = document.querySelector("[data-run-agent]");
+  if (!button) {
+    return;
+  }
+  const dict = messages[currentLang] ?? messages.zh;
+  const disabled =
+    prototypeState.isRunningAgent ||
+    !canUseWorkbenchApi() ||
+    !prototypeState.selectedAgentId ||
+    prototypeState.selectedAgentId === "meta/create-agent";
+  button.textContent = prototypeState.isRunningAgent ? dict.runningAgent : dict.runAgent;
+  button.disabled = disabled;
+  document.querySelector("[data-run-real]")?.toggleAttribute("disabled", disabled);
+  document.querySelector("[data-run-count]")?.toggleAttribute("disabled", disabled);
+}
+
+function getRunPrompt() {
+  const textarea = document.querySelector(".composer textarea");
+  const promptNode = document.querySelector("[data-i18n='userAsk']");
+  return textarea?.value.trim() || promptNode?.textContent?.trim() || messages.zh.userAsk;
+}
+
+function getAgentRunOptions() {
+  const realRun = document.querySelector("[data-run-real]");
+  const countInput = document.querySelector("[data-run-count]");
+  const count = Number(countInput?.value);
+  return {
+    dryRun: !realRun?.checked,
+    count: Number.isFinite(count) && count > 0 ? Math.min(Math.floor(count), 12) : 1,
+  };
+}
+
+async function openCurrentRunTrace() {
+  const dict = messages[currentLang] ?? messages.zh;
+  const runId = workbenchData?.selectedRun?.id;
+  if (!runId || !canUseWorkbenchApi()) {
+    setRunDetailStatus(dict.openTraceApiUnavailable, "warning");
+    return;
+  }
+
+  setRunDetailStatus(dict.loadingPreview, "info");
+  try {
+    const response = await fetch("/api/run/open-trace", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok) {
+      setRunDetailStatus(data?.error || dict.openTraceFailed, "error");
+      return;
+    }
+    setRunDetailStatus(dict.openTraceSucceeded, "success");
+  } catch {
+    setRunDetailStatus(dict.openTraceFailed, "error");
+  }
 }
 
 async function openSelectedArtifact() {
@@ -1404,6 +1834,15 @@ function setInstallStatus(text, variant) {
   status.dataset.variant = variant || "";
 }
 
+function setRunDetailStatus(text, variant) {
+  const status = document.querySelector("[data-run-detail-status]");
+  if (!status) {
+    return;
+  }
+  status.textContent = text;
+  status.dataset.variant = variant || "";
+}
+
 function appendDemoExchange() {
   const scroll = document.querySelector("[data-message-scroll]");
   const textarea = document.querySelector(".composer textarea");
@@ -1444,7 +1883,12 @@ function createMessage(kind, author, text, options = {}) {
 
 function renderConversationArtifacts(artifacts) {
   const strip = document.querySelector("[data-conversation-artifacts]");
-  if (!strip || artifacts.length === 0) {
+  if (!strip) {
+    return;
+  }
+
+  if (artifacts.length === 0) {
+    strip.replaceChildren(createEmptyMiniArtifact());
     return;
   }
 
@@ -1469,6 +1913,17 @@ function renderConversationArtifacts(artifacts) {
       return card;
     }),
   );
+}
+
+function createEmptyMiniArtifact() {
+  const dict = messages[currentLang] ?? messages.zh;
+  const card = document.createElement("article");
+  card.className = "mini-artifact selected artifact-empty-mini";
+  const preview = document.createElement("span");
+  preview.className = "file-preview";
+  preview.textContent = "TRACE";
+  card.append(preview, createText("strong", dict.noArtifactsTitle), createText("small", dict.noArtifactsDesc));
+  return card;
 }
 
 function localize(value, fallback) {
@@ -1527,6 +1982,23 @@ function formatDuration(durationMs) {
     return `${durationMs}ms`;
   }
   return `${(durationMs / 1000).toFixed(1)}s`;
+}
+
+function formatDateTime(value) {
+  if (!value) {
+    return "-";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+  return date.toLocaleString(currentLang === "en" ? "en-US" : "zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
 function formatBytes(sizeBytes) {

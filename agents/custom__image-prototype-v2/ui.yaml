@@ -1,0 +1,36 @@
+schema_version: 1
+intake:
+  layout:
+    kind: form
+    title: 运行 生图原型 Agent
+    fields:
+      - bind: input.prompt
+        control: PromptEditor
+        label: 提示词
+        required: true
+        rows: 4
+      - bind: input.count
+        control: Slider
+        label: 数量
+        min: 1
+        max: 12
+        default: 3
+      - bind: input.raw_prompt
+        control: Switch
+        label: 使用原始提示词
+        default: false
+  submit:
+    label: 运行
+    estimate: true
+output:
+  layout:
+    kind: tabs
+    items:
+      - label: 产物
+        content:
+          control: ArtifactList
+          bind: output.artifacts
+      - label: 元数据
+        content:
+          control: KeyValueTable
+          bind: output.metadata

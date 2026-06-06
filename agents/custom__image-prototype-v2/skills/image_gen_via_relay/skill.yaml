@@ -1,0 +1,30 @@
+name: image_gen_via_relay
+kind: code
+inputs:
+  type: object
+  required:
+    - prompt
+  properties:
+    prompt:
+      type: string
+    count:
+      type: integer
+      default: 3
+    raw_prompt:
+      type: boolean
+      default: false
+outputs:
+  type: object
+  properties:
+    artifacts:
+      type: array
+    metadata:
+      type: object
+permissions:
+  host.artifact.write:
+    scope: run
+sandbox: L1
+generated_by: meta-agent
+generated_at: 2026-06-02T06:33:34.093Z
+reviewed_by: pending
+review_decision: pending

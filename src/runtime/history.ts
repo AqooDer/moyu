@@ -1,3 +1,5 @@
+import { spawn } from "node:child_process";
+import { platform } from "node:os";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import type { ArtifactRecord, RuntimeTrace } from "./types.js";
@@ -74,6 +76,16 @@ export async function getRunHistoryDetail(
   const items = await listRunHistory({ tracesRoot });
   const match = items.find((item) => item.id === runId);
   return match ? readRunTraceFile(match.traceFile) : null;
+}
+
+export async function openRunTrace(runId: string, input: { tracesRoot?: string } = {}) {
+  const detail = await getRunHistoryDetail(runId, input);
+  if (!detail) {
+    return null;
+  }
+
+  await openFile(detail.item.traceFile);
+  return detail.item;
 }
 
 export function formatRunHistoryList(items: RunHistoryItem[]) {
@@ -293,6 +305,21 @@ async function fileExists(filePath: string) {
     }
     throw error;
   }
+}
+
+async function openFile(filePath: string) {
+  const opener = platform() === "darwin" ? "open" : platform() === "win32" ? "cmd" : "xdg-open";
+  const args = platform() === "win32" ? ["/c", "start", "", filePath] : [filePath];
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(opener, args, {
+      detached: true,
+      stdio: "ignore",
+    });
+    child.on("error", reject);
+    child.unref();
+    resolve();
+  });
 }
 
 function isNotFound(error: unknown) {

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "runId": "meta-create-custom__image-prototype-v1-mpw8nsyn-xa4942",
+  "agentId": "custom/image-prototype-v1",
+  "state": "validated",
+  "validation": {
+    "ok": true,
+    "agentPath": "/Users/zlj/code/my_github/moyu/artifacts/meta-agent-runs/meta-create-custom__image-prototype-v1-mpw8nsyn-xa4942/custom__image-prototype-v1",
+    "errors": [],
+    "warnings": []
+  },
+  "checkedAt": "2026-06-02T06:10:33.701Z"
+}

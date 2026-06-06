@@ -1,186 +1,159 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-05-28T15:03:29.492Z",
+  "generatedAt": "2026-06-03T08:53:38.205Z",
   "selectedRun": {
-    "id": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-    "agentId": "meta/create-agent",
+    "id": "run-custom__image-prototype-v2-mpwgnpro-9kxdm3",
+    "agentId": "custom/image-prototype-v2",
+    "agentVersion": "0.1.0",
+    "recipeId": "image-gen/prototype-v1",
     "state": "succeeded",
-    "startedAt": "2026-05-28T14:47:36.870Z",
-    "durationMs": 14,
-    "prompt": "创建一个生图原型 Agent，调用 gpt-image-2 中转接口，默认生成 3 张 UI 概念图，保存图片、Trace 和提示词",
+    "dryRun": true,
+    "startedAt": "2026-06-02T09:54:26.485Z",
+    "durationMs": 0,
+    "prompt": "帮我创建一个生图原型 Agent。它要能调用 gpt-image-2 中转接口，支持生成 3 张 UI 概念图，并把图片、Trace 和提示词都保存下来。",
+    "tracePath": "traces/run-custom__image-prototype-v2-mpwgnpro-9kxdm3/run.json",
+    "artifactCount": 0,
     "steps": [
       {
-        "id": "intake",
-        "name": "INTAKE",
-        "state": "succeeded",
+        "id": "step-image-gen",
+        "name": "image_gen",
+        "state": "skipped",
         "durationMs": 0
-      },
-      {
-        "id": "spec-draft",
-        "name": "SPEC_DRAFT",
-        "state": "succeeded",
-        "durationMs": 0
-      },
-      {
-        "id": "persist",
-        "name": "PERSIST",
-        "state": "succeeded",
-        "durationMs": 9
-      },
-      {
-        "id": "validate",
-        "name": "VALIDATE",
-        "state": "succeeded",
-        "durationMs": 1
       }
     ]
   },
-  "artifacts": [
+  "works": [
     {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-1",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "yaml",
-      "role": "primary",
-      "name": "manifest.yaml",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/manifest.yaml",
-      "sizeBytes": 1491,
-      "sha256": "33b045399caed78dee554c5dbb16e21d866359e88cfd2d23dc8512c598b3f0ea",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    },
-    {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-2",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "yaml",
-      "role": "primary",
-      "name": "ui.yaml",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/ui.yaml",
-      "sizeBytes": 760,
-      "sha256": "d802bde2fe0598f67c6e2a9341cc558069a429ccf169bc60dc7ecc0c882bdf14",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    },
-    {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-3",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "md",
-      "role": "primary",
-      "name": "README.md",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/README.md",
-      "sizeBytes": 912,
-      "sha256": "f407a7c152b43c7abdbfdf002f9831e521890d4a8efeecd72c524a172278b5f4",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    },
-    {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-4",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "text",
-      "role": "primary",
-      "name": ".agentignore",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/.agentignore",
-      "sizeBytes": 44,
-      "sha256": "79f4f2e5622cc672154c1c0a475291dc821381aee47ceefb955d476d53d3ae0a",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    },
-    {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-5",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "md",
-      "role": "primary",
-      "name": "system.md",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/prompts/system.md",
-      "sizeBytes": 318,
-      "sha256": "80806d91076e96572da0ef708921c34b401bd31969a777a15d8d3f6046cda764",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    },
-    {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-6",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "ts",
-      "role": "primary",
-      "name": "agent.recipe.ts",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/agent.recipe.ts",
-      "sizeBytes": 215,
-      "sha256": "d25b7edf47987109b261b8e023deb4ba42ab333a5e301431c46aa034bb60d5a0",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    },
-    {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-7",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "yaml",
-      "role": "primary",
-      "name": "skill.yaml",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/skills/image_gen_via_relay/skill.yaml",
-      "sizeBytes": 512,
-      "sha256": "aa009b467332bc6631288a90018cf165ff15f5c2d4666bbd967a11760574aed8",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    },
-    {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-8",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "ts",
-      "role": "primary",
-      "name": "index.ts",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/skills/image_gen_via_relay/index.ts",
-      "sizeBytes": 393,
-      "sha256": "4171d7b220b691b24695f840f536846383316da72ff97b54bace43020f64e315",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    },
-    {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-9",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "json",
-      "role": "primary",
-      "name": "20260528T144736Z-initial-create.meta.json",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/history/20260528T144736Z-initial-create.meta.json",
-      "sizeBytes": 157,
-      "sha256": "c934be9742c086ac187404d84cbd0943be018c432138357de74b34c090b3707c",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    },
-    {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-10",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "patch",
-      "role": "primary",
-      "name": "20260528T144736Z-initial-create.patch",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/history/20260528T144736Z-initial-create.patch",
-      "sizeBytes": 153,
-      "sha256": "0087f788384de847068c07bc316a60707a97308eedcc5ead0ac824538b1ae217",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    },
-    {
-      "id": "art-meta-create-image-gen__prototype-v1-mpplxh9i-a44apr-11",
-      "runId": "meta-create-image-gen__prototype-v1-mpplxh9i-a44apr",
-      "agentId": "meta/create-agent",
-      "type": "json",
-      "role": "log",
-      "name": "verification.trace.json",
-      "url": "../../artifacts/meta-agent-runs/meta-create-image-gen__prototype-v1-mpplxh9i-a44apr/image-gen__prototype-v1/verification.trace.json",
-      "sizeBytes": 425,
-      "sha256": "ecfb2bf1e6634dd6a35c85079b5648125cbcb4275ef3fb1b5b8b162e7c7e6d4f",
-      "createdAt": "2026-05-28T14:47:36.884Z"
-    }
-  ],
-  "agents": [
-    {
-      "id": "image-gen/prototype-v1",
+      "id": "run-run-custom__image-prototype-v2-mpwgnpro-9kxdm3",
       "title": {
-        "zh": "生图原型 Agent",
-        "en": "Image Prototype Agent"
+        "zh": "帮我创建一个生图原型 Agent。它要能调...",
+        "en": "帮我创建一个生图原型 Agent。它要能调用 gpt-image-..."
       },
       "description": {
-        "zh": "根据提示词生成界面概念图",
-        "en": "Generate UI concepts from prompts"
-      }
+        "zh": "已完成 · 0 个产物 · dry-run · 06/02 17:54",
+        "en": "Completed · 0 artifacts · dry-run · 06/02, 05:54 PM"
+      },
+      "state": "succeeded",
+      "agentId": "custom/image-prototype-v2",
+      "runId": "run-custom__image-prototype-v2-mpwgnpro-9kxdm3",
+      "updatedAt": "2026-06-02T09:54:26.485Z",
+      "active": true
     },
+    {
+      "id": "run-run-custom__image-prototype-v2-mpwfxy91-nwa48p",
+      "title": {
+        "zh": "生图 Agent 运行",
+        "en": "Image Agent run"
+      },
+      "description": {
+        "zh": "已完成 · 0 个产物 · dry-run · 06/02 17:34",
+        "en": "Completed · 0 artifacts · dry-run · 06/02, 05:34 PM"
+      },
+      "state": "succeeded",
+      "agentId": "custom/image-prototype-v2",
+      "runId": "run-custom__image-prototype-v2-mpwfxy91-nwa48p",
+      "updatedAt": "2026-06-02T09:34:24.422Z",
+      "active": false
+    },
+    {
+      "id": "run-run-custom__image-prototype-v2-mpwaxogb-irrc5e",
+      "title": {
+        "zh": "生图 Agent 运行",
+        "en": "Image Agent run"
+      },
+      "description": {
+        "zh": "已完成 · 0 个产物 · dry-run · 06/02 15:14",
+        "en": "Completed · 0 artifacts · dry-run · 06/02, 03:14 PM"
+      },
+      "state": "succeeded",
+      "agentId": "custom/image-prototype-v2",
+      "runId": "run-custom__image-prototype-v2-mpwaxogb-irrc5e",
+      "updatedAt": "2026-06-02T07:14:13.643Z",
+      "active": false
+    },
+    {
+      "id": "run-meta-create-custom__image-prototype-v3-mpwawvbx-23hc1w",
+      "title": {
+        "zh": "元智能体 运行",
+        "en": "Meta Agent run"
+      },
+      "description": {
+        "zh": "已完成 · 11 个产物 · dry-run · 06/02 15:13",
+        "en": "Completed · 11 artifacts · dry-run · 06/02, 03:13 PM"
+      },
+      "state": "succeeded",
+      "agentId": "meta/create-agent",
+      "runId": "meta-create-custom__image-prototype-v3-mpwawvbx-23hc1w",
+      "updatedAt": "2026-06-02T07:13:35.902Z",
+      "active": false
+    },
+    {
+      "id": "run-run-custom__image-prototype-v2-mpwat9mq-c3gczk",
+      "title": {
+        "zh": "生图 Agent 运行",
+        "en": "Image Agent run"
+      },
+      "description": {
+        "zh": "已完成 · 0 个产物 · dry-run · 06/02 15:10",
+        "en": "Completed · 0 artifacts · dry-run · 06/02, 03:10 PM"
+      },
+      "state": "succeeded",
+      "agentId": "custom/image-prototype-v2",
+      "runId": "run-custom__image-prototype-v2-mpwat9mq-c3gczk",
+      "updatedAt": "2026-06-02T07:10:47.810Z",
+      "active": false
+    },
+    {
+      "id": "run-meta-create-custom__image-prototype-v2-mpw9he31-d2b55v",
+      "title": {
+        "zh": "元智能体 运行",
+        "en": "Meta Agent run"
+      },
+      "description": {
+        "zh": "已完成 · 11 个产物 · dry-run · 06/02 14:33",
+        "en": "Completed · 11 artifacts · dry-run · 06/02, 02:33 PM"
+      },
+      "state": "succeeded",
+      "agentId": "meta/create-agent",
+      "runId": "meta-create-custom__image-prototype-v2-mpw9he31-d2b55v",
+      "updatedAt": "2026-06-02T06:33:34.093Z",
+      "active": false
+    },
+    {
+      "id": "run-run-custom__image-prototype-v1-mpw8oix9-5twvfw",
+      "title": {
+        "zh": "生图 Agent 运行",
+        "en": "Image Agent run"
+      },
+      "description": {
+        "zh": "已完成 · 0 个产物 · dry-run · 06/02 14:11",
+        "en": "Completed · 0 artifacts · dry-run · 06/02, 02:11 PM"
+      },
+      "state": "succeeded",
+      "agentId": "custom/image-prototype-v1",
+      "runId": "run-custom__image-prototype-v1-mpw8oix9-5twvfw",
+      "updatedAt": "2026-06-02T06:11:07.341Z",
+      "active": false
+    },
+    {
+      "id": "run-meta-create-custom__image-prototype-v1-mpw8nsyn-xa4942",
+      "title": {
+        "zh": "元智能体 运行",
+        "en": "Meta Agent run"
+      },
+      "description": {
+        "zh": "已完成 · 11 个产物 · dry-run · 06/02 14:10",
+        "en": "Completed · 11 artifacts · dry-run · 06/02, 02:10 PM"
+      },
+      "state": "succeeded",
+      "agentId": "meta/create-agent",
+      "runId": "meta-create-custom__image-prototype-v1-mpw8nsyn-xa4942",
+      "updatedAt": "2026-06-02T06:10:33.695Z",
+      "active": false
+    }
+  ],
+  "artifacts": [],
+  "agents": [
     {
       "id": "code-review/draft",
       "title": {
@@ -193,6 +166,28 @@
       }
     },
     {
+      "id": "custom/image-prototype-v1",
+      "title": {
+        "zh": "生图原型 Agent",
+        "en": "生图原型 Agent"
+      },
+      "description": {
+        "zh": "Create an image prototype Agent that supports raw prompts and saves traceable artifacts",
+        "en": "Create an image prototype Agent that supports raw prompts and saves traceable artifacts"
+      }
+    },
+    {
+      "id": "custom/image-prototype-v2",
+      "title": {
+        "zh": "生图原型 Agent",
+        "en": "生图原型 Agent"
+      },
+      "description": {
+        "zh": "通过 OpenAI-compatible 图片中转接口生成 UI 概念图，并保存可追踪产物。",
+        "en": "通过 OpenAI-compatible 图片中转接口生成 UI 概念图，并保存可追踪产物。"
+      }
+    },
+    {
       "id": "docs-organizer/draft",
       "title": {
         "zh": "文档整理 Agent",
@@ -201,6 +196,17 @@
       "description": {
         "zh": "整理需求、Trace 与产物说明",
         "en": "Organize requirements, traces, and artifacts"
+      }
+    },
+    {
+      "id": "image-gen/prototype-v1",
+      "title": {
+        "zh": "原型生图 Agent",
+        "en": "原型生图 Agent"
+      },
+      "description": {
+        "zh": "通过自然语言描述快速生成候选原型图,支持批量生成与后续项目库扩展。",
+        "en": "通过自然语言描述快速生成候选原型图,支持批量生成与后续项目库扩展。"
       }
     },
     {

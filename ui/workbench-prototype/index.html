@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Moyu Workbench Prototype</title>
-    <link rel="stylesheet" href="./styles.css?v=16" />
+    <link rel="stylesheet" href="./styles.css?v=20" />
   </head>
   <body>
     <div class="app-frame" data-layout>
@@ -60,27 +60,7 @@
             </label>
 
             <div class="work-list" data-work-list>
-              <button class="work-item active" type="button">
-                <span class="work-icon">P</span>
-                <span>
-                  <strong data-i18n="pptWork">创建生图原型 Agent</strong>
-                  <small data-i18n="pptWorkDesc">Agent 产物 · 等待创建确认</small>
-                </span>
-              </button>
-              <button class="work-item" type="button">
-                <span class="work-icon soft">图</span>
-                <span>
-                  <strong data-i18n="visualWork">制作平台介绍 PPT</strong>
-                  <small data-i18n="visualWorkDesc">调用多个 Agent · 规划中</small>
-                </span>
-              </button>
-              <button class="work-item" type="button">
-                <span class="work-icon warm">研</span>
-                <span>
-                  <strong data-i18n="researchWork">竞品资料整理</strong>
-                  <small data-i18n="researchWorkDesc">研究 Agent · 进行中</small>
-                </span>
-              </button>
+              <div class="list-loading" data-i18n="loadingWorks">正在加载任务...</div>
             </div>
 
             <button class="new-work-button" type="button">
@@ -95,34 +75,7 @@
               <input data-i18n-placeholder="searchAgents" placeholder="搜索 Agent..." />
             </label>
             <div class="agent-list" data-agent-list>
-              <button class="agent-item active" type="button">
-                <span class="agent-mark">元</span>
-                <span>
-                  <strong data-i18n="agentMeta">元智能体</strong>
-                  <small data-i18n="agentMetaDesc">通过对话创建、改造和验证 Agent</small>
-                </span>
-              </button>
-              <button class="agent-item" type="button">
-                <span class="agent-mark blue">图</span>
-                <span>
-                  <strong data-i18n="agentImage">生图原型 Agent</strong>
-                  <small data-i18n="agentImageDesc">生成图片、界面概念与品牌视觉</small>
-                </span>
-              </button>
-              <button class="agent-item" type="button">
-                <span class="agent-mark dark">文</span>
-                <span>
-                  <strong data-i18n="agentDoc">文档整理 Agent</strong>
-                  <small data-i18n="agentDocDesc">整理需求、Trace 与产物说明</small>
-                </span>
-              </button>
-              <button class="agent-item" type="button">
-                <span class="agent-mark blue">码</span>
-                <span>
-                  <strong data-i18n="agentCode">代码执行 Agent</strong>
-                  <small data-i18n="agentCodeDesc">运行命令、生成代码并验证结果</small>
-                </span>
-              </button>
+              <div class="list-loading" data-i18n="loadingAgents">正在加载 Agents...</div>
             </div>
           </section>
 
@@ -272,6 +225,50 @@
                 </div>
               </div>
             </article>
+
+            <article class="message agent-message">
+              <div class="avatar-bubble moyu">墨</div>
+              <div class="message-body">
+                <div class="meta-agent-design-card">
+                  <span class="detail-kicker" data-i18n="metaDesignTitle">元智能体设计入口</span>
+                  <p data-i18n="metaDesignDesc">你通过对话描述 Agent，元智能体负责澄清目标、生成契约、写入文件、运行验证，并在你确认后安装到本地 Agents。</p>
+                  <div class="meta-design-steps">
+                    <span data-i18n="metaDesignSpec">规格</span>
+                    <span data-i18n="metaDesignFiles">文件</span>
+                    <span data-i18n="metaDesignVerify">验证</span>
+                    <span data-i18n="metaDesignInstall">安装</span>
+                  </div>
+                  <div class="checkpoint-actions">
+                    <button class="primary-action install-agent-button" type="button" data-install-agent data-i18n="installAgent">安装 Agent</button>
+                    <button class="ghost-button" type="button" data-run-action="adjust" data-i18n="adjust">修改契约</button>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="message agent-message">
+              <div class="avatar-bubble moyu">墨</div>
+              <div class="message-body">
+                <div class="conversation-run-card">
+                  <span class="detail-kicker" data-i18n="agentRunTitle">运行已安装 Agent</span>
+                  <p data-i18n="agentRunDesc">运行也是对话的一部分。你可以在这里提交参数；右侧检查器只负责显示 Trace、产物和上下文。</p>
+                  <div class="run-options" aria-label="Agent run options">
+                    <label class="run-real-toggle">
+                      <input type="checkbox" data-run-real />
+                      <span data-i18n="realRunMode">真实运行</span>
+                    </label>
+                    <label class="run-count-control">
+                      <span data-i18n="runCount">数量</span>
+                      <input type="number" min="1" max="12" value="1" data-run-count />
+                    </label>
+                  </div>
+                  <div class="checkpoint-actions">
+                    <button class="primary-action run-agent-button" type="button" data-run-agent data-i18n="runAgent">运行 Agent</button>
+                  </div>
+                  <p class="install-status" data-install-status aria-live="polite"></p>
+                </div>
+              </div>
+            </article>
           </section>
 
           <section class="composer" aria-label="Message composer">
@@ -342,9 +339,7 @@
                 <div class="artifact-actions">
                   <button type="button" data-open-artifact data-i18n="open">打开</button>
                   <button type="button" data-use-artifact-context data-i18n="useAsContext">作为上下文</button>
-                  <button class="install-agent-button" type="button" data-install-agent data-i18n="installAgent">安装 Agent</button>
                 </div>
-                <p class="install-status" data-install-status aria-live="polite"></p>
                 <div class="artifact-code-panel">
                   <div class="artifact-code-head">
                     <span data-i18n="previewContent">文件内容预览</span>
@@ -377,17 +372,18 @@ status: waiting_review</pre>
           </section>
 
           <section class="inspector-panel" data-inspector-panel="details">
-            <dl class="info-list">
+            <dl class="info-list" data-run-details>
               <div><dt data-i18n="workId">Agent ID</dt><dd>image-gen/prototype-v1</dd></div>
               <div><dt data-i18n="state">状态</dt><dd data-i18n="waitingConfirm">等待确认</dd></div>
               <div><dt data-i18n="model">模型</dt><dd>meta-agent / gpt-image-2 relay</dd></div>
               <div><dt data-i18n="duration">累计耗时</dt><dd>8.4s</dd></div>
             </dl>
-            <button class="full-width-button" type="button" data-i18n="openTrace">打开原始 Trace</button>
+            <p class="install-status run-detail-status" data-run-detail-status aria-live="polite"></p>
+            <button class="full-width-button" type="button" data-open-trace data-i18n="openTrace">打开原始 Trace</button>
           </section>
         </aside>
       </div>
     </div>
-    <script src="./app.js?v=16"></script>
+    <script src="./app.js?v=22"></script>
   </body>
 </html>

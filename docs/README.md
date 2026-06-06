@@ -89,6 +89,7 @@ npm run build
 ├── 19-产品定位与界面方案调整.md    # ★ 2026-05-26 UI 概念图后收敛:代码驱动 Agent 创建/运行平台,画布降级为可选观察视图
 ├── 20-任务会话式Workbench与多产物架构调整.md # ★ 2026-05-28 修正:Workbench 以 Work Conversation 为中心,Artifact/Trace 进入右侧 Inspector
 ├── 21-工程运行与状态.md            # ★ 从根 README 迁移出的工程入口:目录、命令、配置、当前实现状态
+├── 22-v0.1-alpha闭环规格.md        # ★ v0.1-alpha 主线:元智能体创建/审核/安装/运行 Agent 的最小闭环
 ├── logo                            # 项目素材
 └── ...
 ```
@@ -122,6 +123,7 @@ npm run build
 - [x] 新建 `19-产品定位与界面方案调整.md`(基于 9 张 UI 概念图,收敛为代码驱动的 Agent 创建平台 + Agent 运行平台;画布不作为 MVP 主路径)
 - [x] 新建 `20-任务会话式Workbench与多产物架构调整.md`(修正 Workbench 方向:对话中心、左右可收起、Artifact 归属当前 Work、多 Agent 调用进入 Trace)
 - [x] 根目录 `README.md` 改为面向大众的项目介绍;原工程运行内容迁移到 `21-工程运行与状态.md`
+- [x] 新建 `22-v0.1-alpha闭环规格.md`(锁定元智能体创建 Agent 的最小可用闭环)
 - [x] 建立 Workbench 静态原型 `ui/workbench-prototype/`,默认中文,支持中文 / English 切换
 - [x] 改 `09-MVP-路线图.md`:加核心铁律 3(ADR-008 硬验收);v0.0 改为生图尖刺;v0.1 首发改为生图原型;v0.2 把写标书 Recipe 纳入;v0.3 加 Meta-Agent 现造 LLM Skill;v0.4 加现造 code Skill
 - [x] 改 `10-v0.0-技术尖刺.md`:从 PDF→docx 换为 prompt → openai-compat 中转站 → PNG;时间盒从 1 周压到 1 天
