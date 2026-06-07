@@ -1703,6 +1703,12 @@ kbd {
   color: #247547;
 }
 
+.install-status[data-variant="hint"] {
+  border-color: rgba(40, 72, 93, 0.14);
+  background: rgba(239, 243, 241, 0.86);
+  color: #42535b;
+}
+
 .install-status[data-variant="warning"] {
   border-color: rgba(228, 185, 80, 0.32);
   background: #fff6d9;

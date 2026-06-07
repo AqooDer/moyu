@@ -151,6 +151,9 @@ const messages = {
     installConflictAction: "建议：创建新版本，或进入差异合并后再安装。",
     installFailed: "安装失败，请查看 Trace 或本地终端后重试。",
     installApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run prototype:workbench` 后再安装。",
+    actionHintMetaDraft: "当前是元智能体草案，可安装到正式 Agents；安装后可在左侧 Agents 里运行。",
+    actionHintInstalledAgent: "当前是已安装 Agent 的运行记录，可直接运行；安装前请在左侧选择一个元智能体草案 Run。",
+    actionHintSelectAgent: "请先在左侧选择一个已安装 Agent，或选择一个元智能体草案进行安装。",
     runAgent: "运行 Agent",
     runningAgent: "正在运行...",
     runAgentSucceeded: "Agent dry-run 已完成，Run 与 Trace 已刷新。",
@@ -321,6 +324,9 @@ const messages = {
     installConflictAction: "Suggested action: create a new version, or review a diff before installing.",
     installFailed: "Install failed. Check the Trace or local terminal, then retry.",
     installApiUnavailable: "This page is not served by the Workbench API. Start `npm run prototype:workbench` before installing.",
+    actionHintMetaDraft: "This is a Meta Agent draft. Install it into formal Agents, then run it from the left Agents list.",
+    actionHintInstalledAgent: "This is a run from an installed Agent. You can run it directly; select a Meta Agent draft before installing.",
+    actionHintSelectAgent: "Select an installed Agent from the left panel, or select a Meta Agent draft to install.",
     runAgent: "Run Agent",
     runningAgent: "Running...",
     runAgentSucceeded: "Agent dry-run completed. Run and Trace were refreshed.",
@@ -725,6 +731,7 @@ function renderWorkbenchData() {
   renderRunDetails(run, currentArtifacts);
   renderRunState();
   renderStateMessages();
+  renderActionHint();
 }
 
 async function advanceDemoRun() {
@@ -1352,6 +1359,7 @@ function renderAgents(agents) {
         prototypeState.selectedAgentId = agent.id;
         document.querySelectorAll(".agent-item").forEach((node) => node.classList.toggle("active", node === button));
         syncRunAgentButton();
+        renderActionHint();
       });
       return button;
     }),
@@ -1728,8 +1736,14 @@ function syncInstallButton() {
     return;
   }
   const dict = messages[currentLang] ?? messages.zh;
+  const canInstall = isMetaAgentRun(workbenchData?.selectedRun);
   button.textContent = prototypeState.isInstalling ? dict.installingAgent : dict.installAgent;
-  button.disabled = prototypeState.isInstalling || !isMetaAgentRun(workbenchData?.selectedRun);
+  button.disabled = prototypeState.isInstalling || !canInstall;
+  button.title = !canUseWorkbenchApi()
+    ? dict.installApiUnavailable
+    : canInstall
+      ? dict.actionHintMetaDraft
+      : dict.actionHintInstalledAgent;
 }
 
 async function runSelectedAgentFromWorkbench() {
@@ -1801,8 +1815,35 @@ function syncRunAgentButton() {
     prototypeState.selectedAgentId === "meta/create-agent";
   button.textContent = prototypeState.isRunningAgent ? dict.runningAgent : dict.runAgent;
   button.disabled = disabled;
+  button.title = !canUseWorkbenchApi()
+    ? dict.runAgentApiUnavailable
+    : disabled
+      ? dict.actionHintSelectAgent
+      : dict.actionHintInstalledAgent;
   document.querySelector("[data-run-real]")?.toggleAttribute("disabled", disabled);
   document.querySelector("[data-run-count]")?.toggleAttribute("disabled", disabled);
+}
+
+function renderActionHint() {
+  if (prototypeState.isInstalling || prototypeState.isRunningAgent) {
+    return;
+  }
+
+  const dict = messages[currentLang] ?? messages.zh;
+  const selectedAgentId = prototypeState.selectedAgentId;
+  if (!canUseWorkbenchApi()) {
+    setInstallStatus(dict.installApiUnavailable, "hint");
+    return;
+  }
+  if (isMetaAgentRun(workbenchData?.selectedRun)) {
+    setInstallStatus(dict.actionHintMetaDraft, "hint");
+    return;
+  }
+  if (selectedAgentId && selectedAgentId !== "meta/create-agent") {
+    setInstallStatus(dict.actionHintInstalledAgent, "hint");
+    return;
+  }
+  setInstallStatus(dict.actionHintSelectAgent, "hint");
 }
 
 function getRunPrompt() {
