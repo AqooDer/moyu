@@ -148,6 +148,7 @@ const messages = {
     installingAgent: "正在安装...",
     installSucceeded: "已安装到正式 Agents 目录，运行时可以加载这个 Agent。",
     installConflict: "正式 Agent 已存在，当前草案不会覆盖。下一步需要做版本更新或差异合并。",
+    installConflictAction: "建议：创建新版本，或进入差异合并后再安装。",
     installFailed: "安装失败，请查看 Trace 或本地终端后重试。",
     installApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run prototype:workbench` 后再安装。",
     runAgent: "运行 Agent",
@@ -317,6 +318,7 @@ const messages = {
     installingAgent: "Installing...",
     installSucceeded: "Installed into the formal Agents directory. The runtime can load this Agent.",
     installConflict: "A formal Agent already exists, so this draft was not overwritten. Next we need versioning or a diff-merge flow.",
+    installConflictAction: "Suggested action: create a new version, or review a diff before installing.",
     installFailed: "Install failed. Check the Trace or local terminal, then retry.",
     installApiUnavailable: "This page is not served by the Workbench API. Start `npm run prototype:workbench` before installing.",
     runAgent: "Run Agent",
@@ -1687,7 +1689,7 @@ async function installAgentDraftFromCurrentRun() {
     }
 
     if (response.status === 409 || data?.code === "agent_exists") {
-      setInstallStatus(dict.installConflict, "warning");
+      setInstallStatus(formatInstallConflict(data, dict), "warning");
       return;
     }
     if (!response.ok || !data?.ok) {
@@ -1706,6 +1708,18 @@ async function installAgentDraftFromCurrentRun() {
     prototypeState.isInstalling = false;
     syncInstallButton();
   }
+}
+
+function formatInstallConflict(data, dict) {
+  const parts = [dict.installConflict];
+  if (data?.agentId) {
+    parts.push(data.agentId);
+  }
+  if (data?.targetPath) {
+    parts.push(data.targetPath);
+  }
+  parts.push(dict.installConflictAction);
+  return parts.join("\n");
 }
 
 function syncInstallButton() {

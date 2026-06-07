@@ -1688,6 +1688,7 @@ kbd {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .install-status:not(:empty) {

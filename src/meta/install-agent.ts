@@ -3,7 +3,7 @@ import path from "node:path";
 import { readAgentSummary } from "../agent/registry.js";
 import { validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
 import { listArtifacts } from "../runtime/artifacts.js";
-import { markAgentDraftInstalled } from "./agent-draft.js";
+import { markAgentDraftInstallConflict, markAgentDraftInstalled, readAgentDraftRecordByRun } from "./agent-draft.js";
 
 export interface InstallAgentDraftOptions {
   runId: string;
@@ -37,7 +37,24 @@ export async function installAgentDraft(options: InstallAgentDraftOptions): Prom
   const summary = await readAgentSummary(sourcePath);
   const targetPath = path.resolve(options.rootDir ?? "agents", summary.folderName);
   if (!options.force && (await exists(targetPath))) {
-    throw new InstallConflictError(`Agent already exists: ${targetPath}`, targetPath);
+    const draft = await readAgentDraftRecordByRun(options.runId);
+    if (draft?.state === "installed" && path.resolve(draft.targetPath) === targetPath) {
+      const validation = await validateAgentFolder(targetPath);
+      return {
+        runId: options.runId,
+        sourcePath,
+        targetPath,
+        agentId: summary.agentId,
+        installed: validation.ok,
+        validation,
+      };
+    }
+
+    await markAgentDraftInstallConflict({
+      runId: options.runId,
+      targetPath,
+    });
+    throw new InstallConflictError(`Agent already exists: ${targetPath}`, targetPath, summary.agentId, sourcePath);
   }
 
   await mkdir(path.dirname(targetPath), { recursive: true });
@@ -67,6 +84,8 @@ export class InstallConflictError extends Error {
   constructor(
     message: string,
     readonly targetPath: string,
+    readonly agentId: string,
+    readonly sourcePath: string,
   ) {
     super(message);
     this.name = "InstallConflictError";

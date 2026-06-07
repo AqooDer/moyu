@@ -55,6 +55,30 @@ export async function markAgentDraftInstalled(input: {
   return updated;
 }
 
+export async function markAgentDraftInstallConflict(input: {
+  runId: string;
+  targetPath: string;
+}) {
+  const artifacts = await listArtifacts({ runId: input.runId });
+  const draft = artifacts.find((artifact) => artifact.name === "agent-draft.json");
+  if (!draft) {
+    return null;
+  }
+
+  const record = await readAgentDraftRecord(draft.path);
+  if (record.state === "installed" && path.resolve(record.targetPath) === path.resolve(input.targetPath)) {
+    return record;
+  }
+
+  const updated: AgentDraftRecord = {
+    ...record,
+    targetPath: path.resolve(input.targetPath),
+    state: "install_conflict",
+  };
+  await writeAgentDraftRecord(draft.path, updated);
+  return updated;
+}
+
 async function readAgentDraftRecord(filePath: string) {
   return JSON.parse(await readFile(filePath, "utf8")) as AgentDraftRecord;
 }

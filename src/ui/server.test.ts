@@ -51,12 +51,45 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(installed.body.ok, true);
     assert.equal(installed.body.result.installed, true);
 
+    const repeatedInstall = await postJson(apiUrl(server.url, "/api/meta/install-agent"), {
+      runId: created.body.result.runId,
+    });
+    assert.equal(repeatedInstall.status, 200);
+    assert.equal(repeatedInstall.body.ok, true);
+    assert.equal(repeatedInstall.body.result.installed, true);
+
     const agents = await getJson(apiUrl(server.url, "/api/agents"));
     assert.equal(agents.ok, true);
     assert.deepEqual(
       agents.agents.map((agent: { agentId: string }) => agent.agentId),
       ["custom/image-prototype-v1"],
     );
+
+    const conflictingDraft = await postJson(apiUrl(server.url, "/api/meta/create-agent"), {
+      prompt: "Create another image prototype Agent with the same id",
+      agentId: "custom/image-prototype-v1",
+      name: "Conflicting Image Agent",
+    });
+    assert.equal(conflictingDraft.status, 200);
+    assert.equal(conflictingDraft.body.ok, true);
+
+    const draftRecordId = conflictingDraft.body.workbench.artifacts.find(
+      (artifact: { name?: string }) => artifact.name === "agent-draft.json",
+    )?.id;
+    assert.equal(typeof draftRecordId, "string");
+
+    const conflict = await postJson(apiUrl(server.url, "/api/meta/install-agent"), {
+      runId: conflictingDraft.body.result.runId,
+    });
+    assert.equal(conflict.status, 409);
+    assert.equal(conflict.body.code, "agent_exists");
+    assert.equal(conflict.body.agentId, "custom/image-prototype-v1");
+    assert.equal(conflict.body.suggestion, "create_new_version_or_diff_merge");
+
+    const conflictDraftRecord = await getJson(
+      apiUrl(server.url, `/api/artifact-content?id=${encodeURIComponent(draftRecordId)}`),
+    );
+    assert.match(conflictDraftRecord.text, /"state": "install_conflict"/);
 
     const run = await postJson(apiUrl(server.url, "/api/agent/run"), {
       agentId: "custom/image-prototype-v1",

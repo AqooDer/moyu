@@ -215,7 +215,10 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
           ok: false,
           code: "agent_exists",
           error: error.message,
+          agentId: error.agentId,
+          sourcePath: error.sourcePath,
           targetPath: error.targetPath,
+          suggestion: "create_new_version_or_diff_merge",
         });
         return;
       }
