@@ -3,6 +3,7 @@ import path from "node:path";
 import { stringify } from "yaml";
 import { formatValidationResult, validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
 import { RuntimeStore } from "../runtime/store.js";
+import { writeAgentDraftRecord } from "./agent-draft.js";
 
 export interface MetaCreateAgentOptions {
   prompt: string;
@@ -105,6 +106,20 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
     errors: validation.errors.length,
     warnings: validation.warnings.length,
   });
+
+  const draftRecordFile = path.join(path.dirname(agentPath), "agent-draft.json");
+  await writeAgentDraftRecord(draftRecordFile, {
+    schemaVersion: 1,
+    runId,
+    agentId: spec.agentId,
+    draftPath: agentPath,
+    targetPath: path.resolve(options.rootDir || "agents", spec.folderName),
+    state: validation.ok ? "drafted" : "validation_failed",
+    validation,
+    createdAt: new Date().toISOString(),
+    installedAt: null,
+  });
+  files.push(draftRecordFile);
 
   for (const file of files) {
     await runtime.addArtifact({

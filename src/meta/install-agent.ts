@@ -3,6 +3,7 @@ import path from "node:path";
 import { readAgentSummary } from "../agent/registry.js";
 import { validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
 import { listArtifacts } from "../runtime/artifacts.js";
+import { markAgentDraftInstalled } from "./agent-draft.js";
 
 export interface InstallAgentDraftOptions {
   runId: string;
@@ -47,6 +48,11 @@ export async function installAgentDraft(options: InstallAgentDraftOptions): Prom
   });
 
   const validation = await validateAgentFolder(targetPath);
+  await markAgentDraftInstalled({
+    runId: options.runId,
+    targetPath,
+    validation,
+  });
   return {
     runId: options.runId,
     sourcePath,

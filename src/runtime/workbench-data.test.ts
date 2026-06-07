@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import { listAgents } from "../agent/registry.js";
 import { runImageAgent } from "../agent/run.js";
+import { readAgentDraftRecordByRun } from "../meta/agent-draft.js";
 import { createAgentWithMeta } from "../meta/create-agent.js";
 import { installAgentDraft } from "../meta/install-agent.js";
 import { listArtifacts } from "./artifacts.js";
@@ -29,10 +30,21 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     const draftArtifacts = await listArtifacts({ runId: draft.runId });
     assert.equal(draftArtifacts.length, draft.files.length);
     assert.ok(draftArtifacts.some((artifact) => artifact.name === "manifest.yaml"));
+    assert.ok(draftArtifacts.some((artifact) => artifact.name === "agent-draft.json"));
+
+    const draftRecord = await readAgentDraftRecordByRun(draft.runId);
+    assert.equal(draftRecord?.state, "drafted");
+    assert.equal(draftRecord?.agentId, "custom/image-prototype-v1");
+    assert.equal(draftRecord?.installedAt, null);
 
     const installed = await installAgentDraft({ runId: draft.runId });
     assert.equal(installed.installed, true);
     assert.equal(installed.agentId, "custom/image-prototype-v1");
+
+    const installedDraftRecord = await readAgentDraftRecordByRun(draft.runId);
+    assert.equal(installedDraftRecord?.state, "installed");
+    assert.equal(installedDraftRecord?.targetPath, installed.targetPath);
+    assert.equal(typeof installedDraftRecord?.installedAt, "string");
 
     const agents = await listAgents();
     assert.deepEqual(
