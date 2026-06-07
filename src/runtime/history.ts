@@ -12,6 +12,7 @@ export interface RunHistoryItem {
   startedAt: string | null;
   durationMs: number | null;
   artifactCount: number;
+  prompt: string | null;
   traceFile: string;
   schema: "runtime-v1" | "legacy" | "unknown";
 }
@@ -160,6 +161,7 @@ function summarizeTrace(
       startedAt: trace.run.startedAt,
       durationMs: trace.run.durationMs,
       artifactCount: trace.artifacts.length,
+      prompt: getRuntimePrompt(trace),
       traceFile,
       schema: "runtime-v1",
     };
@@ -174,6 +176,7 @@ function summarizeTrace(
       startedAt: trace.started_at ?? null,
       durationMs: trace.duration_ms ?? null,
       artifactCount: Array.isArray(trace.outputs) ? trace.outputs.length : 0,
+      prompt: trace.prompt ?? null,
       traceFile,
       schema: "legacy",
     };
@@ -187,9 +190,15 @@ function summarizeTrace(
     startedAt: null,
     durationMs: null,
     artifactCount: 0,
+    prompt: null,
     traceFile,
     schema: "unknown",
   };
+}
+
+function getRuntimePrompt(trace: RuntimeTrace) {
+  const prompt = trace.run.input.prompt;
+  return typeof prompt === "string" ? prompt : null;
 }
 
 function isRuntimeTrace(trace: unknown): trace is RuntimeTrace {

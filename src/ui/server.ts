@@ -2,12 +2,12 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { readFile, stat } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
-import { findAgent } from "../agent/registry.js";
+import { findAgent, listAgents } from "../agent/registry.js";
 import { runImageAgent } from "../agent/run.js";
 import { createAgentWithMeta } from "../meta/create-agent.js";
 import { InstallConflictError, installAgentDraft } from "../meta/install-agent.js";
-import { openArtifact, readArtifactText } from "../runtime/artifacts.js";
-import { openRunTrace } from "../runtime/history.js";
+import { getArtifactDetail, openArtifact, readArtifactText } from "../runtime/artifacts.js";
+import { getRunHistoryDetail, openRunTrace } from "../runtime/history.js";
 import { buildWorkbenchData } from "../runtime/workbench-data.js";
 
 interface ServeWorkbenchOptions {
@@ -89,6 +89,35 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
 
   if (method === "GET" && url.pathname === "/api/workbench") {
     writeJson(response, 200, await buildWorkbenchData({ selectedRunId: url.searchParams.get("runId") || undefined }));
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/api/agents") {
+    writeJson(response, 200, { ok: true, agents: await listAgents() });
+    return;
+  }
+
+  const runMatch = url.pathname.match(/^\/api\/runs\/([^/]+)$/);
+  if (method === "GET" && runMatch) {
+    const runId = decodeURIComponent(runMatch[1]);
+    const detail = await getRunHistoryDetail(runId);
+    if (!detail) {
+      writeJson(response, 404, { ok: false, error: "run not found" });
+      return;
+    }
+    writeJson(response, 200, { ok: true, ...detail });
+    return;
+  }
+
+  const artifactMatch = url.pathname.match(/^\/api\/artifacts\/([^/]+)$/);
+  if (method === "GET" && artifactMatch) {
+    const artifactId = decodeURIComponent(artifactMatch[1]);
+    const artifact = await getArtifactDetail(artifactId);
+    if (!artifact) {
+      writeJson(response, 404, { ok: false, error: "artifact not found" });
+      return;
+    }
+    writeJson(response, 200, { ok: true, artifact });
     return;
   }
 

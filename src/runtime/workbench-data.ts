@@ -228,11 +228,12 @@ function getWorkbenchWorks(runs: RunHistoryItem[], selectedRun: WorkbenchRun | n
 }
 
 function getWorkbenchWorkTitle(run: RunHistoryItem, selectedRun: WorkbenchRun | null) {
-  if (run.id === selectedRun?.id && selectedRun.prompt) {
-    const promptTitle = compactText(selectedRun.prompt, 22);
+  const prompt = run.prompt || (run.id === selectedRun?.id ? selectedRun.prompt : null);
+  if (prompt) {
+    const promptTitle = compactText(prompt, 22);
     return {
       zh: promptTitle,
-      en: compactText(selectedRun.prompt, 34),
+      en: compactText(prompt, 34),
     };
   }
 

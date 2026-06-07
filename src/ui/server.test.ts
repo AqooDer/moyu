@@ -35,12 +35,28 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(manifest.binary, false);
     assert.match(manifest.text, /agent_id: custom\/image-prototype-v1/);
 
+    const artifact = await getJson(apiUrl(server.url, `/api/artifacts/${encodeURIComponent(artifactId)}`));
+    assert.equal(artifact.ok, true);
+    assert.equal(artifact.artifact.name, "manifest.yaml");
+
+    const draftRun = await getJson(apiUrl(server.url, `/api/runs/${encodeURIComponent(created.body.result.runId)}`));
+    assert.equal(draftRun.ok, true);
+    assert.equal(draftRun.item.id, created.body.result.runId);
+    assert.equal(draftRun.trace.run.agentId, "meta/create-agent");
+
     const installed = await postJson(apiUrl(server.url, "/api/meta/install-agent"), {
       runId: created.body.result.runId,
     });
     assert.equal(installed.status, 200);
     assert.equal(installed.body.ok, true);
     assert.equal(installed.body.result.installed, true);
+
+    const agents = await getJson(apiUrl(server.url, "/api/agents"));
+    assert.equal(agents.ok, true);
+    assert.deepEqual(
+      agents.agents.map((agent: { agentId: string }) => agent.agentId),
+      ["custom/image-prototype-v1"],
+    );
 
     const run = await postJson(apiUrl(server.url, "/api/agent/run"), {
       agentId: "custom/image-prototype-v1",

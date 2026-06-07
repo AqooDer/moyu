@@ -45,9 +45,7 @@ body {
 body {
   margin: 0;
   min-width: 0;
-  background:
-    radial-gradient(circle at 12% -12%, rgba(7, 140, 132, 0.1), transparent 34%),
-    linear-gradient(180deg, #faf9f6 0%, var(--bg) 100%);
+  background: linear-gradient(180deg, #faf9f6 0%, var(--bg) 100%);
   color: var(--ink);
   letter-spacing: 0;
   overflow: hidden;
@@ -83,7 +81,7 @@ textarea:focus-visible {
 
 .topbar {
   display: grid;
-  grid-template-columns: minmax(210px, 1fr) minmax(240px, auto) minmax(320px, 1fr);
+  grid-template-columns: minmax(210px, 1fr) minmax(0, 1fr) minmax(320px, 1fr);
   align-items: center;
   gap: 16px;
   height: var(--topbar-height);
@@ -91,6 +89,40 @@ textarea:focus-visible {
   background: rgba(250, 249, 246, 0.82);
   padding: 0 14px;
   backdrop-filter: blur(18px);
+}
+
+.topbar-spacer {
+  display: flex;
+  min-width: 0;
+  justify-content: center;
+}
+
+.mode-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  height: 30px;
+  border: 1px solid rgba(228, 185, 80, 0.34);
+  border-radius: 7px;
+  background: #fff6d9;
+  color: #775d12;
+  font-size: 12px;
+  padding: 0 10px;
+}
+
+.mode-banner[hidden] {
+  display: none;
+}
+
+.mode-banner a {
+  color: #5f470a;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.mode-banner a:hover {
+  text-decoration: underline;
 }
 
 .topbar-left,
@@ -217,6 +249,19 @@ textarea:focus-visible {
   color: #4d5652;
   font-size: 12px;
   padding: 0 10px;
+}
+
+.engine-pill.static,
+.engine-pill.offline {
+  border-color: rgba(228, 185, 80, 0.3);
+  background: #fff6d9;
+  color: #775d12;
+}
+
+.engine-pill.static i,
+.engine-pill.offline i {
+  background: var(--warning);
+  box-shadow: 0 0 0 4px rgba(228, 185, 80, 0.14);
 }
 
 .segmented {
@@ -458,6 +503,16 @@ textarea:focus-visible {
   text-align: left;
 }
 
+.work-item {
+  grid-template-columns: 32px minmax(0, 1fr);
+  min-height: 58px;
+  padding: 7px 9px;
+}
+
+.agent-item {
+  min-height: 54px;
+}
+
 .work-item:hover,
 .agent-item:hover,
 .artifact-row:hover {
@@ -469,6 +524,11 @@ textarea:focus-visible {
 .artifact-row.selected {
   border-color: rgba(7, 140, 132, 0.18);
   background: rgba(224, 244, 241, 0.68);
+}
+
+.work-item.active {
+  border-color: rgba(7, 140, 132, 0.22);
+  background: rgba(224, 244, 241, 0.5);
 }
 
 .work-item strong,
@@ -506,6 +566,12 @@ textarea:focus-visible {
   color: #fff;
   font-size: 12px;
   font-weight: 680;
+}
+
+.work-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
 }
 
 .work-icon.soft,
@@ -825,7 +891,7 @@ h1 {
 .message-scroll {
   min-height: 0;
   overflow: auto;
-  padding: 18px 0 22px;
+  padding: 14px 0 18px;
   scroll-behavior: smooth;
 }
 
@@ -1119,6 +1185,8 @@ h1 {
   height: auto;
   aspect-ratio: 16 / 10;
   margin-bottom: 8px;
+  background: #eef1ef;
+  color: #59615d;
 }
 
 .checkpoint-card {
@@ -1214,12 +1282,11 @@ h1 {
 
 .composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "input input"
-    "tools actions";
+    "tools input actions";
   align-items: center;
-  gap: 9px 10px;
+  gap: 8px;
   width: min(var(--content-width), calc(100% - 72px));
   justify-self: center;
   margin: 0 0 12px;
@@ -1227,7 +1294,7 @@ h1 {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.9);
   box-shadow: 0 14px 40px rgba(24, 29, 28, 0.08);
-  padding: 10px;
+  padding: 8px 9px;
   transition:
     border-color 150ms ease,
     box-shadow 150ms ease,
@@ -1258,13 +1325,13 @@ h1 {
 .composer textarea {
   display: block;
   width: 100%;
-  height: 56px;
-  min-height: 56px;
-  max-height: 160px;
+  height: 38px;
+  min-height: 38px;
+  max-height: 140px;
   resize: vertical;
   color: var(--ink);
   font-size: 14px;
-  line-height: 1.58;
+  line-height: 1.45;
   padding: 2px;
 }
 
@@ -1284,7 +1351,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 34px;
+  height: 32px;
 }
 
 kbd {
@@ -1308,7 +1375,7 @@ kbd {
 
 .right-panel [data-inspector-panel="artifacts"].active {
   display: grid;
-  grid-template-rows: minmax(132px, 34%) minmax(0, 1fr);
+  grid-template-rows: minmax(108px, 30%) minmax(0, 1fr);
   gap: 8px;
   overflow: hidden;
 }
@@ -1329,6 +1396,8 @@ kbd {
 .artifact-empty-state {
   display: grid;
   gap: 5px;
+  align-content: center;
+  min-height: 92px;
   border: 1px dashed rgba(31, 35, 34, 0.14);
   border-radius: 7px;
   background: rgba(247, 246, 242, 0.58);
@@ -1365,8 +1434,8 @@ kbd {
 }
 
 .artifact-row.selected {
-  border-color: rgba(7, 140, 132, 0.14);
-  background: rgba(224, 244, 241, 0.54);
+  border-color: rgba(7, 140, 132, 0.12);
+  background: rgba(224, 244, 241, 0.4);
 }
 
 .artifact-row.selected::before {
@@ -1454,7 +1523,7 @@ kbd {
   margin-top: 0;
   border: 1px solid rgba(31, 35, 34, 0.08);
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.58);
+  background: rgba(255, 255, 255, 0.68);
 }
 
 .artifact-detail-preview {
@@ -1488,9 +1557,33 @@ kbd {
 .artifact-detail-body {
   display: grid;
   grid-template-rows: auto auto auto auto minmax(0, 1fr);
-  gap: 5px;
+  gap: 4px;
   min-height: 0;
   padding: 9px;
+}
+
+.artifact-detail.empty-artifact-detail {
+  min-height: 170px;
+}
+
+.empty-artifact-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+  border: 1px solid rgba(7, 140, 132, 0.12);
+  border-radius: 7px;
+  background: rgba(224, 244, 241, 0.34);
+  padding: 9px;
+}
+
+.empty-artifact-note strong {
+  color: var(--accent-ink);
+  font-size: 12px;
+}
+
+.empty-artifact-note small {
+  color: var(--muted);
+  line-height: 1.45;
 }
 
 .detail-kicker {
@@ -1633,7 +1726,7 @@ kbd {
   margin-top: 2px;
   border: 1px solid rgba(31, 35, 34, 0.08);
   border-radius: 7px;
-  background: #fbfaf7;
+  background: #f7f7f4;
 }
 
 .artifact-code-head {
@@ -1665,7 +1758,7 @@ kbd {
   overflow: auto;
   color: #252927;
   font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: 11px;
   line-height: 1.5;
   tab-size: 2;
   white-space: pre-wrap;

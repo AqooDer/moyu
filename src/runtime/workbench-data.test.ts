@@ -63,6 +63,7 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runWorkbench.selectedRun?.dryRun, true);
     assert.equal(runWorkbench.artifacts.length, 0);
     assert.equal(runWorkbench.works.find((work) => work.active)?.runId, runId);
+    assert.equal(runWorkbench.works.find((work) => work.active)?.title.zh, "a clean app dashboard");
   } finally {
     process.chdir(previousCwd);
     await rm(workspace, { recursive: true, force: true });

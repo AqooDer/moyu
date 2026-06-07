@@ -3,6 +3,10 @@ const messages = {
     currentWork: "创建生图原型 Agent",
     localWorkspace: "本地工作区 / moyu",
     engineRunning: "本地引擎运行中",
+    engineStatic: "静态预览",
+    engineDisconnected: "本地服务未连接",
+    staticPreview: "静态预览模式",
+    openLocalWorkbench: "打开本地服务",
     moyuStudio: "Moyu Studio",
     codeDriven: "代码驱动的智能体创建与运行平台",
     works: "任务",
@@ -123,6 +127,7 @@ const messages = {
     openTraceApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run prototype:workbench` 后再打开 Trace。",
     noArtifactsTitle: "本次运行没有产物",
     noArtifactsDesc: "这是一次 dry-run 或无输出运行。Trace 已记录执行过程，但没有写入文件产物。",
+    noArtifactsTraceHint: "切到 Trace 标签查看这次运行的步骤、耗时和输入参数。",
     unknownSize: "未知大小",
     currentTask: "当前 Agent",
     generatedFromRun: "来自元智能体运行",
@@ -167,6 +172,10 @@ const messages = {
     currentWork: "Create Image Prototype Agent",
     localWorkspace: "Local workspace / moyu",
     engineRunning: "Local engine running",
+    engineStatic: "Static preview",
+    engineDisconnected: "Local service offline",
+    staticPreview: "Static preview mode",
+    openLocalWorkbench: "Open local service",
     moyuStudio: "Moyu Studio",
     codeDriven: "Code-driven agent creation and runtime platform",
     works: "Works",
@@ -287,6 +296,7 @@ const messages = {
     openTraceApiUnavailable: "This page is not served by the Workbench API. Start `npm run prototype:workbench` before opening Trace.",
     noArtifactsTitle: "No artifacts for this run",
     noArtifactsDesc: "This was a dry-run or no-output run. The Trace recorded execution, but no files were written.",
+    noArtifactsTraceHint: "Open the Trace tab to inspect steps, timing, and input parameters.",
     unknownSize: "unknown size",
     currentTask: "Current Agent",
     generatedFromRun: "From Meta Agent run",
@@ -367,6 +377,7 @@ bindStaticSelection();
 bindRunActions();
 applyLanguage(currentLang);
 loadWorkbenchData();
+renderRuntimeMode();
 
 function bindLanguage() {
   document.querySelectorAll("[data-lang]").forEach((button) => {
@@ -401,6 +412,7 @@ function applyLanguage(lang) {
 
   localStorage.setItem("moyu.prototype.lang", lang);
   renderWorkbenchData();
+  renderRuntimeMode();
 }
 
 function bindTabs() {
@@ -563,8 +575,8 @@ function bindComposer() {
     if (!textarea) {
       return;
     }
-    textarea.style.height = "56px";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+    textarea.style.height = "38px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
     composer?.classList.toggle("has-content", textarea.value.trim().length > 0);
   };
 
@@ -615,6 +627,7 @@ async function loadWorkbenchData() {
   if (apiData) {
     workbenchData = apiData;
     renderWorkbenchData();
+    renderRuntimeMode();
     return;
   }
 
@@ -627,9 +640,30 @@ async function loadWorkbenchData() {
     if (data && data.schemaVersion === 1) {
       workbenchData = data;
       renderWorkbenchData();
+      renderRuntimeMode();
     }
   } catch {
     // The prototype still works as a static mock when exported runtime data is absent.
+  }
+}
+
+function renderRuntimeMode() {
+  const dict = messages[currentLang] ?? messages.zh;
+  const engine = document.querySelector("[data-engine-pill]");
+  const label = document.querySelector("[data-engine-label]");
+  const staticBanner = document.querySelector("[data-static-banner]");
+  const isStaticFile = location.protocol === "file:";
+
+  staticBanner?.toggleAttribute("hidden", !isStaticFile);
+  engine?.classList.toggle("static", isStaticFile);
+  engine?.classList.toggle("offline", !isStaticFile && !prototypeState.apiAvailable);
+
+  if (label) {
+    label.textContent = isStaticFile
+      ? dict.engineStatic
+      : prototypeState.apiAvailable
+        ? dict.engineRunning
+        : dict.engineDisconnected;
   }
 }
 
@@ -1486,6 +1520,8 @@ function updateArtifactDetail(artifact) {
     return;
   }
 
+  detail.classList.remove("empty-artifact-detail");
+  detail.querySelector("[data-empty-artifact-note]")?.remove();
   const preview = detail.querySelector(".artifact-detail-preview");
   const title = detail.querySelector(".artifact-detail-body strong");
   const meta = detail.querySelector(".artifact-detail-body small");
@@ -1532,6 +1568,7 @@ function renderEmptyArtifactDetail(detail) {
   const previewStatus = detail.querySelector("[data-artifact-preview-status]");
 
   detail.classList.remove("image-artifact");
+  detail.classList.add("empty-artifact-detail");
   preview?.replaceChildren(createText("span", "TRACE"));
   if (title) {
     title.textContent = dict.noArtifactsTitle;
@@ -1548,9 +1585,23 @@ function renderEmptyArtifactDetail(detail) {
   if (previewStatus) {
     previewStatus.textContent = "";
   }
+  renderEmptyArtifactNote(detail, dict);
   setArtifactActionDisabled(true);
   syncInstallButton();
   syncRunAgentButton();
+}
+
+function renderEmptyArtifactNote(detail, dict) {
+  const body = detail.querySelector(".artifact-detail-body");
+  if (!body) {
+    return;
+  }
+  body.querySelector("[data-empty-artifact-note]")?.remove();
+  const note = document.createElement("div");
+  note.className = "empty-artifact-note";
+  note.dataset.emptyArtifactNote = "true";
+  note.append(createText("strong", dict.trace), createText("small", dict.noArtifactsTraceHint));
+  body.append(note);
 }
 
 function setArtifactActionDisabled(disabled) {
