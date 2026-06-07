@@ -711,6 +711,7 @@ function renderWorkbenchData() {
   const realArtifacts = normalizeWorkbenchArtifacts(workbenchData.artifacts || []);
   const realTimeline = getTimelineFromRun(run);
 
+  syncSelectedWorkWithRun(run, workbenchData.works || []);
   prototypeState.usesRealRun = Boolean(run && (realArtifacts.length > 0 || realTimeline.length > 0));
   prototypeState.runState = run?.state || "";
   if (prototypeState.usesRealRun) {
@@ -732,6 +733,17 @@ function renderWorkbenchData() {
   renderRunState();
   renderStateMessages();
   renderActionHint();
+}
+
+function syncSelectedWorkWithRun(run, works) {
+  if (!run?.id || !Array.isArray(works) || works.length === 0) {
+    return;
+  }
+
+  const matchingWork = works.find((work) => work.runId === run.id);
+  if (matchingWork) {
+    prototypeState.selectedWorkId = matchingWork.id;
+  }
 }
 
 async function advanceDemoRun() {
