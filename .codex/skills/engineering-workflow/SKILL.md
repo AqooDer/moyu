@@ -1,67 +1,43 @@
 ---
 name: engineering-workflow
-description: Use when working on any software project feature, bug fix, refactor, workflow update, coding-standard decision, todo planning, or commit preparation. Enforces one feature or one bug per issue, checklist-first delivery, Karpathy-style simple and surgical changes, required verification, and commit format `<type>(<scope>): <subject>`.
+description: 通用工程工作流 / engineering workflow。用于任意项目的需求 feature、bug/fix、refactor、test、docs、todo、编码规范和 commit；要求一个需求或 bug 一个闭环、清单先行、Karpathy-style 简洁改动、验证后提交，并采用 Conventional Commits。
 ---
 
-# Engineering Workflow
+# 通用工程工作流
 
-Follow this skill whenever you change code, docs, UI, runtime behavior, architecture, tests, or workflow in any repository.
+改代码、文档、测试、配置或流程时使用。项目本地规范优先；没有本地规范时，以此 Skill 为默认规则。
 
-## Load Local Context First
+## 先读上下文
 
-Read project-local instructions before changing files when they exist:
+改动前优先查看项目内已有说明：
 
 - `README*`
 - `AGENTS.md`, `CLAUDE.md`, `.codex/`, `.cursor/rules/`
-- project docs for coding standards, architecture, task lists, bugs, tests, and release notes
-- project checklists for feature delivery or bug fixes
+- 编码规范、架构、任务清单、缺陷清单、测试、发布说明等文档
 
-Treat local project rules as the source of truth when they are stricter or more specific. If the project has no local process docs, use this skill as the default workflow.
+若本 Skill 与项目规范冲突，遵循更具体、更严格的项目规范。
 
-## Non-Negotiable Rules
+## 硬规则
 
-1. One feature per issue, or one bug per issue.
-2. One closed loop per commit.
-3. Write or update the checklist before coding.
-4. Define acceptance criteria and verification before implementation.
-5. Keep changes surgical. Do not smuggle unrelated cleanup into the task.
-6. Record the commit link or hash in the issue, todo item, or final handoff when available.
+1. 一个需求一个 issue，一个 bug 一个 issue。
+2. 一个任务闭环一个 commit；不要夹带无关清理。
+3. 先写或更新清单，再动代码。
+4. 先定义验收标准和验证方式，再实现。
+5. 完成后把 commit message 或 hash 回填到 issue/todo/交付说明。
 
-## Commit Format
+## 提交规范
 
-Use:
+采用 Conventional Commits 简化版：
 
 ```text
 <type>(<scope>): <subject>
 ```
 
-`scope` is optional. If omitted, use:
+`scope` 可省略；冒号后必须有空格；`subject` 必填，可中英文。
 
-```text
-<type>: <subject>
-```
+允许的 `type`：
 
-Rules:
-
-- There must be one space after the colon.
-- `subject` is required and should be short.
-- Chinese or English is acceptable.
-- Prefer a concrete scope such as a module, layer, package, app, directory, or workflow area.
-
-Allowed `type` values:
-
-- `feat` - new feature
-- `fix` - bug fix
-- `docs` - documentation or comments
-- `style` - formatting only, no runtime behavior change
-- `refactor` - restructuring or optimization without feature or bug behavior change
-- `perf` - performance optimization
-- `test` - tests
-- `chore` - build process, auxiliary tooling, or routine maintenance
-- `revert` - revert
-- `build` - packaging or build output
-
-Examples:
+- `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `revert`, `build`
 
 ```text
 feat(settings): 增加模型角色配置
@@ -69,75 +45,40 @@ fix(runtime): 修复 dry-run 统计错误
 docs(process): 补充需求与 bug 闭环规范
 ```
 
-## Todo Lists
+## 清单
 
-If the project does not already define a task system, maintain two project-local lists:
+如果项目没有任务系统，维护两个本地清单：
 
-- Feature list: planned requirements, enhancements, and user-facing changes.
-- Bugfix list: defects, regressions, quality fixes, and known verification gaps.
+- 需求清单：功能、增强、体验改进。
+- Bug 清单：缺陷、回归、质量问题、验证缺口。
 
-Each item should include:
+每项至少记录：id、类型、状态、范围/非范围、验收标准、验证方式、完成后的 commit。
 
-- stable id
-- type: feature or bug
-- status
-- scope and out-of-scope
-- acceptance criteria
-- verification plan
-- linked commit message or commit hash after completion
+## 执行流程
 
-Do not start implementation until the current item has a small delivery checklist that covers code, tests, verification, docs/config updates, and commit closure.
+需求：
 
-## Feature Workflow
+1. 明确范围、非范围、验收标准、影响模块、验证方式。
+2. 用最小改动实现当前需求。
+3. 补测试，跑验证，更新相关文档/示例/配置。
+4. 回填清单并提交。
 
-Use this order:
+Bug：
 
-1. Define scope, out-of-scope, acceptance criteria, affected modules, and verification.
-2. Implement the minimum code that satisfies the current requirement.
-3. Add or update tests when behavior changes.
-4. Run verification and record the result.
-5. Update docs, examples, config notes, or prototypes when relevant.
-6. Close the loop with one standards-compliant commit.
+1. 先复现或精确定义问题。
+2. 找根因，不只修症状。
+3. 用最小改动修复，尽量补回归测试。
+4. 复跑复现步骤和回归验证。
+5. 回填清单并用 `fix(...)` 提交。
 
-## Bug Workflow
+## Karpathy-style 约束
 
-Use this order:
+- 先想清楚再写代码；说出假设、取舍和不确定性。
+- 优先选择能完整解决问题的最简单方案。
+- 不做投机抽象，不加暂时用不到的配置。
+- 只改和当前任务有因果关系的代码。
+- 相邻问题先记入后续 issue，不扩大本次范围。
 
-1. Reproduce or precisely describe the bug before fixing it.
-2. Identify the root cause, not just the symptom.
-3. Fix with the smallest change that removes the root cause.
-4. Add a regression test when practical.
-5. Re-run reproduction and regression verification.
-6. Close the loop with one `fix(...)` commit.
+## 完成定义
 
-## Karpathy-Style Guardrails
-
-- Think before coding. Surface assumptions, tradeoffs, and uncertainty.
-- Prefer the simplest thing that fully solves the task.
-- Avoid speculative abstractions and unused configurability.
-- Touch only lines that trace to the current request.
-- If adjacent problems appear, record them for a later issue instead of expanding scope.
-- Transform work into verifiable goals and keep looping until the defined checks pass or a real blocker is named.
-
-## Architecture And Configuration Guardrails
-
-When changing models, knowledge bases, agents, skills, tools, MCP, secrets, or integration settings:
-
-- Define roles and responsibilities before binding concrete provider ids, model ids, tools, or storage backends.
-- Prefer explicit precedence such as `Project defaults -> Component override -> Runtime parameters -> Local secrets`.
-- Make fallback behavior visible and deterministic instead of silent.
-- Capture runtime evidence when defaults are unclear, but ask before choices affect cost, data exposure, or security.
-- Never commit secrets. Keep credentials in local env, secret stores, or documented deployment configuration.
-- Do not write generated artifacts back into a knowledge base without explicit rules for permission, source metadata, deduplication, and rollback.
-
-## Definition Of Done
-
-The task is not done until the relevant items are closed:
-
-- checklist
-- code
-- tests
-- manual verification when needed
-- docs, README, examples, config, or prototype data when affected
-- issue/todo linkage
-- standards-compliant commit
+清单、代码、测试/验证、相关文档、issue/todo 回填、规范提交全部完成后，任务才算结束。
