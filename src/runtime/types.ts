@@ -4,6 +4,11 @@ export type StepState = "pending" | "running" | "succeeded" | "failed" | "skippe
 export type StepKind = "llm" | "tool" | "skill" | "agent_call" | "control" | "user_checkpoint";
 export type ArtifactRole = "primary" | "intermediate" | "report" | "log";
 export type ConversationRole = "user" | "agent" | "system";
+export type ModelRoleResolutionSource =
+  | "builtin_default"
+  | "workspace_config"
+  | "agent_manifest"
+  | "runtime_env";
 export type ConversationMessageKind =
   | "user_message"
   | "agent_message"
@@ -14,6 +19,15 @@ export type ConversationMessageKind =
   | "checkpoint"
   | "error"
   | "summary";
+
+export interface ModelRoleResolution {
+  roleId: string;
+  provider: string;
+  model: string;
+  source: ModelRoleResolutionSource;
+  fallbackReason: string | null;
+  providerEndpoint?: string | null;
+}
 
 export interface WorkRecord {
   id: string;
@@ -48,6 +62,7 @@ export interface RunRecord {
   durationMs: number | null;
   input: Record<string, unknown>;
   reason: string | null;
+  modelRoles: ModelRoleResolution[];
 }
 
 export interface StepRecord {

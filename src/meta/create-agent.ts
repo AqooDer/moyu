@@ -332,6 +332,12 @@ function buildManifest(spec: AgentSpec, now: string) {
     routing: {
       model_tiers: ["medium", "image-generation"],
       default_model: "gpt-image-2",
+      model_roles: {
+        "image-generation": {
+          provider: "openai-compat",
+          model: "gpt-image-2",
+        },
+      },
     },
     permissions: {
       "host.network.fetch": ["${agent.config.provider.base_url}"],

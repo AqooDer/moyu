@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AgentManifestSummary } from "./registry.js";
 import { readImageRelayConfig } from "../lib/env.js";
 import { generateImagesWithRelay } from "../lib/openai-compat-image.js";
+import { resolveAgentModelRoles } from "../runtime/model-roles.js";
 import { RuntimeStore } from "../runtime/store.js";
 
 const AgentRunOptions = z.object({
@@ -27,6 +28,14 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
   await mkdir(outputDir, { recursive: true });
 
   const prompt = options.rawPrompt ? options.prompt : normalizePrompt(options.prompt, options.style);
+  const config = readImageRelayConfig();
+  const modelRoles = await resolveAgentModelRoles({
+    agent,
+    roleIds: ["conversation-primary", "image-generation"],
+    imageRelayConfig: config,
+  });
+  const imageModelRole = modelRoles.find((role) => role.roleId === "image-generation");
+  const imageConfig = config && imageModelRole ? { ...config, model: imageModelRole.model } : config;
   const runtime = RuntimeStore.createRun({
     id: runId,
     agentId: agent.agentId,
@@ -40,6 +49,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       style: options.style,
       raw_prompt: options.rawPrompt,
     },
+    modelRoles,
   });
   runtime.setRunState("running");
 
@@ -51,17 +61,23 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       prompt_chars: prompt.length,
       count: options.count,
       size: options.size,
+      model_role: imageModelRole?.roleId ?? "image-generation",
     },
   });
 
-  const config = readImageRelayConfig();
-  if (options.dryRun || !config) {
+  if (options.dryRun || !imageConfig) {
     runtime.addNote(
       options.dryRun
         ? "Dry-run requested; provider call skipped."
         : "Missing image relay config; provider call skipped.",
     );
-    runtime.finishStep(step.id, "skipped", { reason: "provider call skipped" });
+    runtime.finishStep(step.id, "skipped", {
+      reason: "provider call skipped",
+      model_role: imageModelRole?.roleId ?? "image-generation",
+      provider: imageModelRole?.provider,
+      model: imageModelRole?.model,
+      fallback_reason: imageModelRole?.fallbackReason,
+    });
     runtime.setRunState("succeeded");
     const traceFile = await runtime.writeTrace();
     const summary = formatRunSummary({
@@ -74,12 +90,15 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       traceFile,
       outputDir,
       files: [],
+      provider: imageModelRole?.provider,
+      model: imageModelRole?.model,
+      fallbackReason: imageModelRole?.fallbackReason,
     });
     await writeFile(path.join(outputDir, "README.txt"), summary, "utf8");
     return summary;
   }
 
-  const result = await generateImagesWithRelay(config, {
+  const result = await generateImagesWithRelay(imageConfig, {
     prompt,
     size: options.size,
     count: options.count,
@@ -96,8 +115,11 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
   }
   runtime.finishStep(step.id, "succeeded", {
     files: result.files.length,
+    model_role: imageModelRole?.roleId ?? "image-generation",
     model: result.model,
-    provider: result.provider,
+    provider: imageModelRole?.provider ?? result.provider,
+    provider_endpoint: result.provider,
+    fallback_reason: imageModelRole?.fallbackReason,
     duration_ms: result.durationMs,
   });
   runtime.addNote("Generated via agent runtime prototype.");
@@ -113,8 +135,9 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     traceFile,
     outputDir,
     files: result.files,
-    provider: result.provider,
+    provider: imageModelRole?.provider ?? result.provider,
     model: result.model,
+    fallbackReason: imageModelRole?.fallbackReason,
   });
   await writeFile(path.join(outputDir, "README.txt"), summary, "utf8");
   return summary;
@@ -149,6 +172,7 @@ function formatRunSummary(input: {
   files: string[];
   provider?: string;
   model?: string;
+  fallbackReason?: string | null;
 }) {
   const lines = [
     `run_id: ${input.runId}`,
@@ -170,6 +194,9 @@ function formatRunSummary(input: {
   }
   if (input.model) {
     lines.push(`model: ${input.model}`);
+  }
+  if (input.fallbackReason) {
+    lines.push(`fallback_reason: ${input.fallbackReason}`);
   }
 
   return lines.join("\n");

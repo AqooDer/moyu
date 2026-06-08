@@ -3,4 +3,5 @@ dist/
 traces/
 artifacts/
 .env
+moyu.config.json
 .DS_Store

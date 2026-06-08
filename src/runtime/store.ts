@@ -10,6 +10,7 @@ import type {
   StepKind,
   StepRecord,
   StepState,
+  ModelRoleResolution,
 } from "./types.js";
 
 export class RuntimeStore {
@@ -32,6 +33,7 @@ export class RuntimeStore {
     recipeId: string | null;
     dryRun: boolean;
     input: Record<string, unknown>;
+    modelRoles?: ModelRoleResolution[];
   }) {
     return new RuntimeStore({
       id: input.id,
@@ -45,6 +47,7 @@ export class RuntimeStore {
       durationMs: null,
       input: input.input,
       reason: null,
+      modelRoles: input.modelRoles ?? [],
     });
   }
 
@@ -155,4 +158,3 @@ function now() {
 function elapsed(start: string, end: string) {
   return new Date(end).getTime() - new Date(start).getTime();
 }
-

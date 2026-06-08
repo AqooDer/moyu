@@ -93,6 +93,7 @@
 
   input_ref: TEXT,                   // blob 路径
   input_summary_json: TEXT,          // 结构化摘要（轻量，可索引）
+  model_roles_json: TEXT,            // v0.1 文件 Trace 用 run.modelRoles 记录角色/provider/model/fallback
 
   cost_tokens_in: INTEGER DEFAULT 0,
   cost_tokens_out: INTEGER DEFAULT 0,
@@ -104,6 +105,15 @@
 }
 INDEX: (workspace_id, started_at DESC), (task_id), (agent_id, state)
 ```
+
+v0.1 文件 Trace 中，`run.modelRoles[]` 先作为轻量结构化字段落地，字段包含：
+
+- `roleId`：模型用途角色，如 `conversation-primary` / `image-generation`
+- `provider`：最终命中的 Provider 标识
+- `model`：最终调用或计划调用的具体模型
+- `source`：`builtin_default` / `workspace_config` / `agent_manifest` / `runtime_env`
+- `fallbackReason`：缺配置、环境变量覆盖等回退原因；无回退时为 `null`
+- `providerEndpoint`：可选，真实 Provider endpoint 或 `null`
 
 ### 4.2 `steps`
 ```ts

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -14,9 +14,15 @@ import { buildWorkbenchData } from "./workbench-data.js";
 test("meta-created Agents can be installed, run, and selected in Workbench data", async () => {
   const previousCwd = process.cwd();
   const workspace = await mkdtemp(path.join(tmpdir(), "moyu-workbench-test-"));
+  const previousImageProviderBaseUrl = process.env.MOYU_IMAGE_PROVIDER_BASE_URL;
+  const previousImageProviderApiKey = process.env.MOYU_IMAGE_PROVIDER_API_KEY;
+  const previousImageProviderModel = process.env.MOYU_IMAGE_PROVIDER_MODEL;
 
   try {
     process.chdir(workspace);
+    delete process.env.MOYU_IMAGE_PROVIDER_BASE_URL;
+    delete process.env.MOYU_IMAGE_PROVIDER_API_KEY;
+    delete process.env.MOYU_IMAGE_PROVIDER_MODEL;
 
     const draft = await createAgentWithMeta({
       prompt: "Create an image prototype Agent that stores traceable UI concept artifacts",
@@ -75,6 +81,28 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     });
     const runId = readSummaryValue(summary, "run_id");
     assert.match(runId, /^run-custom__image-prototype-v1-/);
+    const runTrace = JSON.parse(await readFile(path.join("traces", runId, "run.json"), "utf8"));
+    assert.deepEqual(runTrace.run.modelRoles, [
+      {
+        roleId: "conversation-primary",
+        provider: "openai-compat",
+        model: "gpt-4.1",
+        source: "builtin_default",
+        fallbackReason: null,
+      },
+      {
+        roleId: "image-generation",
+        provider: "openai-compat",
+        model: "gpt-image-2",
+        source: "agent_manifest",
+        fallbackReason: "missing_image_provider_config",
+        providerEndpoint: null,
+      },
+    ]);
+    assert.equal(runTrace.steps[0].outputSummary.model_role, "image-generation");
+    assert.equal(runTrace.steps[0].outputSummary.provider, "openai-compat");
+    assert.equal(runTrace.steps[0].outputSummary.model, "gpt-image-2");
+    assert.equal(runTrace.steps[0].outputSummary.fallback_reason, "missing_image_provider_config");
 
     const draftWorkbench = await buildWorkbenchData({ selectedRunId: draft.runId });
     assert.equal(draftWorkbench.selectedRun?.id, draft.runId);
@@ -96,6 +124,8 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runWorkbench.selectedRun?.id, runId);
     assert.equal(runWorkbench.selectedRun?.agentId, "custom/image-prototype-v1");
     assert.equal(runWorkbench.selectedRun?.dryRun, true);
+    assert.equal(runWorkbench.selectedRun?.modelRoles[1]?.roleId, "image-generation");
+    assert.equal(runWorkbench.selectedRun?.modelRoles[1]?.source, "agent_manifest");
     assert.equal(runWorkbench.artifacts.length, 0);
     assert.equal(runWorkbench.works.find((work) => work.active)?.runId, runId);
     assert.equal(runWorkbench.works.find((work) => work.active)?.title.zh, "a clean app dashboard");
@@ -108,6 +138,9 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     );
   } finally {
     process.chdir(previousCwd);
+    restoreEnv("MOYU_IMAGE_PROVIDER_BASE_URL", previousImageProviderBaseUrl);
+    restoreEnv("MOYU_IMAGE_PROVIDER_API_KEY", previousImageProviderApiKey);
+    restoreEnv("MOYU_IMAGE_PROVIDER_MODEL", previousImageProviderModel);
     await rm(workspace, { recursive: true, force: true });
   }
 });
@@ -117,4 +150,12 @@ function readSummaryValue(summary: string, key: string) {
   const line = summary.split("\n").find((item) => item.startsWith(prefix));
   assert.ok(line, `summary should include ${key}`);
   return line.slice(prefix.length);
+}
+
+function restoreEnv(key: string, value: string | undefined) {
+  if (typeof value === "undefined") {
+    delete process.env[key];
+    return;
+  }
+  process.env[key] = value;
 }

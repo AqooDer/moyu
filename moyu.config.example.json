@@ -1,0 +1,22 @@
+{
+  "model_roles": {
+    "conversation-primary": {
+      "provider": "openai-compat",
+      "model": "gpt-4.1",
+      "fallback_model": "gpt-4.1-mini"
+    },
+    "planning-reasoning": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-4"
+    },
+    "knowledge-embedding": {
+      "provider": "embedding-provider",
+      "model": "text-embedding-3-large",
+      "fallback_model": "bge-small-zh-v1.5"
+    },
+    "image-generation": {
+      "provider": "openai-compat",
+      "model": "gpt-image-2"
+    }
+  }
+}

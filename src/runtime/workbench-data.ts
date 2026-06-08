@@ -3,7 +3,7 @@ import path from "node:path";
 import { listAgents } from "../agent/registry.js";
 import { listArtifacts, type ArtifactHistoryItem } from "./artifacts.js";
 import { getRunHistoryDetail, listRunHistory, type RunHistoryItem } from "./history.js";
-import type { RuntimeTrace, StepRecord } from "./types.js";
+import type { ModelRoleResolution, RuntimeTrace, StepRecord } from "./types.js";
 
 export interface WorkbenchData {
   schemaVersion: 1;
@@ -27,6 +27,7 @@ export interface WorkbenchRun {
   prompt: string | null;
   tracePath: string;
   artifactCount: number;
+  modelRoles: ModelRoleResolution[];
   steps: WorkbenchStep[];
 }
 
@@ -242,6 +243,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
       prompt: getPrompt(detail.trace.run.input),
       tracePath: path.relative(process.cwd(), detail.item.traceFile),
       artifactCount: detail.trace.artifacts.length,
+      modelRoles: detail.trace.run.modelRoles ?? [],
       steps: detail.trace.steps.map(toWorkbenchStep),
     };
   }
@@ -259,6 +261,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
     prompt: typeof trace.prompt === "string" ? trace.prompt : null,
     tracePath: path.relative(process.cwd(), detail.item.traceFile),
     artifactCount: detail.item.artifactCount,
+    modelRoles: [],
     steps: [],
   };
 }
