@@ -5,6 +5,7 @@ import path from "node:path";
 import { findAgent, listAgents } from "../agent/registry.js";
 import { runImageAgent } from "../agent/run.js";
 import { createAgentWithMeta } from "../meta/create-agent.js";
+import { listAgentDraftRecords, type AgentDraftState } from "../meta/agent-draft.js";
 import { InstallConflictError, installAgentDraft } from "../meta/install-agent.js";
 import { getArtifactDetail, openArtifact, readArtifactText } from "../runtime/artifacts.js";
 import { getRunHistoryDetail, openRunTrace } from "../runtime/history.js";
@@ -94,6 +95,17 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
 
   if (method === "GET" && url.pathname === "/api/agents") {
     writeJson(response, 200, { ok: true, agents: await listAgents() });
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/api/meta/agent-drafts") {
+    writeJson(response, 200, {
+      ok: true,
+      drafts: await listAgentDraftRecords({
+        state: readDraftState(url.searchParams.get("state")),
+        agentId: url.searchParams.get("agentId") || undefined,
+      }),
+    });
     return;
   }
 
@@ -408,6 +420,18 @@ function getContentType(filePath: string) {
 function normalizeCount(value: unknown) {
   const count = typeof value === "number" ? value : Number(value);
   return Number.isFinite(count) && count > 0 ? Math.min(Math.floor(count), 12) : 1;
+}
+
+function readDraftState(value: string | null): AgentDraftState | undefined {
+  if (
+    value === "drafted" ||
+    value === "validation_failed" ||
+    value === "installed" ||
+    value === "install_conflict"
+  ) {
+    return value;
+  }
+  return undefined;
 }
 
 function normalizeSize(value: unknown): "1024x1024" | "1792x1024" | "1024x1792" {

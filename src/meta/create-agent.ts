@@ -108,15 +108,18 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
   });
 
   const draftRecordFile = path.join(path.dirname(agentPath), "agent-draft.json");
+  const draftCreatedAt = new Date().toISOString();
   await writeAgentDraftRecord(draftRecordFile, {
     schemaVersion: 1,
+    revision: 1,
     runId,
     agentId: spec.agentId,
     draftPath: agentPath,
     targetPath: path.resolve(options.rootDir || "agents", spec.folderName),
     state: validation.ok ? "drafted" : "validation_failed",
     validation,
-    createdAt: new Date().toISOString(),
+    createdAt: draftCreatedAt,
+    updatedAt: draftCreatedAt,
     installedAt: null,
   });
   files.push(draftRecordFile);

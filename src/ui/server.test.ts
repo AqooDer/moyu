@@ -44,6 +44,13 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(draftRun.item.id, created.body.result.runId);
     assert.equal(draftRun.trace.run.agentId, "meta/create-agent");
 
+    const draftIndex = await getJson(apiUrl(server.url, "/api/meta/agent-drafts"));
+    assert.equal(draftIndex.ok, true);
+    assert.equal(draftIndex.drafts.length, 1);
+    assert.equal(draftIndex.drafts[0].runId, created.body.result.runId);
+    assert.equal(draftIndex.drafts[0].state, "drafted");
+    assert.equal(draftIndex.drafts[0].revision, 1);
+
     const installed = await postJson(apiUrl(server.url, "/api/meta/install-agent"), {
       runId: created.body.result.runId,
     });
@@ -90,6 +97,13 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
       apiUrl(server.url, `/api/artifact-content?id=${encodeURIComponent(draftRecordId)}`),
     );
     assert.match(conflictDraftRecord.text, /"state": "install_conflict"/);
+
+    const conflictDraftIndex = await getJson(apiUrl(server.url, "/api/meta/agent-drafts?state=install_conflict"));
+    assert.equal(conflictDraftIndex.ok, true);
+    assert.equal(conflictDraftIndex.drafts.length, 1);
+    assert.equal(conflictDraftIndex.drafts[0].runId, conflictingDraft.body.result.runId);
+    assert.equal(conflictDraftIndex.drafts[0].state, "install_conflict");
+    assert.equal(conflictDraftIndex.drafts[0].revision, 2);
 
     const run = await postJson(apiUrl(server.url, "/api/agent/run"), {
       agentId: "custom/image-prototype-v1",
