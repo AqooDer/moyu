@@ -68,9 +68,9 @@
 
 ## 6. 文档同步
 
-- [ ] README / README.zh-CN 已同步：本次为运行时与 CLI 基础能力，暂不更新 README。
+- [x] README / README.zh-CN 已同步或确认无需同步：本次为运行时与 CLI 基础能力，暂不更新 README。
 - [x] `docs/` 相关文档已同步
-- [ ] 示例数据 / 原型数据已同步：未改动 UI 示例数据，等待 F-003 合并后再接入设置中心展示。
+- [x] 示例数据 / 原型数据已同步或确认无需同步：未改动 UI 示例数据，F-004 当前通过 CLI 和 Trace 暴露。
 
 ## 7. 提交闭环
 
@@ -78,7 +78,7 @@
 - [x] Commit type：`feat`
 - [x] Commit scope：`artifact`
 - [x] Commit subject：`增加产物知识库回流记录`
-- [ ] Commit hash：
+- [x] Commit hash：`3cf898a`、`f2f4cfb`
 - [x] 已在本清单记录最终结果
 
 ## 8. 完成说明
