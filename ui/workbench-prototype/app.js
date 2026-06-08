@@ -171,6 +171,56 @@ const messages = {
     metaDesignInstall: "安装",
     agentRunTitle: "运行已安装 Agent",
     agentRunDesc: "运行也是对话的一部分。你可以在这里提交参数；右侧检查器只负责显示 Trace、产物和上下文。",
+    settingsCenterEyebrow: "架构控制面板",
+    settingsCenterTitle: "设置中心",
+    settingsCenterDesc:
+      "模型、知识库、Skills、工具与 MCP 共同构成 Agent 运行底座。优先声明默认角色，再允许 Agent 或运行时按状态覆盖。",
+    backToWorkbench: "返回 Workbench",
+    settingsOverviewFallback: "设置数据尚未准备好",
+    settingsSectionOverview: "架构总览",
+    settingsSectionModels: "模型管理",
+    settingsSectionKnowledge: "知识库",
+    settingsSectionSkills: "Skills",
+    settingsSectionTools: "工具",
+    settingsSectionMcp: "MCP",
+    settingsSectionRuntime: "运行策略",
+    settingsHighlights: "关键原则",
+    providersHeading: "Provider 与健康状态",
+    endpointLabel: "端点",
+    providerDefaultFor: "默认用途",
+    providerModels: "可用模型",
+    modelRolesHeading: "模型角色与默认值",
+    modelRoleMode: "默认方式",
+    modelRoleFallback: "回退策略",
+    modelRoleSignals: "运行时信号",
+    knowledgeHeading: "知识库与回流",
+    embeddingRoleLabel: "嵌入角色",
+    knowledgeChunk: "切片策略",
+    knowledgeSources: "来源",
+    knowledgeWriteBack: "回流策略",
+    knowledgeAgents: "连接 Agent",
+    skillsHeading: "Skills 基础层",
+    toolsHeading: "工具基础层",
+    mcpHeading: "MCP 基础层",
+    scopeLabel: "作用范围",
+    sourceLabel: "来源",
+    runtimeHeading: "运行策略与继承",
+    agentDefaultsHeading: "Agent 默认继承示例",
+    agentDefaultModels: "模型角色",
+    agentDefaultKnowledge: "知识库",
+    agentDefaultSkills: "Skills",
+    agentDefaultTools: "工具",
+    agentDefaultMcp: "MCP",
+    agentDefaultRuntime: "运行策略",
+    statusHealthy: "健康",
+    statusDegraded: "降级",
+    statusNotConfigured: "未配置",
+    stateReady: "可用",
+    stateDraft: "草案",
+    stateEnabled: "已启用",
+    stateReview: "待审核",
+    statePlanned: "规划中",
+    settingsOpenHint: "设置中心展示的是 Workspace 默认配置，Agent 可继承后再覆盖。",
   },
   en: {
     currentWork: "Create Image Prototype Agent",
@@ -344,6 +394,56 @@ const messages = {
     metaDesignInstall: "Install",
     agentRunTitle: "Run installed Agent",
     agentRunDesc: "Running is part of the conversation. Submit parameters here; the inspector only shows Trace, artifacts, and context.",
+    settingsCenterEyebrow: "Architecture control plane",
+    settingsCenterTitle: "Settings Center",
+    settingsCenterDesc:
+      "Models, knowledge bases, skills, tools, and MCP shape the agent runtime substrate. Define default roles first, then let agents or runs override with evidence.",
+    backToWorkbench: "Back to Workbench",
+    settingsOverviewFallback: "Settings data is not ready yet",
+    settingsSectionOverview: "Overview",
+    settingsSectionModels: "Models",
+    settingsSectionKnowledge: "Knowledge",
+    settingsSectionSkills: "Skills",
+    settingsSectionTools: "Tools",
+    settingsSectionMcp: "MCP",
+    settingsSectionRuntime: "Runtime",
+    settingsHighlights: "Key principles",
+    providersHeading: "Providers and health",
+    endpointLabel: "Endpoint",
+    providerDefaultFor: "Default for",
+    providerModels: "Models",
+    modelRolesHeading: "Model roles and defaults",
+    modelRoleMode: "Default mode",
+    modelRoleFallback: "Fallback",
+    modelRoleSignals: "Runtime signals",
+    knowledgeHeading: "Knowledge bases and write-back",
+    embeddingRoleLabel: "Embedding role",
+    knowledgeChunk: "Chunking",
+    knowledgeSources: "Sources",
+    knowledgeWriteBack: "Write-back",
+    knowledgeAgents: "Connected agents",
+    skillsHeading: "Skills layer",
+    toolsHeading: "Tools layer",
+    mcpHeading: "MCP layer",
+    scopeLabel: "Scope",
+    sourceLabel: "Source",
+    runtimeHeading: "Runtime policy and inheritance",
+    agentDefaultsHeading: "Agent inheritance examples",
+    agentDefaultModels: "Model roles",
+    agentDefaultKnowledge: "Knowledge bases",
+    agentDefaultSkills: "Skills",
+    agentDefaultTools: "Tools",
+    agentDefaultMcp: "MCP",
+    agentDefaultRuntime: "Runtime mode",
+    statusHealthy: "Healthy",
+    statusDegraded: "Degraded",
+    statusNotConfigured: "Not configured",
+    stateReady: "Ready",
+    stateDraft: "Draft",
+    stateEnabled: "Enabled",
+    stateReview: "In review",
+    statePlanned: "Planned",
+    settingsOpenHint: "The Settings Center shows workspace defaults first; agents can inherit and then override.",
   },
 };
 
@@ -371,6 +471,8 @@ const prototypeState = {
   isRunningAgent: false,
   selectedWorkId: "",
   selectedAgentId: "",
+  selectedSettingsSection: "overview",
+  centerView: "conversation",
   previewRequestId: 0,
   lastRuntimeMessageKey: "runAdvanceReply",
 };
@@ -383,9 +485,11 @@ bindResizers();
 bindComposer();
 bindStaticSelection();
 bindRunActions();
+bindSettings();
 applyLanguage(currentLang);
 loadWorkbenchData();
 renderRuntimeMode();
+renderCenterView();
 
 function bindLanguage() {
   document.querySelectorAll("[data-lang]").forEach((button) => {
@@ -421,6 +525,7 @@ function applyLanguage(lang) {
   localStorage.setItem("moyu.prototype.lang", lang);
   renderWorkbenchData();
   renderRuntimeMode();
+  renderCenterView();
 }
 
 function bindTabs() {
@@ -630,6 +735,38 @@ function bindRunActions() {
   }));
 }
 
+function bindSettings() {
+  document.querySelector("[data-open-settings]")?.addEventListener("click", () => {
+    openSettingsView("overview");
+  });
+  document.querySelector("[data-back-to-workbench]")?.addEventListener("click", () => {
+    openConversationView();
+  });
+}
+
+function openSettingsView(sectionId) {
+  prototypeState.centerView = "settings";
+  if (sectionId) {
+    prototypeState.selectedSettingsSection = sectionId;
+  }
+  renderCenterView();
+}
+
+function openConversationView() {
+  prototypeState.centerView = "conversation";
+  renderCenterView();
+}
+
+function renderCenterView() {
+  document.querySelectorAll("[data-center-view]").forEach((node) => {
+    node.classList.toggle("active", node.getAttribute("data-center-view") === prototypeState.centerView);
+  });
+  document.querySelector("[data-open-settings]")?.classList.toggle("active", prototypeState.centerView === "settings");
+  if (prototypeState.centerView === "settings") {
+    renderSettingsCenter();
+  }
+}
+
 async function loadWorkbenchData() {
   const apiData = await loadWorkbenchDataFromApi();
   if (apiData) {
@@ -733,6 +870,7 @@ function renderWorkbenchData() {
   renderRunState();
   renderStateMessages();
   renderActionHint();
+  renderSettingsCenter();
 }
 
 function syncSelectedWorkWithRun(run, works) {
@@ -1265,6 +1403,7 @@ function createWorkListItem(work, index, selected) {
 }
 
 async function selectWorkbenchWork(work) {
+  openConversationView();
   prototypeState.selectedWorkId = work.id;
   if (work.agentId) {
     prototypeState.selectedAgentId = work.agentId;
@@ -1311,6 +1450,286 @@ function renderCurrentWork(work) {
   if (switcherDescription) {
     switcherDescription.textContent = description;
   }
+}
+
+function renderSettingsCenter() {
+  const navRoot = document.querySelector("[data-settings-nav]");
+  const contentRoot = document.querySelector("[data-settings-content]");
+  if (!navRoot || !contentRoot) {
+    return;
+  }
+
+  const settings = workbenchData?.settings;
+  const dict = messages[currentLang] ?? messages.zh;
+  if (!settings) {
+    navRoot.replaceChildren();
+    contentRoot.replaceChildren(createText("p", dict.settingsOverviewFallback));
+    return;
+  }
+
+  if (!settings.nav.some((item) => item.id === prototypeState.selectedSettingsSection)) {
+    prototypeState.selectedSettingsSection = settings.nav[0]?.id || "overview";
+  }
+
+  navRoot.replaceChildren(...settings.nav.map((item) => createSettingsNavButton(item)));
+  contentRoot.replaceChildren(renderSettingsContent(settings));
+}
+
+function createSettingsNavButton(item) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `settings-nav-item${item.id === prototypeState.selectedSettingsSection ? " active" : ""}`;
+  button.append(
+    createText("strong", localize(item.title, item.id)),
+    createText("small", localize(item.description, item.id)),
+  );
+  button.addEventListener("click", () => {
+    prototypeState.selectedSettingsSection = item.id;
+    renderSettingsCenter();
+  });
+  return button;
+}
+
+function renderSettingsContent(settings) {
+  const section = prototypeState.selectedSettingsSection;
+  switch (section) {
+    case "models":
+      return createSettingsSection([
+        createSettingsSectionHeader("providersHeading", "settingsOpenHint"),
+        createSettingsCardGrid(settings.providers.map(createProviderCard)),
+        createSettingsSectionHeader("modelRolesHeading"),
+        createSettingsCardGrid(settings.modelRoles.map(createModelRoleCard)),
+      ]);
+    case "knowledge":
+      return createSettingsSection([
+        createSettingsSectionHeader("knowledgeHeading"),
+        createSettingsCardGrid(settings.knowledgeBases.map(createKnowledgeCard)),
+      ]);
+    case "skills":
+      return createSettingsSection([
+        createSettingsSectionHeader("skillsHeading"),
+        createSettingsCardGrid(settings.skills.map(createCapabilityCard)),
+      ]);
+    case "tools":
+      return createSettingsSection([
+        createSettingsSectionHeader("toolsHeading"),
+        createSettingsCardGrid(settings.tools.map(createCapabilityCard)),
+      ]);
+    case "mcp":
+      return createSettingsSection([
+        createSettingsSectionHeader("mcpHeading"),
+        createSettingsCardGrid(settings.mcpServers.map(createCapabilityCard)),
+      ]);
+    case "runtime":
+      return createSettingsSection([
+        createSettingsSectionHeader("runtimeHeading"),
+        createSettingsCardGrid(settings.runtimePolicies.map(createRuntimePolicyCard)),
+        createSettingsSectionHeader("agentDefaultsHeading"),
+        createSettingsCardGrid(settings.agentDefaults.map(createAgentDefaultCard)),
+      ]);
+    case "overview":
+    default:
+      return createSettingsSection([
+        createSettingsOverviewHero(settings.overview),
+        createSettingsSectionHeader("settingsHighlights"),
+        createSettingsCardGrid(settings.overview.highlights.map(createOverviewHighlightCard)),
+      ]);
+  }
+}
+
+function createSettingsSection(children) {
+  const container = document.createElement("div");
+  container.className = "settings-section";
+  container.append(...children);
+  return container;
+}
+
+function createSettingsSectionHeader(titleKey, noteKey) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const block = document.createElement("div");
+  block.className = "settings-section-head";
+  block.append(createText("strong", dict[titleKey] || titleKey));
+  if (noteKey) {
+    block.append(createText("small", dict[noteKey] || noteKey));
+  }
+  return block;
+}
+
+function createSettingsOverviewHero(overview) {
+  const card = document.createElement("section");
+  card.className = "settings-hero-card";
+  card.append(
+    createText("strong", localize(overview.title, "")),
+    createText("p", localize(overview.description, "")),
+  );
+  return card;
+}
+
+function createOverviewHighlightCard(item) {
+  const card = document.createElement("article");
+  card.className = "settings-card compact";
+  card.append(
+    createText("span", localize(item.label, "")),
+    createText("strong", localize(item.value, "")),
+    createText("p", localize(item.note, "")),
+  );
+  return card;
+}
+
+function createProviderCard(provider) {
+  const card = document.createElement("article");
+  card.className = "settings-card";
+  const head = document.createElement("div");
+  head.className = "settings-card-head";
+  head.append(createText("strong", provider.name), createStatusBadge(provider.status, "provider"));
+
+  card.append(
+    head,
+    createLabeledText("endpointLabel", provider.endpoint),
+    createLabeledTags("providerDefaultFor", provider.defaultFor),
+    createLabeledTags("providerModels", provider.models),
+    createText("p", localize(provider.note, "")),
+  );
+  return card;
+}
+
+function createModelRoleCard(role) {
+  const card = document.createElement("article");
+  card.className = "settings-card";
+  card.append(
+    createText("strong", localize(role.title, role.id)),
+    createText("p", localize(role.description, "")),
+    createLabeledText("modelRoleMode", localize(role.defaultMode, "")),
+    createLabeledText("model", role.defaultModel),
+    createLabeledText("modelRoleFallback", localize(role.fallback, "")),
+    createLabeledTags("modelRoleSignals", role.runtimeSignals),
+  );
+  return card;
+}
+
+function createKnowledgeCard(item) {
+  const card = document.createElement("article");
+  card.className = "settings-card";
+  const head = document.createElement("div");
+  head.className = "settings-card-head";
+  head.append(createText("strong", localize(item.title, item.id)), createStatusBadge(item.state, "capability"));
+
+  card.append(
+    head,
+    createLabeledText("embeddingRoleLabel", item.embeddingRole),
+    createLabeledText("knowledgeChunk", localize(item.chunkStrategy, "")),
+    createLabeledTags("knowledgeAgents", item.connectedAgents),
+    createLabeledTags("knowledgeSources", item.sources),
+    createLabeledText("knowledgeWriteBack", localize(item.writeBack, "")),
+  );
+  return card;
+}
+
+function createCapabilityCard(item) {
+  const card = document.createElement("article");
+  card.className = "settings-card";
+  const head = document.createElement("div");
+  head.className = "settings-card-head";
+  head.append(createText("strong", localize(item.title, item.id)), createStatusBadge(item.state, "capability"));
+
+  card.append(
+    head,
+    createLabeledText("scopeLabel", localize(item.scope, "")),
+    createLabeledText("sourceLabel", localize(item.source, "")),
+    createText("p", localize(item.note, "")),
+  );
+  return card;
+}
+
+function createRuntimePolicyCard(item) {
+  const card = document.createElement("article");
+  card.className = "settings-card";
+  card.append(
+    createText("strong", localize(item.title, item.id)),
+    createText("p", localize(item.value, "")),
+    createText("small", localize(item.note, "")),
+  );
+  return card;
+}
+
+function createAgentDefaultCard(item) {
+  const card = document.createElement("article");
+  card.className = "settings-card";
+  card.append(
+    createText("strong", `${localize(item.title, item.agentId)} · ${item.agentId}`),
+    createLabeledTags("agentDefaultModels", item.modelRoles),
+    createLabeledTags("agentDefaultKnowledge", item.knowledgeBases),
+    createLabeledTags("agentDefaultSkills", item.skills),
+    createLabeledTags("agentDefaultTools", item.tools),
+    createLabeledTags("agentDefaultMcp", item.mcpServers),
+    createLabeledText("agentDefaultRuntime", localize(item.runtimeMode, "")),
+  );
+  return card;
+}
+
+function createSettingsCardGrid(cards) {
+  const grid = document.createElement("div");
+  grid.className = "settings-card-grid";
+  grid.append(...cards);
+  return grid;
+}
+
+function createLabeledText(labelKey, value) {
+  const row = document.createElement("div");
+  row.className = "settings-inline-block";
+  row.append(createText("span", resolveSettingsLabel(labelKey)), createText("strong", value || "-"));
+  return row;
+}
+
+function createLabeledTags(labelKey, values) {
+  const row = document.createElement("div");
+  row.className = "settings-inline-block";
+  row.append(createText("span", resolveSettingsLabel(labelKey)));
+  const tags = document.createElement("div");
+  tags.className = "settings-tag-list";
+  (Array.isArray(values) && values.length > 0 ? values : ["-"]).forEach((value) => {
+    const tag = document.createElement("span");
+    tag.className = "settings-tag";
+    tag.textContent = value;
+    tags.append(tag);
+  });
+  row.append(tags);
+  return row;
+}
+
+function createStatusBadge(value, kind) {
+  const badge = document.createElement("span");
+  badge.className = "settings-badge";
+  badge.dataset.variant = value;
+  badge.textContent = kind === "provider" ? resolveProviderStatus(value) : resolveCapabilityState(value);
+  return badge;
+}
+
+function resolveProviderStatus(value) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    healthy: "statusHealthy",
+    degraded: "statusDegraded",
+    not_configured: "statusNotConfigured",
+  };
+  return dict[keyMap[value] || "notAvailable"] || value;
+}
+
+function resolveCapabilityState(value) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    ready: "stateReady",
+    draft: "stateDraft",
+    enabled: "stateEnabled",
+    review: "stateReview",
+    planned: "statePlanned",
+  };
+  return dict[keyMap[value] || "notAvailable"] || value;
+}
+
+function resolveSettingsLabel(labelKey) {
+  const dict = messages[currentLang] ?? messages.zh;
+  return dict[labelKey] || labelKey;
 }
 
 function createListEmptyState(titleKey, descriptionKey) {

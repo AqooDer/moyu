@@ -79,7 +79,7 @@
           </section>
 
           <footer class="panel-footer">
-            <button class="footer-button" type="button"><span>⚙</span><span data-i18n="settings">设置</span></button>
+            <button class="footer-button" type="button" data-open-settings><span>⚙</span><span data-i18n="settings">设置</span></button>
             <span class="runtime-line"><i></i><span data-i18n="runtimeReady">Moyu Core 0.3.1 已连接</span></span>
           </footer>
         </aside>
@@ -93,24 +93,25 @@
         <div class="resize-handle left-resizer" data-resizer="left" role="separator" aria-orientation="vertical"></div>
 
         <main class="conversation-pane" aria-label="Conversation">
-          <section class="conversation-header">
-            <div>
-              <span class="eyebrow" data-i18n="workSession">任务会话</span>
-              <h1 data-i18n="currentWork">创建生图原型 Agent</h1>
-              <div class="session-meta">
-                <span data-i18n="waitingConfirm">等待确认</span>
-                <span data-i18n="recipeLoaded">Recipe 已加载</span>
+          <section class="conversation-view active" data-center-view="conversation">
+            <section class="conversation-header">
+              <div>
+                <span class="eyebrow" data-i18n="workSession">任务会话</span>
+                <h1 data-i18n="currentWork">创建生图原型 Agent</h1>
+                <div class="session-meta">
+                  <span data-i18n="waitingConfirm">等待确认</span>
+                  <span data-i18n="recipeLoaded">Recipe 已加载</span>
+                </div>
+                <div class="work-progress" aria-label="Work progress">
+                  <span class="done" data-i18n="progressContent">需求澄清</span>
+                  <span class="active" data-i18n="progressVisual">能力契约</span>
+                  <span data-i18n="progressOutline">文件骨架</span>
+                  <span data-i18n="progressDeck">验证发布</span>
+                </div>
               </div>
-              <div class="work-progress" aria-label="Work progress">
-                <span class="done" data-i18n="progressContent">需求澄清</span>
-                <span class="active" data-i18n="progressVisual">能力契约</span>
-                <span data-i18n="progressOutline">文件骨架</span>
-                <span data-i18n="progressDeck">验证发布</span>
-              </div>
-            </div>
-          </section>
+            </section>
 
-          <section class="message-scroll" data-message-scroll>
+            <section class="message-scroll" data-message-scroll>
             <article class="message user-message">
               <div class="avatar-bubble">Z</div>
               <div class="message-body">
@@ -268,22 +269,43 @@
                 </div>
               </div>
             </article>
+            </section>
+
+            <section class="composer" aria-label="Message composer">
+              <div class="composer-tools">
+                <button type="button" title="Attach">＋</button>
+                <button type="button" title="Agent">@</button>
+                <button type="button" title="Context">#</button>
+              </div>
+              <label>
+                <span class="visually-hidden" data-i18n="messageInput">消息输入</span>
+                <textarea data-i18n-placeholder="composerPlaceholder" placeholder="告诉元智能体这个 Agent 应该具备什么能力..."></textarea>
+              </label>
+              <div class="composer-bottom">
+                <span data-i18n="selectedAgent">当前：元智能体 / create-agent</span>
+                <button class="send-button" type="button" data-send-message><span data-i18n="send">发送</span><kbd>⌘↵</kbd></button>
+              </div>
+            </section>
           </section>
 
-          <section class="composer" aria-label="Message composer">
-            <div class="composer-tools">
-              <button type="button" title="Attach">＋</button>
-              <button type="button" title="Agent">@</button>
-              <button type="button" title="Context">#</button>
-            </div>
-            <label>
-              <span class="visually-hidden" data-i18n="messageInput">消息输入</span>
-              <textarea data-i18n-placeholder="composerPlaceholder" placeholder="告诉元智能体这个 Agent 应该具备什么能力..."></textarea>
-            </label>
-            <div class="composer-bottom">
-              <span data-i18n="selectedAgent">当前：元智能体 / create-agent</span>
-              <button class="send-button" type="button" data-send-message><span data-i18n="send">发送</span><kbd>⌘↵</kbd></button>
-            </div>
+          <section class="settings-view" data-center-view="settings">
+            <section class="settings-header">
+              <div class="settings-hero">
+                <span class="eyebrow" data-i18n="settingsCenterEyebrow">架构控制面板</span>
+                <h1 data-i18n="settingsCenterTitle">设置中心</h1>
+                <p data-i18n="settingsCenterDesc">
+                  模型、知识库、Skills、工具与 MCP 共同构成 Agent 运行底座。优先声明默认角色，再允许 Agent 或运行时按状态覆盖。
+                </p>
+              </div>
+              <div class="settings-header-actions">
+                <button class="ghost-button" type="button" data-back-to-workbench data-i18n="backToWorkbench">返回 Workbench</button>
+              </div>
+            </section>
+
+            <section class="settings-shell">
+              <aside class="settings-nav" data-settings-nav></aside>
+              <div class="settings-content" data-settings-content></div>
+            </section>
           </section>
         </main>
 

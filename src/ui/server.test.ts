@@ -122,6 +122,8 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedDraft.selectedRun.id, created.body.result.runId);
     assert.equal(selectedDraft.selectedRun.agentId, "meta/create-agent");
     assert.equal(selectedDraft.artifacts.length, created.body.result.files.length);
+    assert.equal(Array.isArray(selectedDraft.settings.nav), true);
+    assert.equal(selectedDraft.settings.nav.some((item: { id?: string }) => item.id === "models"), true);
 
     const selectedRun = await getJson(
       apiUrl(server.url, `/api/workbench?runId=${encodeURIComponent(run.body.result.run_id)}`),
@@ -130,6 +132,7 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedRun.selectedRun.agentId, "custom/image-prototype-v1");
     assert.equal(selectedRun.selectedRun.dryRun, true);
     assert.equal(selectedRun.artifacts.length, 0);
+    assert.equal(selectedRun.settings.agentDefaults.some((item: { agentId?: string }) => item.agentId === "image-gen/prototype-v1"), true);
   } finally {
     await server.close();
     process.chdir(previousCwd);

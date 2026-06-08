@@ -11,6 +11,7 @@
 - 右侧区域：当前任务的产物、Trace、上下文和详情
 - 暂不做节点画布编辑器；Agent 调用 Agent 以运行步骤和 Trace 呈现
 - 当前演示主线：用户通过对话让“元智能体”创建一个可运行的 `image-gen/prototype-v1` Agent，产物是 Agent 契约、执行入口、示例 Recipe 与验证 Trace
+- 当前已补充“设置中心”原型：围绕 Models / Knowledge / Skills / Tools / MCP / Runtime 展示 Workspace 默认配置与 Agent 继承关系
 
 ## 打开方式
 
@@ -102,6 +103,7 @@ npm run dev -- agent validate /private/tmp/moyu-meta-create-agent/custom__meta-i
 - 当前 Agent 产物列表
 - 当前 Agent 创建 Trace
 - Agent 上下文与运行详情
+- 设置中心：模型角色、知识库、Skill、Tool、MCP 与运行策略
 - 中英文切换
 - 读取 `data/workbench.json` 中的运行与产物数据
 
