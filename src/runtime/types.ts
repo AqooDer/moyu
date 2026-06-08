@@ -92,10 +92,38 @@ export interface ArtifactRecord {
   createdAt: string;
 }
 
+export type KnowledgeWriteBackDecision = "approved";
+
+export interface KnowledgeWriteBackRecord {
+  id: string;
+  artifactId: string;
+  runId: string;
+  agentId: string;
+  collectionId: string;
+  source: {
+    producerStepId: string;
+    artifactType: string;
+    artifactRole: ArtifactRole;
+    artifactName: string;
+    artifactPath: string;
+    artifactSizeBytes: number;
+    artifactSha256: string;
+    artifactCreatedAt: string;
+  };
+  review: {
+    decision: KnowledgeWriteBackDecision;
+    reviewer: string;
+    note: string | null;
+    reviewedAt: string;
+  };
+  createdAt: string;
+}
+
 export interface RuntimeTrace {
   schemaVersion: 1;
   run: RunRecord;
   steps: StepRecord[];
   artifacts: ArtifactRecord[];
+  knowledgeWriteBacks: KnowledgeWriteBackRecord[];
   notes: string[];
 }

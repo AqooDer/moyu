@@ -22,6 +22,7 @@ export class RuntimeStore {
       run,
       steps: [],
       artifacts: [],
+      knowledgeWriteBacks: [],
       notes: [],
     };
   }

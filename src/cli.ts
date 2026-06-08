@@ -20,6 +20,12 @@ import {
   openArtifact,
 } from "./runtime/artifacts.js";
 import {
+  formatKnowledgeWriteBackList,
+  formatKnowledgeWriteBackResult,
+  listKnowledgeWriteBacks,
+  markArtifactForKnowledgeBase,
+} from "./runtime/artifact-writebacks.js";
+import {
   formatRunHistoryDetail,
   formatRunHistoryList,
   getRunHistoryDetail,
@@ -268,6 +274,47 @@ artifactCommand
       return;
     }
     console.log(`opened: ${artifact.path}`);
+  });
+
+artifactCommand
+  .command("write-back")
+  .description("mark an approved artifact for knowledge-base write-back")
+  .argument("<artifact_id>", "artifact id")
+  .requiredOption("--collection <id>", "target knowledge-base collection id")
+  .requiredOption("--reviewer <name>", "reviewer who approved the write-back")
+  .option("--note <text>", "review note")
+  .option("--traces <path>", "traces root directory", "traces")
+  .action(async (artifactId, opts) => {
+    const result = await markArtifactForKnowledgeBase({
+      artifactId,
+      collectionId: opts.collection,
+      reviewer: opts.reviewer,
+      note: opts.note,
+      tracesRoot: opts.traces,
+    });
+    if (!result) {
+      console.error(`Artifact not found: ${artifactId}`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(formatKnowledgeWriteBackResult(result));
+  });
+
+artifactCommand
+  .command("write-backs")
+  .description("list artifact knowledge-base write-back records")
+  .option("--run <run_id>", "only list write-backs from one run")
+  .option("--artifact <artifact_id>", "only list write-backs for one artifact")
+  .option("--collection <id>", "only list write-backs for one knowledge-base collection")
+  .option("--traces <path>", "traces root directory", "traces")
+  .action(async (opts) => {
+    const items = await listKnowledgeWriteBacks({
+      runId: opts.run,
+      artifactId: opts.artifact,
+      collectionId: opts.collection,
+      tracesRoot: opts.traces,
+    });
+    console.log(formatKnowledgeWriteBackList(items));
   });
 
 const uiCommand = program.command("ui").description("prepare local UI prototype data");

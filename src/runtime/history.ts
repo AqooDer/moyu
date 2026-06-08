@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { platform } from "node:os";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import type { ArtifactRecord, RuntimeTrace } from "./types.js";
+import type { ArtifactRecord, KnowledgeWriteBackRecord, RuntimeTrace } from "./types.js";
 
 export interface RunHistoryItem {
   id: string;
@@ -127,6 +127,8 @@ export function formatRunHistoryDetail(detail: RunHistoryDetail) {
     lines.push(...formatStepLines(trace));
     lines.push("", "artifacts:");
     lines.push(...formatArtifactLines(trace.artifacts));
+    lines.push("", "knowledge_write_backs:");
+    lines.push(...formatKnowledgeWriteBackLines(trace.knowledgeWriteBacks ?? []));
     if (trace.notes.length > 0) {
       lines.push("", "notes:");
       lines.push(...trace.notes.map((note) => `- ${note}`));
@@ -239,6 +241,17 @@ function formatArtifactLines(artifacts: ArtifactRecord[]) {
       artifact.sizeBytes,
     )} sha256=${artifact.sha256} path=${relativePath}`;
   });
+}
+
+function formatKnowledgeWriteBackLines(writeBacks: KnowledgeWriteBackRecord[]) {
+  if (writeBacks.length === 0) {
+    return ["- none"];
+  }
+
+  return writeBacks.map(
+    (item) =>
+      `- ${item.id} artifact=${item.artifactId} collection=${item.collectionId} reviewer=${item.review.reviewer} reviewed_at=${item.review.reviewedAt}`,
+  );
 }
 
 function formatObjectLines(value: unknown) {
