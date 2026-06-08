@@ -89,7 +89,11 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
   }
 
   if (method === "GET" && url.pathname === "/api/workbench") {
-    writeJson(response, 200, await buildWorkbenchData({ selectedRunId: url.searchParams.get("runId") || undefined }));
+    writeJson(
+      response,
+      200,
+      await buildServerWorkbenchData(rootDir, { selectedRunId: url.searchParams.get("runId") || undefined }),
+    );
     return;
   }
 
@@ -97,7 +101,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
     writeJson(response, 200, {
       ok: true,
       schemaVersion: 1,
-      settings: buildWorkbenchSettings(),
+      settings: await buildWorkbenchSettings({ configPath: workspaceConfigPath(rootDir) }),
     });
     return;
   }
@@ -207,7 +211,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       description: payload.description,
       persist: Boolean(payload.persist),
     });
-    const workbench = await buildWorkbenchData();
+    const workbench = await buildServerWorkbenchData(rootDir);
     writeJson(response, result.validation.ok ? 200 : 422, { ok: result.validation.ok, result, workbench });
     return;
   }
@@ -228,7 +232,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       writeJson(response, result.installed ? 200 : 422, {
         ok: result.installed,
         result,
-        workbench: await buildWorkbenchData(),
+        workbench: await buildServerWorkbenchData(rootDir),
       });
     } catch (error) {
       if (error instanceof InstallConflictError) {
@@ -279,7 +283,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       ok: true,
       result: parseRunSummary(summary),
       summary,
-      workbench: await buildWorkbenchData(),
+      workbench: await buildServerWorkbenchData(rootDir),
     });
     return;
   }
@@ -290,6 +294,22 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
   }
 
   await serveStaticFile(response, rootDir, url.pathname, method === "HEAD");
+}
+
+function buildServerWorkbenchData(
+  rootDir: string,
+  input: {
+    selectedRunId?: string;
+  } = {},
+) {
+  return buildWorkbenchData({
+    ...input,
+    configPath: workspaceConfigPath(rootDir),
+  });
+}
+
+function workspaceConfigPath(rootDir: string) {
+  return path.join(rootDir, "moyu.config.json");
 }
 
 async function listenWithFallback(

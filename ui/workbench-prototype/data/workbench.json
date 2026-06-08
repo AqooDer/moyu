@@ -557,10 +557,16 @@
           "docs/*.md",
           "README*.md"
         ],
+        "writeBackEnabled": true,
         "writeBack": {
           "zh": "允许将审核后的规格与总结回流",
           "en": "Allow reviewed specs and summaries to flow back"
-        }
+        },
+        "allowedArtifactTypes": [
+          "markdown",
+          "spec",
+          "summary"
+        ]
       },
       {
         "id": "workspace-visual",
@@ -581,10 +587,16 @@
           "brand/**",
           "artifacts/ui-concepts/**"
         ],
+        "writeBackEnabled": true,
         "writeBack": {
           "zh": "允许将被采纳的设计稿加入集合",
           "en": "Accepted design drafts can be added back"
-        }
+        },
+        "allowedArtifactTypes": [
+          "image",
+          "image-description",
+          "design-note"
+        ]
       }
     ],
     "skills": [

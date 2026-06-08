@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -33,6 +33,60 @@ test("Settings API exposes the Workbench settings center independently", async (
     assert.equal(response.settings.tools.some((item: { id?: string }) => item.id === "artifact-write"), true);
     assert.equal(response.settings.mcpServers.some((item: { id?: string }) => item.id === "filesystem-mcp"), true);
     assert.equal(response.settings.runtimePolicies.length > 0, true);
+  } finally {
+    await server.close();
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test("Settings API exposes workspace knowledge base config", async () => {
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-settings-kb-test-"));
+  await writeFile(
+    path.join(workspace, "moyu.config.json"),
+    JSON.stringify({
+      knowledge_bases: {
+        "workspace-research": {
+          title: {
+            zh: "研究资料知识库",
+            en: "Research KB",
+          },
+          state: "ready",
+          embedding_role: "knowledge-embedding",
+          chunk_strategy: {
+            zh: "按来源和摘要切片",
+            en: "Chunk by source and summary",
+          },
+          connected_agents: ["research/draft"],
+          sources: ["research/**/*.md"],
+          write_back: {
+            enabled: true,
+            policy: {
+              zh: "允许审核后的研究摘要回流",
+              en: "Allow reviewed research summaries to flow back",
+            },
+            allowed_artifact_types: ["summary", "citation-note"],
+          },
+        },
+      },
+    }),
+    "utf8",
+  );
+  const server = await serveWorkbench({ port: 0, rootDir: workspace });
+
+  try {
+    const response = await getJson(apiUrl(server.url, "/api/settings"));
+    const researchKb = response.settings.knowledgeBases.find(
+      (item: { id?: string }) => item.id === "workspace-research",
+    );
+    assert.equal(researchKb.title.zh, "研究资料知识库");
+    assert.equal(researchKb.state, "ready");
+    assert.equal(researchKb.embeddingRole, "knowledge-embedding");
+    assert.equal(researchKb.chunkStrategy.en, "Chunk by source and summary");
+    assert.deepEqual(researchKb.connectedAgents, ["research/draft"]);
+    assert.deepEqual(researchKb.sources, ["research/**/*.md"]);
+    assert.equal(researchKb.writeBackEnabled, true);
+    assert.equal(researchKb.writeBack.zh, "允许审核后的研究摘要回流");
+    assert.deepEqual(researchKb.allowedArtifactTypes, ["summary", "citation-note"]);
   } finally {
     await server.close();
     await rm(workspace, { recursive: true, force: true });

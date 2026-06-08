@@ -211,6 +211,8 @@ const messages = {
     knowledgeChunk: "切片策略",
     knowledgeSources: "来源",
     knowledgeWriteBack: "回流策略",
+    knowledgeWriteBackEnabled: "回流启用",
+    knowledgeAllowedArtifacts: "允许产物类型",
     knowledgeAgents: "连接 Agent",
     skillsHeading: "Skills 基础层",
     toolsHeading: "工具基础层",
@@ -447,6 +449,8 @@ const messages = {
     knowledgeChunk: "Chunking",
     knowledgeSources: "Sources",
     knowledgeWriteBack: "Write-back",
+    knowledgeWriteBackEnabled: "Write-back enabled",
+    knowledgeAllowedArtifacts: "Allowed artifact types",
     knowledgeAgents: "Connected agents",
     skillsHeading: "Skills layer",
     toolsHeading: "Tools layer",
@@ -1807,6 +1811,7 @@ function createModelRoleCard(role) {
 }
 
 function createKnowledgeCard(item) {
+  const dict = messages[currentLang] ?? messages.zh;
   const card = document.createElement("article");
   card.className = "settings-card";
   const head = document.createElement("div");
@@ -1819,7 +1824,12 @@ function createKnowledgeCard(item) {
     createLabeledText("knowledgeChunk", localize(item.chunkStrategy, "")),
     createLabeledTags("knowledgeAgents", item.connectedAgents),
     createLabeledTags("knowledgeSources", item.sources),
+    createLabeledText(
+      "knowledgeWriteBackEnabled",
+      typeof item.writeBackEnabled === "boolean" ? (item.writeBackEnabled ? dict.yes : dict.no) : "-",
+    ),
     createLabeledText("knowledgeWriteBack", localize(item.writeBack, "")),
+    createLabeledTags("knowledgeAllowedArtifacts", item.allowedArtifactTypes),
   );
   return card;
 }

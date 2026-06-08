@@ -18,5 +18,70 @@
       "provider": "openai-compat",
       "model": "gpt-image-2"
     }
+  },
+  "knowledge_bases": {
+    "workspace-product": {
+      "title": {
+        "zh": "产品与架构知识库",
+        "en": "Product and architecture KB"
+      },
+      "state": "ready",
+      "embedding_role": "knowledge-embedding",
+      "chunk_strategy": {
+        "zh": "按文档标题、段落和代码块切片",
+        "en": "Chunk by headings, paragraphs, and code blocks"
+      },
+      "connected_agents": [
+        "meta/create-agent",
+        "docs-organizer/draft"
+      ],
+      "sources": [
+        "docs/*.md",
+        "README*.md"
+      ],
+      "write_back": {
+        "enabled": true,
+        "policy": {
+          "zh": "允许将审核后的规格、总结和设计说明回流",
+          "en": "Allow reviewed specs, summaries, and design notes to flow back"
+        },
+        "allowed_artifact_types": [
+          "markdown",
+          "spec",
+          "summary"
+        ]
+      }
+    },
+    "workspace-visual": {
+      "title": {
+        "zh": "视觉参考知识库",
+        "en": "Visual reference KB"
+      },
+      "state": "draft",
+      "embedding_role": "knowledge-embedding",
+      "chunk_strategy": {
+        "zh": "图文混合，图像描述单独建索引",
+        "en": "Multimodal with a separate image-description index"
+      },
+      "connected_agents": [
+        "image-gen/prototype-v1"
+      ],
+      "sources": [
+        "brand/**",
+        "artifacts/ui-concepts/**"
+      ],
+      "write_back": {
+        "enabled": true,
+        "policy": {
+          "zh": "允许将被采纳的设计稿和图像描述加入集合",
+          "en": "Allow accepted design drafts and image descriptions to flow back"
+        },
+        "allowed_artifact_types": [
+          "image",
+          "image-description",
+          "design-note"
+        ]
+      }
+    }
   }
 }

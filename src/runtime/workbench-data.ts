@@ -3,6 +3,11 @@ import path from "node:path";
 import { listAgents } from "../agent/registry.js";
 import { listArtifacts, type ArtifactHistoryItem } from "./artifacts.js";
 import { getRunHistoryDetail, listRunHistory, type RunHistoryItem } from "./history.js";
+import {
+  readWorkspaceKnowledgeBaseConfig,
+  type KnowledgeBaseConfig,
+  type WorkspaceKnowledgeBaseConfig,
+} from "./knowledge-bases.js";
 import type { ModelRoleResolution, RuntimeTrace, StepRecord } from "./types.js";
 
 export interface WorkbenchData {
@@ -126,7 +131,9 @@ export interface WorkbenchKnowledgeBase {
   chunkStrategy: { zh: string; en: string };
   connectedAgents: string[];
   sources: string[];
+  writeBackEnabled: boolean;
   writeBack: { zh: string; en: string };
+  allowedArtifactTypes: string[];
 }
 
 export interface WorkbenchCapability {
@@ -177,6 +184,7 @@ export async function buildWorkbenchData(
     artifactLimit?: number;
     prototypeRoot?: string;
     selectedRunId?: string;
+    configPath?: string;
   } = {},
 ): Promise<WorkbenchData> {
   const tracesRoot = input.tracesRoot ?? "traces";
@@ -205,7 +213,7 @@ export async function buildWorkbenchData(
     works: getWorkbenchWorks(runs, selectedRun),
     artifacts: workbenchArtifacts,
     agents,
-    settings: buildWorkbenchSettings(),
+    settings: await buildWorkbenchSettings({ configPath: input.configPath }),
   };
 }
 
@@ -215,6 +223,7 @@ export async function writeWorkbenchData(
     tracesRoot?: string;
     artifactLimit?: number;
     prototypeRoot?: string;
+    configPath?: string;
   } = {},
 ) {
   const data = await buildWorkbenchData(input);
@@ -538,7 +547,15 @@ async function getWorkbenchAgents() {
   ].sort((left, right) => left.id.localeCompare(right.id));
 }
 
-export function buildWorkbenchSettings(): WorkbenchSettings {
+export async function buildWorkbenchSettings(
+  input: {
+    configPath?: string;
+    knowledgeBaseConfig?: WorkspaceKnowledgeBaseConfig;
+  } = {},
+): Promise<WorkbenchSettings> {
+  const knowledgeBaseConfig =
+    input.knowledgeBaseConfig ?? (await readWorkspaceKnowledgeBaseConfig(input.configPath));
+
   return {
     nav: [
       {
@@ -682,28 +699,7 @@ export function buildWorkbenchSettings(): WorkbenchSettings {
         runtimeSignals: ["style", "size", "count", "artifact_feedback"],
       },
     ],
-    knowledgeBases: [
-      {
-        id: "workspace-product",
-        title: { zh: "产品与架构知识库", en: "Product and architecture KB" },
-        state: "ready",
-        embeddingRole: "knowledge-embedding",
-        chunkStrategy: { zh: "按文档段落 + 标题切片", en: "Chunk by headings and document paragraphs" },
-        connectedAgents: ["meta/create-agent", "docs-organizer/draft"],
-        sources: ["docs/*.md", "README*.md"],
-        writeBack: { zh: "允许将审核后的规格与总结回流", en: "Allow reviewed specs and summaries to flow back" },
-      },
-      {
-        id: "workspace-visual",
-        title: { zh: "视觉参考知识库", en: "Visual reference KB" },
-        state: "draft",
-        embeddingRole: "knowledge-embedding",
-        chunkStrategy: { zh: "图文混合，图像描述单独建索引", en: "Multimodal with separate image-description index" },
-        connectedAgents: ["image-gen/prototype-v1"],
-        sources: ["brand/**", "artifacts/ui-concepts/**"],
-        writeBack: { zh: "允许将被采纳的设计稿加入集合", en: "Accepted design drafts can be added back" },
-      },
-    ],
+    knowledgeBases: toWorkbenchKnowledgeBases(knowledgeBaseConfig),
     skills: [
       {
         id: "image_gen_via_relay",
@@ -862,5 +858,24 @@ export function buildWorkbenchSettings(): WorkbenchSettings {
         },
       },
     ],
+  };
+}
+
+function toWorkbenchKnowledgeBases(config: WorkspaceKnowledgeBaseConfig): WorkbenchKnowledgeBase[] {
+  return Object.values(config.knowledgeBases).map(toWorkbenchKnowledgeBase);
+}
+
+function toWorkbenchKnowledgeBase(collection: KnowledgeBaseConfig): WorkbenchKnowledgeBase {
+  return {
+    id: collection.id,
+    title: collection.title,
+    state: collection.state,
+    embeddingRole: collection.embeddingRole,
+    chunkStrategy: collection.chunkStrategy,
+    connectedAgents: collection.connectedAgents,
+    sources: collection.sources,
+    writeBackEnabled: collection.writeBack.enabled,
+    writeBack: collection.writeBack.policy,
+    allowedArtifactTypes: collection.writeBack.allowedArtifactTypes,
   };
 }
