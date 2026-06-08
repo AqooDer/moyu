@@ -3,5 +3,11 @@ dist/
 traces/
 artifacts/
 .env
+.env.*
+!.env.example
 moyu.config.json
 .DS_Store
+.idea/
+.codex/skills/
+coverage/
+*.log
