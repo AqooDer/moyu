@@ -72,6 +72,7 @@ export async function readAgentDraftRecordByRun(runId: string) {
 
 export async function markAgentDraftInstalled(input: {
   runId: string;
+  agentId?: string;
   targetPath: string;
   validation: AgentValidationResult;
 }) {
@@ -86,6 +87,7 @@ export async function markAgentDraftInstalled(input: {
   const updated: AgentDraftRecord = {
     ...record,
     revision: record.revision + 1,
+    agentId: input.agentId ?? record.agentId,
     targetPath: path.resolve(input.targetPath),
     state: input.validation.ok ? "installed" : "validation_failed",
     validation: input.validation,

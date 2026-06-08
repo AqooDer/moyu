@@ -204,7 +204,26 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(conflict.status, 409);
     assert.equal(conflict.body.code, "agent_exists");
     assert.equal(conflict.body.agentId, "custom/image-prototype-v1");
+    assert.equal(typeof conflict.body.sourcePath, "string");
+    assert.equal(typeof conflict.body.targetPath, "string");
     assert.equal(conflict.body.suggestion, "create_new_version_or_diff_merge");
+    assert.equal(conflict.body.nextActions.createVersion.endpoint, "/api/meta/install-agent/version");
+    assert.equal(conflict.body.nextActions.createVersion.method, "POST");
+    assert.deepEqual(conflict.body.nextActions.createVersion.payload, {
+      runId: conflictingDraft.body.result.runId,
+    });
+    assert.equal(conflict.body.nextActions.createVersion.proposedAgentId, "custom/image-prototype-v2");
+    assert.match(conflict.body.nextActions.createVersion.proposedTargetPath, /custom__image-prototype-v2$/);
+    assert.match(conflict.body.nextActions.viewDiff.endpoint, /^\/api\/meta\/install-agent\/diff\?runId=/);
+    assert.equal(typeof conflict.body.diffSummary.changed, "number");
+
+    const diff = await getJson(
+      apiUrl(server.url, `/api/meta/install-agent/diff?runId=${encodeURIComponent(conflictingDraft.body.result.runId)}`),
+    );
+    assert.equal(diff.ok, true);
+    assert.equal(diff.diff.agentId, "custom/image-prototype-v1");
+    assert.equal(diff.diff.targetExists, true);
+    assert.equal(Array.isArray(diff.diff.files.changed), true);
 
     const conflictDraftRecord = await getJson(
       apiUrl(server.url, `/api/artifact-content?id=${encodeURIComponent(draftRecordId)}`),
@@ -217,6 +236,28 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(conflictDraftIndex.drafts[0].runId, conflictingDraft.body.result.runId);
     assert.equal(conflictDraftIndex.drafts[0].state, "install_conflict");
     assert.equal(conflictDraftIndex.drafts[0].revision, 2);
+
+    const versionedInstall = await postJson(apiUrl(server.url, "/api/meta/install-agent/version"), {
+      runId: conflictingDraft.body.result.runId,
+    });
+    assert.equal(versionedInstall.status, 200);
+    assert.equal(versionedInstall.body.ok, true);
+    assert.equal(versionedInstall.body.result.installed, true);
+    assert.equal(versionedInstall.body.result.versioned, true);
+    assert.equal(versionedInstall.body.result.originalAgentId, "custom/image-prototype-v1");
+    assert.equal(versionedInstall.body.result.agentId, "custom/image-prototype-v2");
+
+    const versionedAgents = await getJson(apiUrl(server.url, "/api/agents"));
+    assert.deepEqual(
+      versionedAgents.agents.map((agent: { agentId: string }) => agent.agentId),
+      ["custom/image-prototype-v1", "custom/image-prototype-v2"],
+    );
+
+    const installedVersionDraftRecord = await getJson(
+      apiUrl(server.url, `/api/artifact-content?id=${encodeURIComponent(draftRecordId)}`),
+    );
+    assert.match(installedVersionDraftRecord.text, /"agentId": "custom\/image-prototype-v2"/);
+    assert.match(installedVersionDraftRecord.text, /"state": "installed"/);
 
     const run = await postJson(apiUrl(server.url, "/api/agent/run"), {
       agentId: "custom/image-prototype-v1",

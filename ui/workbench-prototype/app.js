@@ -149,6 +149,20 @@ const messages = {
     installSucceeded: "已安装到正式 Agents 目录，运行时可以加载这个 Agent。",
     installConflict: "正式 Agent 已存在，当前草案不会覆盖。下一步需要做版本更新或差异合并。",
     installConflictAction: "建议：创建新版本，或进入差异合并后再安装。",
+    createAgentVersion: "创建新版本",
+    creatingAgentVersion: "正在创建新版本...",
+    installVersionSucceeded: "已安装为新的 Agent 版本，运行时可以加载这个 Agent。",
+    installVersionFailed: "创建新版本失败，请查看 Trace 或本地终端后重试。",
+    conflictAgentLabel: "冲突 Agent",
+    conflictSourceLabel: "草案路径",
+    conflictTargetLabel: "已有目标",
+    conflictVersionLabel: "拟创建版本",
+    conflictVersionTargetLabel: "版本目标",
+    conflictDiffLabel: "文件差异",
+    diffSourceOnly: "草案新增",
+    diffTargetOnly: "目标独有",
+    diffChanged: "内容变更",
+    diffUnchanged: "相同",
     installFailed: "安装失败，请查看 Trace 或本地终端后重试。",
     installApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run prototype:workbench` 后再安装。",
     actionHintMetaDraft: "当前是元智能体草案，可安装到正式 Agents；安装后可在左侧 Agents 里运行。",
@@ -400,6 +414,20 @@ const messages = {
     installSucceeded: "Installed into the formal Agents directory. The runtime can load this Agent.",
     installConflict: "A formal Agent already exists, so this draft was not overwritten. Next we need versioning or a diff-merge flow.",
     installConflictAction: "Suggested action: create a new version, or review a diff before installing.",
+    createAgentVersion: "Create Version",
+    creatingAgentVersion: "Creating version...",
+    installVersionSucceeded: "Installed as a new Agent version. The runtime can load this Agent.",
+    installVersionFailed: "Failed to create a new version. Check the Trace or local terminal, then retry.",
+    conflictAgentLabel: "Conflicting Agent",
+    conflictSourceLabel: "Draft path",
+    conflictTargetLabel: "Existing target",
+    conflictVersionLabel: "Proposed version",
+    conflictVersionTargetLabel: "Version target",
+    conflictDiffLabel: "File diff",
+    diffSourceOnly: "draft only",
+    diffTargetOnly: "target only",
+    diffChanged: "changed",
+    diffUnchanged: "same",
     installFailed: "Install failed. Check the Trace or local terminal, then retry.",
     installApiUnavailable: "This page is not served by the Workbench API. Start `npm run prototype:workbench` before installing.",
     actionHintMetaDraft: "This is a Meta Agent draft. Install it into formal Agents, then run it from the left Agents list.",
@@ -531,6 +559,7 @@ const prototypeState = {
   isSubmitting: false,
   isInstalling: false,
   isRunningAgent: false,
+  lastInstallConflict: null,
   selectedWorkId: "",
   selectedAgentId: "",
   selectedSettingsSection: "overview",
@@ -787,6 +816,7 @@ function bindStaticSelection() {
 function bindRunActions() {
   document.querySelector("[data-run-action='approve']")?.addEventListener("click", advanceDemoRun);
   document.querySelector("[data-install-agent]")?.addEventListener("click", installAgentDraftFromCurrentRun);
+  document.querySelector("[data-install-agent-version]")?.addEventListener("click", installAgentDraftVersionFromConflict);
   document.querySelector("[data-run-agent]")?.addEventListener("click", runSelectedAgentFromWorkbench);
   document.querySelector("[data-open-artifact]")?.addEventListener("click", openSelectedArtifact);
   document.querySelector("[data-open-trace]")?.addEventListener("click", openCurrentRunTrace);
@@ -959,6 +989,10 @@ function canUsePreviewSettingsFallback(state = settingsState) {
 
 function getSettingsModule() {
   return window.MoyuSettingsModule;
+}
+
+function getInstallModule() {
+  return window.MoyuInstallModule;
 }
 
 async function loadWorkbenchData() {
@@ -1601,6 +1635,7 @@ function createWorkListItem(work, index, selected) {
 async function selectWorkbenchWork(work) {
   openConversationView();
   prototypeState.selectedWorkId = work.id;
+  prototypeState.lastInstallConflict = null;
   if (work.agentId) {
     prototypeState.selectedAgentId = work.agentId;
   }
@@ -2397,6 +2432,7 @@ async function installAgentDraftFromCurrentRun() {
   }
 
   prototypeState.isInstalling = true;
+  prototypeState.lastInstallConflict = null;
   syncInstallButton();
   setInstallStatus(dict.installingAgent, "info");
 
@@ -2420,7 +2456,9 @@ async function installAgentDraftFromCurrentRun() {
     }
 
     if (response.status === 409 || data?.code === "agent_exists") {
-      setInstallStatus(formatInstallConflict(data, dict), "warning");
+      prototypeState.lastInstallConflict = data;
+      setInstallStatus(getInstallModule().formatInstallConflict(data, dict), "warning");
+      syncInstallButton();
       return;
     }
     if (!response.ok || !data?.ok) {
@@ -2432,6 +2470,7 @@ async function installAgentDraftFromCurrentRun() {
       prototypeState.selectedAgentId = data.result?.agentId || prototypeState.selectedAgentId;
       renderWorkbenchData();
     }
+    prototypeState.lastInstallConflict = null;
     setInstallStatus(dict.installSucceeded, "success");
   } catch {
     setInstallStatus(dict.installFailed, "error");
@@ -2441,20 +2480,55 @@ async function installAgentDraftFromCurrentRun() {
   }
 }
 
-function formatInstallConflict(data, dict) {
-  const parts = [dict.installConflict];
-  if (data?.agentId) {
-    parts.push(data.agentId);
+async function installAgentDraftVersionFromConflict() {
+  const dict = messages[currentLang] ?? messages.zh;
+  const action = getInstallModule().getCreateVersionAction(prototypeState.lastInstallConflict);
+  if (!canUseWorkbenchApi() || !workbenchData?.selectedRun?.id || !action || prototypeState.isInstalling) {
+    setInstallStatus(dict.installApiUnavailable, "warning");
+    return;
   }
-  if (data?.targetPath) {
-    parts.push(data.targetPath);
+
+  prototypeState.isInstalling = true;
+  syncInstallButton();
+  setInstallStatus(dict.creatingAgentVersion, "info");
+
+  try {
+    const response = await fetch(action.endpoint, {
+      method: action.method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(action.payload || { runId: workbenchData.selectedRun.id }),
+    });
+    if (response.status === 404 || response.status === 405) {
+      setInstallStatus(dict.installApiUnavailable, "warning");
+      return;
+    }
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok) {
+      setInstallStatus(data?.error || dict.installVersionFailed, "error");
+      return;
+    }
+
+    if (data.workbench) {
+      workbenchData = data.workbench;
+      prototypeState.selectedAgentId = data.result?.agentId || prototypeState.selectedAgentId;
+      prototypeState.selectedArtifactId = "";
+      prototypeState.selectedArtifactName = "";
+      renderWorkbenchData();
+    }
+    prototypeState.lastInstallConflict = null;
+    setInstallStatus(dict.installVersionSucceeded, "success");
+  } catch {
+    setInstallStatus(dict.installVersionFailed, "error");
+  } finally {
+    prototypeState.isInstalling = false;
+    syncInstallButton();
   }
-  parts.push(dict.installConflictAction);
-  return parts.join("\n");
 }
 
 function syncInstallButton() {
   const button = document.querySelector("[data-install-agent]");
+  const versionButton = document.querySelector("[data-install-agent-version]");
   if (!button) {
     return;
   }
@@ -2467,6 +2541,19 @@ function syncInstallButton() {
     : canInstall
       ? dict.actionHintMetaDraft
       : dict.actionHintInstalledAgent;
+
+  if (versionButton) {
+    const canCreateVersion = getInstallModule().canCreateInstallVersion({
+      apiAvailable: canUseWorkbenchApi(),
+      selectedRunId: workbenchData?.selectedRun?.id,
+      isInstalling: prototypeState.isInstalling,
+      conflict: prototypeState.lastInstallConflict,
+    });
+    versionButton.hidden = !prototypeState.lastInstallConflict;
+    versionButton.disabled = !canCreateVersion;
+    versionButton.textContent = prototypeState.isInstalling ? dict.creatingAgentVersion : dict.createAgentVersion;
+    versionButton.title = canCreateVersion ? dict.installConflictAction : dict.installApiUnavailable;
+  }
 }
 
 async function runSelectedAgentFromWorkbench() {

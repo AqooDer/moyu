@@ -64,6 +64,8 @@ npm run prototype:export-data
 - `POST /api/artifact/open`：用系统默认应用打开某个本地产物文件
 - `POST /api/meta/create-agent`：通过元智能体创建 Agent 草案，并返回最新 Workbench 数据
 - `POST /api/meta/install-agent`：把某次元智能体 Run 生成的 Agent 草案安装到正式 `agents/`；默认拒绝覆盖已存在的 Agent
+- `POST /api/meta/install-agent/version`：当安装冲突时，把草案安装为下一个未占用 Agent 版本
+- `GET /api/meta/install-agent/diff?runId=<run_id>`：查看草案与正式 Agent 目录的文件级差异摘要
 
 ## 元智能体创建 Agent
 
@@ -84,7 +86,7 @@ npm run dev -- meta create-agent \
 npm run dev -- meta install-agent --run <meta_create_run_id>
 ```
 
-如果正式 Agent 已存在，安装会失败并提示冲突；当前阶段不自动覆盖，后续需要设计版本升级或差异合并流程。只有在明确接受覆盖风险时才使用 `--force`。
+如果正式 Agent 已存在，安装会返回冲突信息，并给出“创建新版本”和“查看差异”的下一步入口；默认不会静默覆盖。只有在明确接受覆盖风险时才使用 `--force`。
 
 生成后可以用现有校验器验证：
 

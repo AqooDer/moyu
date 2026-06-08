@@ -6,7 +6,13 @@ import { findAgent, listAgents } from "../agent/registry.js";
 import { runImageAgent } from "../agent/run.js";
 import { createAgentWithMeta } from "../meta/create-agent.js";
 import { listAgentDraftRecords, type AgentDraftState } from "../meta/agent-draft.js";
-import { InstallConflictError, installAgentDraft } from "../meta/install-agent.js";
+import {
+  InstallConflictError,
+  buildInstallConflictResolution,
+  diffAgentDraft,
+  installAgentDraft,
+  installAgentDraftAsVersion,
+} from "../meta/install-agent.js";
 import { getArtifactDetail, openArtifact, readArtifactText } from "../runtime/artifacts.js";
 import { getRunHistoryDetail, openRunTrace } from "../runtime/history.js";
 import { buildWorkbenchData } from "../runtime/workbench-data.js";
@@ -30,6 +36,10 @@ interface MetaCreateRequest {
 interface MetaInstallRequest {
   runId?: string;
   force?: boolean;
+}
+
+interface MetaInstallVersionRequest {
+  runId?: string;
 }
 
 interface ArtifactOpenRequest {
@@ -237,19 +247,53 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       });
     } catch (error) {
       if (error instanceof InstallConflictError) {
+        const resolution = await buildInstallConflictResolution({ runId });
         writeJson(response, 409, {
           ok: false,
           code: "agent_exists",
           error: error.message,
-          agentId: error.agentId,
-          sourcePath: error.sourcePath,
-          targetPath: error.targetPath,
+          agentId: resolution.agentId,
+          sourcePath: resolution.sourcePath,
+          targetPath: resolution.targetPath,
           suggestion: "create_new_version_or_diff_merge",
+          nextActions: resolution.nextActions,
+          diffSummary: resolution.diffSummary,
         });
         return;
       }
       throw error;
     }
+    return;
+  }
+
+  if (method === "POST" && url.pathname === "/api/meta/install-agent/version") {
+    const payload = await readJsonBody<MetaInstallVersionRequest>(request);
+    const runId = payload.runId?.trim();
+    if (!runId) {
+      writeJson(response, 400, { ok: false, error: "runId is required" });
+      return;
+    }
+
+    const result = await installAgentDraftAsVersion({ runId });
+    writeJson(response, result.installed ? 200 : 422, {
+      ok: result.installed,
+      result,
+      workbench: await buildServerWorkbenchData(rootDir),
+    });
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/api/meta/install-agent/diff") {
+    const runId = url.searchParams.get("runId")?.trim();
+    if (!runId) {
+      writeJson(response, 400, { ok: false, error: "runId is required" });
+      return;
+    }
+
+    writeJson(response, 200, {
+      ok: true,
+      diff: await diffAgentDraft({ runId }),
+    });
     return;
   }
 
