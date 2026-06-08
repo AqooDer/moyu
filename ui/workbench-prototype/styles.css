@@ -1457,6 +1457,13 @@ h1 {
   padding: 14px;
 }
 
+.settings-card.agent-context-card {
+  border-color: rgba(65, 106, 154, 0.18);
+  background:
+    radial-gradient(circle at top right, rgba(65, 106, 154, 0.12), transparent 34%),
+    rgba(255, 255, 255, 0.86);
+}
+
 .settings-card.compact strong {
   font-size: 15px;
 }

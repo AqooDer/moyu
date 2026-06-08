@@ -78,6 +78,7 @@ export interface WorkbenchSettings {
   mcpServers: WorkbenchCapability[];
   runtimePolicies: WorkbenchRuntimePolicy[];
   agentDefaults: WorkbenchAgentDefault[];
+  agentContexts: WorkbenchAgentRuntimeContext[];
 }
 
 export interface WorkbenchSettingsNavItem {
@@ -152,6 +153,21 @@ export interface WorkbenchAgentDefault {
   tools: string[];
   mcpServers: string[];
   runtimeMode: { zh: string; en: string };
+}
+
+export interface WorkbenchAgentRuntimeContext {
+  agentId: string;
+  title: { zh: string; en: string };
+  purpose: { zh: string; en: string };
+  assemblyMode: { zh: string; en: string };
+  modelRoles: string[];
+  knowledgeBases: string[];
+  skills: string[];
+  tools: string[];
+  mcpServers: string[];
+  runtimeEvidence: string[];
+  artifactPolicy: { zh: string; en: string };
+  note: { zh: string; en: string };
 }
 
 export async function buildWorkbenchData(
@@ -533,6 +549,11 @@ function buildWorkbenchSettings(): WorkbenchSettings {
         description: { zh: "Provider、角色模型、运行时路由", en: "Providers, model roles, and runtime routing" },
       },
       {
+        id: "agent-context",
+        title: { zh: "Agent Context", en: "Agent Context" },
+        description: { zh: "按 Agent 查看运行上下文装配", en: "Runtime context assembly by agent" },
+      },
+      {
         id: "knowledge",
         title: { zh: "知识库", en: "Knowledge" },
         description: { zh: "集合、切片、嵌入与产物回流", en: "Collections, chunking, embeddings, and write-back" },
@@ -782,6 +803,60 @@ function buildWorkbenchSettings(): WorkbenchSettings {
         tools: ["artifact-write"],
         mcpServers: [],
         runtimeMode: { zh: "记录 prompt、尺寸、风格与反馈信号", en: "Capture prompt, size, style, and feedback signals" },
+      },
+    ],
+    agentContexts: [
+      {
+        agentId: "meta/create-agent",
+        title: { zh: "元智能体上下文", en: "Meta Agent context" },
+        purpose: {
+          zh: "把自然语言需求转为 Agent 草案、审核材料和安装动作。",
+          en: "Turn natural-language requirements into agent drafts, review materials, and install actions.",
+        },
+        assemblyMode: {
+          zh: "Workspace 默认 + 元智能体强推理覆盖 + 文件系统 MCP 待审核",
+          en: "Workspace defaults + Meta Agent reasoning override + filesystem MCP in review",
+        },
+        modelRoles: ["conversation-primary", "planning-reasoning"],
+        knowledgeBases: ["workspace-product"],
+        skills: ["meta-agent-skill-review"],
+        tools: ["artifact-write", "trace-open"],
+        mcpServers: ["filesystem-mcp"],
+        runtimeEvidence: ["model_role", "provider", "draft_source", "install_state", "artifact_ids"],
+        artifactPolicy: {
+          zh: "Agent 草案先作为 Artifact 存证，人工确认后才安装到 agents/。",
+          en: "Agent drafts are stored as artifacts first, then installed into agents/ after human approval.",
+        },
+        note: {
+          zh: "借鉴 Yuxi 的 Harness 装配思路，但保留 Moyu 的本地文件与审核闭环。",
+          en: "Borrow the Harness assembly idea while keeping Moyu's local files and review loop.",
+        },
+      },
+      {
+        agentId: "image-gen/prototype-v1",
+        title: { zh: "生图 Agent 上下文", en: "Image Agent context" },
+        purpose: {
+          zh: "根据提示词生成 UI 概念图，并保存图片、Trace 与提示词。",
+          en: "Generate UI concept images from prompts and persist images, traces, and prompts.",
+        },
+        assemblyMode: {
+          zh: "Agent 继承 Workspace 对话模型，覆盖生图模型与视觉知识库。",
+          en: "Agent inherits the workspace conversation model and overrides image model plus visual KB.",
+        },
+        modelRoles: ["conversation-primary", "image-generation"],
+        knowledgeBases: ["workspace-visual"],
+        skills: ["image_gen_via_relay"],
+        tools: ["artifact-write"],
+        mcpServers: [],
+        runtimeEvidence: ["prompt", "size", "style", "count", "image_model", "artifact_feedback"],
+        artifactPolicy: {
+          zh: "默认只写 Artifact；被采纳的设计稿可经审核回流视觉知识库。",
+          en: "Write artifacts by default; accepted drafts may flow back to the visual KB after review.",
+        },
+        note: {
+          zh: "先保持轻量原型，不引入知识图谱或异步 Worker。",
+          en: "Keep the prototype lightweight first; no knowledge graph or async worker yet.",
+        },
       },
     ],
   };

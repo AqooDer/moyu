@@ -179,6 +179,7 @@ const messages = {
     settingsOverviewFallback: "设置数据尚未准备好",
     settingsSectionOverview: "架构总览",
     settingsSectionModels: "模型管理",
+    settingsSectionAgentContext: "Agent Context",
     settingsSectionKnowledge: "知识库",
     settingsSectionSkills: "Skills",
     settingsSectionTools: "工具",
@@ -193,6 +194,11 @@ const messages = {
     modelRoleMode: "默认方式",
     modelRoleFallback: "回退策略",
     modelRoleSignals: "运行时信号",
+    agentContextHeading: "Agent 运行上下文装配",
+    agentContextPurpose: "职责",
+    agentContextAssembly: "装配方式",
+    agentContextEvidence: "运行证据",
+    agentContextArtifactPolicy: "产物策略",
     knowledgeHeading: "知识库与回流",
     embeddingRoleLabel: "嵌入角色",
     knowledgeChunk: "切片策略",
@@ -402,6 +408,7 @@ const messages = {
     settingsOverviewFallback: "Settings data is not ready yet",
     settingsSectionOverview: "Overview",
     settingsSectionModels: "Models",
+    settingsSectionAgentContext: "Agent Context",
     settingsSectionKnowledge: "Knowledge",
     settingsSectionSkills: "Skills",
     settingsSectionTools: "Tools",
@@ -416,6 +423,11 @@ const messages = {
     modelRoleMode: "Default mode",
     modelRoleFallback: "Fallback",
     modelRoleSignals: "Runtime signals",
+    agentContextHeading: "Agent runtime context assembly",
+    agentContextPurpose: "Purpose",
+    agentContextAssembly: "Assembly mode",
+    agentContextEvidence: "Runtime evidence",
+    agentContextArtifactPolicy: "Artifact policy",
     knowledgeHeading: "Knowledge bases and write-back",
     embeddingRoleLabel: "Embedding role",
     knowledgeChunk: "Chunking",
@@ -1500,6 +1512,11 @@ function renderSettingsContent(settings) {
         createSettingsSectionHeader("modelRolesHeading"),
         createSettingsCardGrid(settings.modelRoles.map(createModelRoleCard)),
       ]);
+    case "agent-context":
+      return createSettingsSection([
+        createSettingsSectionHeader("agentContextHeading", "settingsOpenHint"),
+        createSettingsCardGrid((settings.agentContexts || []).map(createAgentContextCard)),
+      ]);
     case "knowledge":
       return createSettingsSection([
         createSettingsSectionHeader("knowledgeHeading"),
@@ -1647,6 +1664,25 @@ function createRuntimePolicyCard(item) {
   card.append(
     createText("strong", localize(item.title, item.id)),
     createText("p", localize(item.value, "")),
+    createText("small", localize(item.note, "")),
+  );
+  return card;
+}
+
+function createAgentContextCard(item) {
+  const card = document.createElement("article");
+  card.className = "settings-card agent-context-card";
+  card.append(
+    createText("strong", `${localize(item.title, item.agentId)} · ${item.agentId}`),
+    createText("p", localize(item.purpose, "")),
+    createLabeledText("agentContextAssembly", localize(item.assemblyMode, "")),
+    createLabeledTags("agentDefaultModels", item.modelRoles),
+    createLabeledTags("agentDefaultKnowledge", item.knowledgeBases),
+    createLabeledTags("agentDefaultSkills", item.skills),
+    createLabeledTags("agentDefaultTools", item.tools),
+    createLabeledTags("agentDefaultMcp", item.mcpServers),
+    createLabeledTags("agentContextEvidence", item.runtimeEvidence),
+    createLabeledText("agentContextArtifactPolicy", localize(item.artifactPolicy, "")),
     createText("small", localize(item.note, "")),
   );
   return card;

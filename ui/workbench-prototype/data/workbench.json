@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-06-03T08:53:38.205Z",
+  "generatedAt": "2026-06-08T09:34:57.016Z",
   "selectedRun": {
-    "id": "run-custom__image-prototype-v2-mpwgnpro-9kxdm3",
-    "agentId": "custom/image-prototype-v2",
+    "id": "run-custom__image-prototype-v3-mq3xs9x2-sf0sqo",
+    "agentId": "custom/image-prototype-v3",
     "agentVersion": "0.1.0",
     "recipeId": "image-gen/prototype-v1",
     "state": "succeeded",
     "dryRun": true,
-    "startedAt": "2026-06-02T09:54:26.485Z",
+    "startedAt": "2026-06-07T15:28:15.927Z",
     "durationMs": 0,
     "prompt": "帮我创建一个生图原型 Agent。它要能调用 gpt-image-2 中转接口，支持生成 3 张 UI 概念图，并把图片、Trace 和提示词都保存下来。",
-    "tracePath": "traces/run-custom__image-prototype-v2-mpwgnpro-9kxdm3/run.json",
+    "tracePath": "traces/run-custom__image-prototype-v3-mq3xs9x2-sf0sqo/run.json",
     "artifactCount": 0,
     "steps": [
       {
@@ -23,6 +23,54 @@
     ]
   },
   "works": [
+    {
+      "id": "run-run-custom__image-prototype-v3-mq3xs9x2-sf0sqo",
+      "title": {
+        "zh": "帮我创建一个生图原型 Agent。它要能调...",
+        "en": "帮我创建一个生图原型 Agent。它要能调用 gpt-image-..."
+      },
+      "description": {
+        "zh": "已完成 · 0 个产物 · dry-run · 06/07 23:28",
+        "en": "Completed · 0 artifacts · dry-run · 06/07, 11:28 PM"
+      },
+      "state": "succeeded",
+      "agentId": "custom/image-prototype-v3",
+      "runId": "run-custom__image-prototype-v3-mq3xs9x2-sf0sqo",
+      "updatedAt": "2026-06-07T15:28:15.927Z",
+      "active": true
+    },
+    {
+      "id": "run-run-custom__image-prototype-v2-mq3vfele-fmru0e",
+      "title": {
+        "zh": "修改契约：增加 provider 健康检查...",
+        "en": "修改契约：增加 provider 健康检查，并把失败原因说清楚。"
+      },
+      "description": {
+        "zh": "已完成 · 0 个产物 · dry-run · 06/07 22:22",
+        "en": "Completed · 0 artifacts · dry-run · 06/07, 10:22 PM"
+      },
+      "state": "succeeded",
+      "agentId": "custom/image-prototype-v2",
+      "runId": "run-custom__image-prototype-v2-mq3vfele-fmru0e",
+      "updatedAt": "2026-06-07T14:22:16.226Z",
+      "active": false
+    },
+    {
+      "id": "run-run-custom__image-prototype-v2-mq2h57gt-43gxzn",
+      "title": {
+        "zh": "a clean app dashboard",
+        "en": "a clean app dashboard"
+      },
+      "description": {
+        "zh": "已完成 · 0 个产物 · dry-run · 06/06 22:54",
+        "en": "Completed · 0 artifacts · dry-run · 06/06, 10:54 PM"
+      },
+      "state": "succeeded",
+      "agentId": "custom/image-prototype-v2",
+      "runId": "run-custom__image-prototype-v2-mq2h57gt-43gxzn",
+      "updatedAt": "2026-06-06T14:54:39.630Z",
+      "active": false
+    },
     {
       "id": "run-run-custom__image-prototype-v2-mpwgnpro-9kxdm3",
       "title": {
@@ -37,13 +85,13 @@
       "agentId": "custom/image-prototype-v2",
       "runId": "run-custom__image-prototype-v2-mpwgnpro-9kxdm3",
       "updatedAt": "2026-06-02T09:54:26.485Z",
-      "active": true
+      "active": false
     },
     {
       "id": "run-run-custom__image-prototype-v2-mpwfxy91-nwa48p",
       "title": {
-        "zh": "生图 Agent 运行",
-        "en": "Image Agent run"
+        "zh": "帮我创建一个生图原型 Agent。它要能调...",
+        "en": "帮我创建一个生图原型 Agent。它要能调用 gpt-image-..."
       },
       "description": {
         "zh": "已完成 · 0 个产物 · dry-run · 06/02 17:34",
@@ -58,8 +106,8 @@
     {
       "id": "run-run-custom__image-prototype-v2-mpwaxogb-irrc5e",
       "title": {
-        "zh": "生图 Agent 运行",
-        "en": "Image Agent run"
+        "zh": "帮我创建一个生图原型 Agent。它要能调...",
+        "en": "帮我创建一个生图原型 Agent。它要能调用 gpt-image-..."
       },
       "description": {
         "zh": "已完成 · 0 个产物 · dry-run · 06/02 15:14",
@@ -74,8 +122,8 @@
     {
       "id": "run-meta-create-custom__image-prototype-v3-mpwawvbx-23hc1w",
       "title": {
-        "zh": "元智能体 运行",
-        "en": "Meta Agent run"
+        "zh": "帮我创建一个生图原型 Agent。它要能调...",
+        "en": "帮我创建一个生图原型 Agent。它要能调用 gpt-image-..."
       },
       "description": {
         "zh": "已完成 · 11 个产物 · dry-run · 06/02 15:13",
@@ -90,8 +138,8 @@
     {
       "id": "run-run-custom__image-prototype-v2-mpwat9mq-c3gczk",
       "title": {
-        "zh": "生图 Agent 运行",
-        "en": "Image Agent run"
+        "zh": "a clean app dashboard",
+        "en": "a clean app dashboard"
       },
       "description": {
         "zh": "已完成 · 0 个产物 · dry-run · 06/02 15:10",
@@ -101,54 +149,6 @@
       "agentId": "custom/image-prototype-v2",
       "runId": "run-custom__image-prototype-v2-mpwat9mq-c3gczk",
       "updatedAt": "2026-06-02T07:10:47.810Z",
-      "active": false
-    },
-    {
-      "id": "run-meta-create-custom__image-prototype-v2-mpw9he31-d2b55v",
-      "title": {
-        "zh": "元智能体 运行",
-        "en": "Meta Agent run"
-      },
-      "description": {
-        "zh": "已完成 · 11 个产物 · dry-run · 06/02 14:33",
-        "en": "Completed · 11 artifacts · dry-run · 06/02, 02:33 PM"
-      },
-      "state": "succeeded",
-      "agentId": "meta/create-agent",
-      "runId": "meta-create-custom__image-prototype-v2-mpw9he31-d2b55v",
-      "updatedAt": "2026-06-02T06:33:34.093Z",
-      "active": false
-    },
-    {
-      "id": "run-run-custom__image-prototype-v1-mpw8oix9-5twvfw",
-      "title": {
-        "zh": "生图 Agent 运行",
-        "en": "Image Agent run"
-      },
-      "description": {
-        "zh": "已完成 · 0 个产物 · dry-run · 06/02 14:11",
-        "en": "Completed · 0 artifacts · dry-run · 06/02, 02:11 PM"
-      },
-      "state": "succeeded",
-      "agentId": "custom/image-prototype-v1",
-      "runId": "run-custom__image-prototype-v1-mpw8oix9-5twvfw",
-      "updatedAt": "2026-06-02T06:11:07.341Z",
-      "active": false
-    },
-    {
-      "id": "run-meta-create-custom__image-prototype-v1-mpw8nsyn-xa4942",
-      "title": {
-        "zh": "元智能体 运行",
-        "en": "Meta Agent run"
-      },
-      "description": {
-        "zh": "已完成 · 11 个产物 · dry-run · 06/02 14:10",
-        "en": "Completed · 11 artifacts · dry-run · 06/02, 02:10 PM"
-      },
-      "state": "succeeded",
-      "agentId": "meta/create-agent",
-      "runId": "meta-create-custom__image-prototype-v1-mpw8nsyn-xa4942",
-      "updatedAt": "2026-06-02T06:10:33.695Z",
       "active": false
     }
   ],
@@ -178,6 +178,17 @@
     },
     {
       "id": "custom/image-prototype-v2",
+      "title": {
+        "zh": "生图原型 Agent",
+        "en": "生图原型 Agent"
+      },
+      "description": {
+        "zh": "通过 OpenAI-compatible 图片中转接口生成 UI 概念图，并保存可追踪产物。",
+        "en": "通过 OpenAI-compatible 图片中转接口生成 UI 概念图，并保存可追踪产物。"
+      }
+    },
+    {
+      "id": "custom/image-prototype-v3",
       "title": {
         "zh": "生图原型 Agent",
         "en": "生图原型 Agent"
@@ -243,6 +254,17 @@
         "description": {
           "zh": "Provider、角色模型、运行时路由",
           "en": "Providers, model roles, and runtime routing"
+        }
+      },
+      {
+        "id": "agent-context",
+        "title": {
+          "zh": "Agent Context",
+          "en": "Agent Context"
+        },
+        "description": {
+          "zh": "按 Agent 查看运行上下文装配",
+          "en": "Runtime context assembly by agent"
         }
       },
       {
@@ -810,6 +832,100 @@
         "runtimeMode": {
           "zh": "记录 prompt、尺寸、风格与反馈信号",
           "en": "Capture prompt, size, style, and feedback signals"
+        }
+      }
+    ],
+    "agentContexts": [
+      {
+        "agentId": "meta/create-agent",
+        "title": {
+          "zh": "元智能体上下文",
+          "en": "Meta Agent context"
+        },
+        "purpose": {
+          "zh": "把自然语言需求转为 Agent 草案、审核材料和安装动作。",
+          "en": "Turn natural-language requirements into agent drafts, review materials, and install actions."
+        },
+        "assemblyMode": {
+          "zh": "Workspace 默认 + 元智能体强推理覆盖 + 文件系统 MCP 待审核",
+          "en": "Workspace defaults + Meta Agent reasoning override + filesystem MCP in review"
+        },
+        "modelRoles": [
+          "conversation-primary",
+          "planning-reasoning"
+        ],
+        "knowledgeBases": [
+          "workspace-product"
+        ],
+        "skills": [
+          "meta-agent-skill-review"
+        ],
+        "tools": [
+          "artifact-write",
+          "trace-open"
+        ],
+        "mcpServers": [
+          "filesystem-mcp"
+        ],
+        "runtimeEvidence": [
+          "model_role",
+          "provider",
+          "draft_source",
+          "install_state",
+          "artifact_ids"
+        ],
+        "artifactPolicy": {
+          "zh": "Agent 草案先作为 Artifact 存证，人工确认后才安装到 agents/。",
+          "en": "Agent drafts are stored as artifacts first, then installed into agents/ after human approval."
+        },
+        "note": {
+          "zh": "借鉴 Yuxi 的 Harness 装配思路，但保留 Moyu 的本地文件与审核闭环。",
+          "en": "Borrow the Harness assembly idea while keeping Moyu's local files and review loop."
+        }
+      },
+      {
+        "agentId": "image-gen/prototype-v1",
+        "title": {
+          "zh": "生图 Agent 上下文",
+          "en": "Image Agent context"
+        },
+        "purpose": {
+          "zh": "根据提示词生成 UI 概念图，并保存图片、Trace 与提示词。",
+          "en": "Generate UI concept images from prompts and persist images, traces, and prompts."
+        },
+        "assemblyMode": {
+          "zh": "Agent 继承 Workspace 对话模型，覆盖生图模型与视觉知识库。",
+          "en": "Agent inherits the workspace conversation model and overrides image model plus visual KB."
+        },
+        "modelRoles": [
+          "conversation-primary",
+          "image-generation"
+        ],
+        "knowledgeBases": [
+          "workspace-visual"
+        ],
+        "skills": [
+          "image_gen_via_relay"
+        ],
+        "tools": [
+          "artifact-write"
+        ],
+        "mcpServers": [],
+        "runtimeEvidence": [
+          "prompt",
+          "size",
+          "style",
+          "count",
+          "image_model",
+          "artifact_feedback"
+        ],
+        "artifactPolicy": {
+          "zh": "默认只写 Artifact；被采纳的设计稿可经审核回流视觉知识库。",
+          "en": "Write artifacts by default; accepted drafts may flow back to the visual KB after review."
+        },
+        "note": {
+          "zh": "先保持轻量原型，不引入知识图谱或异步 Worker。",
+          "en": "Keep the prototype lightweight first; no knowledge graph or async worker yet."
         }
       }
     ]

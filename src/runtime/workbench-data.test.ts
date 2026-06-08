@@ -82,8 +82,15 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftWorkbench.artifacts.length, draft.files.length);
     assert.equal(draftWorkbench.works.find((work) => work.active)?.runId, draft.runId);
     assert.equal(draftWorkbench.settings.nav.length > 0, true);
+    assert.equal(draftWorkbench.settings.nav.some((item) => item.id === "agent-context"), true);
     assert.equal(draftWorkbench.settings.modelRoles.some((item) => item.id === "image-generation"), true);
     assert.equal(draftWorkbench.settings.knowledgeBases.some((item) => item.id === "workspace-product"), true);
+    assert.equal(
+      draftWorkbench.settings.agentContexts.some(
+        (item) => item.agentId === "meta/create-agent" && item.mcpServers.includes("filesystem-mcp"),
+      ),
+      true,
+    );
 
     const runWorkbench = await buildWorkbenchData({ selectedRunId: runId });
     assert.equal(runWorkbench.selectedRun?.id, runId);
@@ -93,6 +100,12 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runWorkbench.works.find((work) => work.active)?.runId, runId);
     assert.equal(runWorkbench.works.find((work) => work.active)?.title.zh, "a clean app dashboard");
     assert.equal(runWorkbench.settings.providers.length >= 1, true);
+    assert.equal(
+      runWorkbench.settings.agentContexts.some(
+        (item) => item.agentId === "image-gen/prototype-v1" && item.runtimeEvidence.includes("image_model"),
+      ),
+      true,
+    );
   } finally {
     process.chdir(previousCwd);
     await rm(workspace, { recursive: true, force: true });
