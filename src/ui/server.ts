@@ -15,6 +15,7 @@ import {
 } from "../meta/install-agent.js";
 import { getArtifactDetail, openArtifact, readArtifactText } from "../runtime/artifacts.js";
 import { getRunHistoryDetail, openRunTrace } from "../runtime/history.js";
+import { listConversationMessages, listWorkRecords } from "../runtime/work-store.js";
 import { buildWorkbenchData } from "../runtime/workbench-data.js";
 import { buildWorkbenchSettings } from "../settings/workbench.js";
 
@@ -113,6 +114,29 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       ok: true,
       schemaVersion: 1,
       settings: await buildWorkbenchSettings({ configPath: workspaceConfigPath(rootDir) }),
+    });
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/api/works") {
+    writeJson(response, 200, {
+      ok: true,
+      works: await listWorkRecords({
+        state: readWorkState(url.searchParams.get("state")),
+        storePath: workStorePath(rootDir),
+      }),
+    });
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/api/messages") {
+    writeJson(response, 200, {
+      ok: true,
+      messages: await listConversationMessages({
+        workId: url.searchParams.get("workId") || undefined,
+        runId: url.searchParams.get("runId") || undefined,
+        storePath: workStorePath(rootDir),
+      }),
     });
     return;
   }
@@ -350,11 +374,16 @@ function buildServerWorkbenchData(
   return buildWorkbenchData({
     ...input,
     configPath: workspaceConfigPath(rootDir),
+    workStorePath: workStorePath(rootDir),
   });
 }
 
 function workspaceConfigPath(rootDir: string) {
   return path.join(rootDir, "moyu.config.json");
+}
+
+function workStorePath(rootDir: string) {
+  return path.join(rootDir, "artifacts", "workbench", "work-store.json");
 }
 
 async function listenWithFallback(
@@ -502,6 +531,19 @@ function readDraftState(value: string | null): AgentDraftState | undefined {
     value === "validation_failed" ||
     value === "installed" ||
     value === "install_conflict"
+  ) {
+    return value;
+  }
+  return undefined;
+}
+
+function readWorkState(value: string | null) {
+  if (
+    value === "active" ||
+    value === "waiting_user" ||
+    value === "running" ||
+    value === "completed" ||
+    value === "archived"
   ) {
     return value;
   }

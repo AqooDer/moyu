@@ -9,6 +9,7 @@ import { listAgentDraftRecords, readAgentDraftRecordByRun } from "../meta/agent-
 import { createAgentWithMeta } from "../meta/create-agent.js";
 import { installAgentDraft } from "../meta/install-agent.js";
 import { listArtifacts } from "./artifacts.js";
+import { readWorkStore } from "./work-store.js";
 import { buildWorkbenchData } from "./workbench-data.js";
 
 test("meta-created Agents can be installed, run, and selected in Workbench data", async () => {
@@ -50,6 +51,13 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftIndex[0].state, "drafted");
     assert.equal(draftIndex[0].revision, 1);
 
+    const draftStore = await readWorkStore();
+    assert.equal(draftStore.works.length, 1);
+    assert.equal(draftStore.works[0].runIds[0], draft.runId);
+    assert.equal(draftStore.works[0].state, "waiting_user");
+    assert.equal(draftStore.messages.length, 2);
+    assert.equal(draftStore.messages[0].content, "Create an image prototype Agent that stores traceable UI concept artifacts");
+
     const installed = await installAgentDraft({ runId: draft.runId });
     assert.equal(installed.installed, true);
     assert.equal(installed.agentId, "custom/image-prototype-v1");
@@ -64,6 +72,11 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(installedDraftIndex.length, 1);
     assert.equal(installedDraftIndex[0].runId, draft.runId);
     assert.equal(installedDraftIndex[0].revision, 2);
+
+    const installedStore = await readWorkStore();
+    assert.equal(installedStore.works[0].state, "completed");
+    assert.equal(installedStore.messages.length, 3);
+    assert.match(installedStore.messages[2].content, /已安装到正式目录/);
 
     const agents = await listAgents();
     assert.deepEqual(
@@ -82,6 +95,7 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     const runId = readSummaryValue(summary, "run_id");
     assert.match(runId, /^run-custom__image-prototype-v1-/);
     const runTrace = JSON.parse(await readFile(path.join("traces", runId, "run.json"), "utf8"));
+    assert.match(runTrace.run.workId, /^work-run-custom__image-prototype-v1-/);
     assert.deepEqual(runTrace.run.modelRoles, [
       {
         roleId: "conversation-primary",
@@ -107,8 +121,13 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     const draftWorkbench = await buildWorkbenchData({ selectedRunId: draft.runId });
     assert.equal(draftWorkbench.selectedRun?.id, draft.runId);
     assert.equal(draftWorkbench.selectedRun?.agentId, "meta/create-agent");
+    assert.equal(draftWorkbench.selectedRun?.workId, installedStore.works[0].id);
     assert.equal(draftWorkbench.artifacts.length, draft.files.length);
     assert.equal(draftWorkbench.works.find((work) => work.active)?.runId, draft.runId);
+    assert.equal(draftWorkbench.works.find((work) => work.active)?.state, "completed");
+    assert.equal(draftWorkbench.messages.length, 3);
+    assert.equal(draftWorkbench.messages[0].role, "user");
+    assert.match(draftWorkbench.messages[2].content, /已安装到正式目录/);
     assert.equal(draftWorkbench.settings.nav.length > 0, true);
     assert.equal(draftWorkbench.settings.nav.some((item) => item.id === "agent-context"), true);
     assert.equal(draftWorkbench.settings.modelRoles.some((item) => item.id === "image-generation"), true);
@@ -124,11 +143,15 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runWorkbench.selectedRun?.id, runId);
     assert.equal(runWorkbench.selectedRun?.agentId, "custom/image-prototype-v1");
     assert.equal(runWorkbench.selectedRun?.dryRun, true);
+    assert.match(runWorkbench.selectedRun?.workId || "", /^work-run-custom__image-prototype-v1-/);
     assert.equal(runWorkbench.selectedRun?.modelRoles[1]?.roleId, "image-generation");
     assert.equal(runWorkbench.selectedRun?.modelRoles[1]?.source, "agent_manifest");
     assert.equal(runWorkbench.artifacts.length, 0);
     assert.equal(runWorkbench.works.find((work) => work.active)?.runId, runId);
     assert.equal(runWorkbench.works.find((work) => work.active)?.title.zh, "a clean app dashboard");
+    assert.equal(runWorkbench.messages.length, 2);
+    assert.equal(runWorkbench.messages[0].content, "a clean app dashboard");
+    assert.match(runWorkbench.messages[1].content, /dry-run 已完成/);
     assert.equal(runWorkbench.settings.providers.length >= 1, true);
     assert.equal(
       runWorkbench.settings.agentContexts.some(

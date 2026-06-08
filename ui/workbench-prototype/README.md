@@ -60,6 +60,8 @@ npm run prototype:export-data
 
 - `GET /api/workbench`：读取最新 Run、Trace 和产物
 - `GET /api/settings`：读取设置中心数据，覆盖模型角色、知识库、Skill、Tool、MCP、运行策略与 Agent 默认继承关系
+- `GET /api/works`：读取本地持久化 Work 会话，可按 `state` 筛选
+- `GET /api/messages?workId=<work_id>|runId=<run_id>`：读取持久化 Conversation Message
 - `GET /api/artifact-content?id=<artifact_id>`：读取文本产物内容，用于右侧检查器审核草案文件
 - `POST /api/artifact/open`：用系统默认应用打开某个本地产物文件
 - `POST /api/meta/create-agent`：通过元智能体创建 Agent 草案，并返回最新 Workbench 数据

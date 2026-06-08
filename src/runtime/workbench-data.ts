@@ -4,13 +4,15 @@ import { listAgents } from "../agent/registry.js";
 import { buildWorkbenchSettings, type WorkbenchSettings } from "../settings/workbench.js";
 import { listArtifacts, type ArtifactHistoryItem } from "./artifacts.js";
 import { getRunHistoryDetail, listRunHistory, type RunHistoryItem } from "./history.js";
-import type { ModelRoleResolution, RuntimeTrace, StepRecord } from "./types.js";
+import type { ConversationMessage, ModelRoleResolution, RuntimeTrace, StepRecord, WorkRecord, WorkState } from "./types.js";
+import { createWorkIdFromRunId, listConversationMessages, listWorkRecords } from "./work-store.js";
 
 export interface WorkbenchData {
   schemaVersion: 1;
   generatedAt: string;
   selectedRun: WorkbenchRun | null;
   works: WorkbenchWork[];
+  messages: WorkbenchMessage[];
   artifacts: WorkbenchArtifact[];
   agents: WorkbenchAgent[];
   settings: WorkbenchSettings;
@@ -27,6 +29,7 @@ export interface WorkbenchRun {
   durationMs: number | null;
   prompt: string | null;
   tracePath: string;
+  workId: string | null;
   artifactCount: number;
   modelRoles: ModelRoleResolution[];
   steps: WorkbenchStep[];
@@ -63,6 +66,17 @@ export interface WorkbenchWork {
   active: boolean;
 }
 
+export interface WorkbenchMessage {
+  id: string;
+  workId: string;
+  runId: string | null;
+  role: string;
+  kind: string;
+  content: string;
+  artifactIds: string[];
+  createdAt: string;
+}
+
 export interface WorkbenchAgent {
   id: string;
   title: { zh: string; en: string };
@@ -76,6 +90,7 @@ export async function buildWorkbenchData(
     prototypeRoot?: string;
     selectedRunId?: string;
     configPath?: string;
+    workStorePath?: string;
   } = {},
 ): Promise<WorkbenchData> {
   const tracesRoot = input.tracesRoot ?? "traces";
@@ -84,6 +99,11 @@ export async function buildWorkbenchData(
   const runs = await listRunHistory({ tracesRoot, limit: 8 });
   const selectedRunId = input.selectedRunId || runs[0]?.id;
   const selectedRun = selectedRunId ? await getWorkbenchRun(selectedRunId, tracesRoot) : null;
+  const workStorePath = input.workStorePath;
+  const storedWorks = await listWorkRecords({ limit: 40, storePath: workStorePath });
+  const works = getWorkbenchWorks(runs, selectedRun, storedWorks);
+  const selectedWork = findSelectedWorkRecord(storedWorks, selectedRun, works);
+  const messages = await getWorkbenchMessages(selectedWork, selectedRun, workStorePath);
   const artifacts = await listArtifacts({
     tracesRoot,
     runId: selectedRun?.id,
@@ -101,7 +121,8 @@ export async function buildWorkbenchData(
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     selectedRun,
-    works: getWorkbenchWorks(runs, selectedRun),
+    works,
+    messages,
     artifacts: workbenchArtifacts,
     agents,
     settings: await buildWorkbenchSettings({ configPath: input.configPath }),
@@ -115,6 +136,7 @@ export async function writeWorkbenchData(
     artifactLimit?: number;
     prototypeRoot?: string;
     configPath?: string;
+    workStorePath?: string;
   } = {},
 ) {
   const data = await buildWorkbenchData(input);
@@ -142,6 +164,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
       durationMs: detail.trace.run.durationMs,
       prompt: getPrompt(detail.trace.run.input),
       tracePath: path.relative(process.cwd(), detail.item.traceFile),
+      workId: detail.trace.run.workId ?? null,
       artifactCount: detail.trace.artifacts.length,
       modelRoles: detail.trace.run.modelRoles ?? [],
       steps: detail.trace.steps.map(toWorkbenchStep),
@@ -160,6 +183,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
     durationMs: detail.item.durationMs,
     prompt: typeof trace.prompt === "string" ? trace.prompt : null,
     tracePath: path.relative(process.cwd(), detail.item.traceFile),
+    workId: null,
     artifactCount: detail.item.artifactCount,
     modelRoles: [],
     steps: [],
@@ -203,8 +227,12 @@ function getPrompt(input: Record<string, unknown>) {
   return typeof prompt === "string" ? prompt : null;
 }
 
-function getWorkbenchWorks(runs: RunHistoryItem[], selectedRun: WorkbenchRun | null): WorkbenchWork[] {
-  if (runs.length === 0) {
+function getWorkbenchWorks(
+  runs: RunHistoryItem[],
+  selectedRun: WorkbenchRun | null,
+  storedWorks: WorkRecord[],
+): WorkbenchWork[] {
+  if (runs.length === 0 && storedWorks.length === 0) {
     return [
       {
         id: "meta-create-agent",
@@ -223,16 +251,142 @@ function getWorkbenchWorks(runs: RunHistoryItem[], selectedRun: WorkbenchRun | n
   }
 
   const selectedRunId = selectedRun?.id || runs[0]?.id;
-  return runs.map((run) => ({
-    id: `run-${run.id}`,
-    title: getWorkbenchWorkTitle(run, selectedRun),
-    description: getWorkbenchWorkDescription(run),
-    state: run.state,
-    agentId: run.agentId,
+  const referencedRuns = new Set(storedWorks.flatMap((work) => work.runIds));
+  const storedWorkbenchWorks = storedWorks.map((work) => {
+    const run = findLatestRunForWork(work, runs);
+    const runId = run?.id || work.runIds[0] || "";
+    return {
+      id: work.id,
+      title: {
+        zh: compactText(work.title, 22),
+        en: compactText(work.title, 34),
+      },
+      description: getStoredWorkDescription(work, run),
+      state: work.state,
+      agentId: work.agentId || run?.agentId || "meta/create-agent",
+      runId,
+      updatedAt: work.updatedAt,
+      active: Boolean(selectedRunId && work.runIds.includes(selectedRunId)),
+    };
+  });
+  const fallbackWorks = runs
+    .filter((run) => !referencedRuns.has(run.id))
+    .map((run) => ({
+      id: createWorkIdFromRunId(run.id),
+      title: getWorkbenchWorkTitle(run, selectedRun),
+      description: getWorkbenchWorkDescription(run),
+      state: run.state,
+      agentId: run.agentId,
+      runId: run.id,
+      updatedAt: run.startedAt,
+      active: run.id === selectedRunId,
+    }));
+  const works = [...storedWorkbenchWorks, ...fallbackWorks].sort((a, b) =>
+    (b.updatedAt || "").localeCompare(a.updatedAt || ""),
+  );
+  if (!works.some((work) => work.active) && works[0]) {
+    works[0].active = true;
+  }
+  return works;
+}
+
+function findLatestRunForWork(work: WorkRecord, runs: RunHistoryItem[]) {
+  return runs
+    .filter((run) => work.runIds.includes(run.id))
+    .sort((left, right) => (right.startedAt || "").localeCompare(left.startedAt || ""))[0] ?? null;
+}
+
+function getStoredWorkDescription(work: WorkRecord, run: RunHistoryItem | null) {
+  if (run) {
+    return getWorkbenchWorkDescription(run);
+  }
+  return {
+    zh: `${formatWorkRecordState(work.state, "zh")} · ${formatWorkTime(work.updatedAt, "zh")}`,
+    en: `${formatWorkRecordState(work.state, "en")} · ${formatWorkTime(work.updatedAt, "en")}`,
+  };
+}
+
+function formatWorkRecordState(state: WorkState, lang: "zh" | "en") {
+  const stateMap = {
+    active: { zh: "进行中", en: "Active" },
+    waiting_user: { zh: "等待确认", en: "Waiting for user" },
+    running: { zh: "运行中", en: "Running" },
+    completed: { zh: "已完成", en: "Completed" },
+    archived: { zh: "已归档", en: "Archived" },
+  } as const;
+  return stateMap[state]?.[lang] || state;
+}
+
+function findSelectedWorkRecord(
+  storedWorks: WorkRecord[],
+  selectedRun: WorkbenchRun | null,
+  works: WorkbenchWork[],
+) {
+  if (!selectedRun?.id) {
+    return storedWorks.find((work) => work.id === works.find((item) => item.active)?.id) ?? null;
+  }
+  return storedWorks.find((work) => work.runIds.includes(selectedRun.id)) ?? null;
+}
+
+async function getWorkbenchMessages(
+  work: WorkRecord | null,
+  selectedRun: WorkbenchRun | null,
+  workStorePath?: string,
+) {
+  const messages = work
+    ? await listConversationMessages({ workId: work.id, limit: 80, storePath: workStorePath })
+    : selectedRun?.id
+      ? await listConversationMessages({ runId: selectedRun.id, limit: 80, storePath: workStorePath })
+      : [];
+  if (messages.length > 0) {
+    return messages.map(toWorkbenchMessage);
+  }
+  if (!selectedRun) {
+    return [];
+  }
+  return getFallbackMessagesFromRun(selectedRun);
+}
+
+function toWorkbenchMessage(message: ConversationMessage): WorkbenchMessage {
+  return {
+    id: message.id,
+    workId: message.workId,
+    runId: message.runId,
+    role: message.role,
+    kind: message.kind,
+    content: message.content,
+    artifactIds: message.artifactIds,
+    createdAt: message.createdAt,
+  };
+}
+
+function getFallbackMessagesFromRun(run: WorkbenchRun): WorkbenchMessage[] {
+  const workId = run.workId || createWorkIdFromRunId(run.id);
+  const createdAt = run.startedAt || new Date(0).toISOString();
+  const messages: WorkbenchMessage[] = [];
+  if (run.prompt) {
+    messages.push({
+      id: `fallback-${run.id}-user`,
+      workId,
+      runId: run.id,
+      role: "user",
+      kind: "user_message",
+      content: run.prompt,
+      artifactIds: [],
+      createdAt,
+    });
+  }
+  messages.push({
+    id: `fallback-${run.id}-summary`,
+    workId,
     runId: run.id,
-    updatedAt: run.startedAt,
-    active: run.id === selectedRunId,
-  }));
+    role: "agent",
+    kind: "summary",
+    content: `${run.agentId} ${formatRunState(run.state, "zh")}，产物数 ${run.artifactCount}。`,
+    artifactIds: [],
+    createdAt,
+  });
+  return messages;
 }
 
 function getWorkbenchWorkTitle(run: RunHistoryItem, selectedRun: WorkbenchRun | null) {

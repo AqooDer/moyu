@@ -137,6 +137,10 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(created.status, 200);
     assert.equal(created.body.ok, true);
     assert.equal(created.body.result.agentId, "custom/image-prototype-v1");
+    assert.equal(created.body.workbench.works.find((work: { runId?: string }) => work.runId === created.body.result.runId)?.state, "waiting_user");
+    assert.equal(created.body.workbench.messages.length, 2);
+    assert.equal(created.body.workbench.messages[0].role, "user");
+    assert.match(created.body.workbench.messages[1].content, /已生成 Agent 草案/);
 
     const artifactId = created.body.workbench.artifacts.find(
       (artifact: { name?: string }) => artifact.name === "manifest.yaml",
@@ -170,6 +174,22 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(installed.status, 200);
     assert.equal(installed.body.ok, true);
     assert.equal(installed.body.result.installed, true);
+    assert.equal(installed.body.workbench.works.find((work: { runId?: string }) => work.runId === created.body.result.runId)?.state, "completed");
+    assert.equal(installed.body.workbench.messages.length, 3);
+    assert.match(installed.body.workbench.messages[2].content, /已安装到正式目录/);
+
+    const completedWorks = await getJson(apiUrl(server.url, "/api/works?state=completed"));
+    assert.equal(completedWorks.ok, true);
+    assert.equal(
+      completedWorks.works.some((work: { runIds?: string[] }) => work.runIds?.includes(created.body.result.runId)),
+      true,
+    );
+
+    const draftMessages = await getJson(
+      apiUrl(server.url, `/api/messages?runId=${encodeURIComponent(created.body.result.runId)}`),
+    );
+    assert.equal(draftMessages.ok, true);
+    assert.equal(draftMessages.messages.length, 3);
 
     const repeatedInstall = await postJson(apiUrl(server.url, "/api/meta/install-agent"), {
       runId: created.body.result.runId,
@@ -269,13 +289,24 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(run.status, 200);
     assert.equal(run.body.ok, true);
     assert.match(run.body.result.run_id, /^run-custom__image-prototype-v1-/);
+    assert.equal(run.body.workbench.messages.length, 2);
+    assert.equal(run.body.workbench.messages[0].content, "a clean app dashboard");
+    assert.match(run.body.workbench.messages[1].content, /dry-run 已完成/);
+
+    const runMessages = await getJson(
+      apiUrl(server.url, `/api/messages?runId=${encodeURIComponent(run.body.result.run_id)}`),
+    );
+    assert.equal(runMessages.ok, true);
+    assert.equal(runMessages.messages.length, 2);
 
     const selectedDraft = await getJson(
       apiUrl(server.url, `/api/workbench?runId=${encodeURIComponent(created.body.result.runId)}`),
     );
     assert.equal(selectedDraft.selectedRun.id, created.body.result.runId);
     assert.equal(selectedDraft.selectedRun.agentId, "meta/create-agent");
+    assert.equal(typeof selectedDraft.selectedRun.workId, "string");
     assert.equal(selectedDraft.artifacts.length, created.body.result.files.length);
+    assert.equal(selectedDraft.messages.length, 3);
     assert.equal(Array.isArray(selectedDraft.settings.nav), true);
     assert.equal(selectedDraft.settings.nav.some((item: { id?: string }) => item.id === "models"), true);
     assert.equal(selectedDraft.settings.nav.some((item: { id?: string }) => item.id === "agent-context"), true);
@@ -293,7 +324,9 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedRun.selectedRun.id, run.body.result.run_id);
     assert.equal(selectedRun.selectedRun.agentId, "custom/image-prototype-v1");
     assert.equal(selectedRun.selectedRun.dryRun, true);
+    assert.match(selectedRun.selectedRun.workId, /^work-run-custom__image-prototype-v1-/);
     assert.equal(selectedRun.artifacts.length, 0);
+    assert.equal(selectedRun.messages.length, 2);
     assert.equal(selectedRun.settings.agentDefaults.some((item: { agentId?: string }) => item.agentId === "image-gen/prototype-v1"), true);
     assert.equal(
       selectedRun.settings.agentContexts.some(

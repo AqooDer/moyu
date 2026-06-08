@@ -34,6 +34,8 @@ export interface WorkRecord {
   projectId: string | null;
   title: string;
   state: WorkState;
+  agentId: string | null;
+  runIds: string[];
   createdAt: string;
   updatedAt: string;
 }

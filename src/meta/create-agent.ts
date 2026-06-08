@@ -3,6 +3,7 @@ import path from "node:path";
 import { stringify } from "yaml";
 import { formatValidationResult, validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
 import { RuntimeStore } from "../runtime/store.js";
+import { createWorkIdFromRunId, recordRunConversation } from "../runtime/work-store.js";
 import { writeAgentDraftRecord } from "./agent-draft.js";
 
 export interface MetaCreateAgentOptions {
@@ -39,9 +40,11 @@ interface AgentSpec {
 export async function createAgentWithMeta(options: MetaCreateAgentOptions): Promise<MetaCreateAgentResult> {
   const spec = await deriveAgentSpec(options);
   const runId = createMetaRunId(spec);
+  const workId = createWorkIdFromRunId(runId);
   const agentPath = resolveAgentPath(spec, runId, options);
   const runtime = RuntimeStore.createRun({
     id: runId,
+    workId,
     agentId: "meta/create-agent",
     agentVersion: "0.1.0",
     recipeId: "recipes/meta/create-agent",
@@ -140,6 +143,20 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
   );
   runtime.setRunState(validation.ok ? "succeeded" : "failed", validation.ok ? null : "agent validation failed");
   const traceFile = await runtime.writeTrace();
+  await recordRunConversation({
+    runId,
+    workId,
+    agentId: "meta/create-agent",
+    title: options.prompt,
+    state: validation.ok ? "waiting_user" : "completed",
+    prompt: options.prompt,
+    summary: validation.ok
+      ? `已生成 Agent 草案 ${spec.agentId}，请审核产物后安装。`
+      : `Agent 草案 ${spec.agentId} 校验失败，请查看验证结果。`,
+    artifactIds: runtime.snapshot.artifacts.map((artifact) => artifact.id),
+    startedAt: runtime.snapshot.run.startedAt,
+    updatedAt: runtime.snapshot.run.endedAt,
+  });
 
   return {
     runId,

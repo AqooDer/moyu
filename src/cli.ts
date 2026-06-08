@@ -335,6 +335,8 @@ uiCommand
     });
     console.log(`workbench_data: ${path.relative(process.cwd(), result.outputPath)}`);
     console.log(`runs: ${result.data.selectedRun ? 1 : 0}`);
+    console.log(`works: ${result.data.works.length}`);
+    console.log(`messages: ${result.data.messages.length}`);
     console.log(`artifacts: ${result.data.artifacts.length}`);
   });
 
@@ -354,7 +356,7 @@ uiCommand
     }
     console.log(`workbench: ${server.url}`);
     console.log(
-      "api: /api/workbench, /api/settings, /api/agents, /api/runs/:id, /api/artifacts/:id, /api/artifact-content, /api/artifact/open, /api/run/open-trace, /api/meta/create-agent, /api/meta/install-agent, /api/meta/install-agent/version, /api/meta/install-agent/diff, /api/agent/run",
+      "api: /api/workbench, /api/settings, /api/works, /api/messages, /api/agents, /api/runs/:id, /api/artifacts/:id, /api/artifact-content, /api/artifact/open, /api/run/open-trace, /api/meta/create-agent, /api/meta/install-agent, /api/meta/install-agent/version, /api/meta/install-agent/diff, /api/agent/run",
     );
   });
 

@@ -5,6 +5,7 @@ import type { AgentManifestSummary } from "./registry.js";
 import { readImageRelayConfig } from "../lib/env.js";
 import { generateImagesWithRelay } from "../lib/openai-compat-image.js";
 import { RuntimeStore } from "../runtime/store.js";
+import { createWorkIdFromRunId, recordRunConversation } from "../runtime/work-store.js";
 import { resolveAgentModelRoles } from "../settings/models/model-roles.js";
 
 const AgentRunOptions = z.object({
@@ -22,6 +23,7 @@ export type AgentRunOptions = z.infer<typeof AgentRunOptions>;
 export async function runImageAgent(agent: AgentManifestSummary, input: AgentRunOptions) {
   const options = AgentRunOptions.parse(input);
   const runId = createRunId(agent);
+  const workId = createWorkIdFromRunId(runId);
   const outputDir = path.resolve(
     options.outDir ?? path.join("artifacts", "agent-runs", agent.folderName, runId),
   );
@@ -38,6 +40,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
   const imageConfig = config && imageModelRole ? { ...config, model: imageModelRole.model } : config;
   const runtime = RuntimeStore.createRun({
     id: runId,
+    workId,
     agentId: agent.agentId,
     agentVersion: agent.version,
     recipeId: agent.recipeRef,
@@ -95,6 +98,18 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       fallbackReason: imageModelRole?.fallbackReason,
     });
     await writeFile(path.join(outputDir, "README.txt"), summary, "utf8");
+    await recordRunConversation({
+      runId,
+      workId,
+      agentId: agent.agentId,
+      title: prompt,
+      state: "completed",
+      prompt,
+      summary: `Agent ${agent.agentId} dry-run 已完成，Provider 调用已跳过。`,
+      artifactIds: runtime.snapshot.artifacts.map((artifact) => artifact.id),
+      startedAt: runtime.snapshot.run.startedAt,
+      updatedAt: runtime.snapshot.run.endedAt,
+    });
     return summary;
   }
 
@@ -140,6 +155,18 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     fallbackReason: imageModelRole?.fallbackReason,
   });
   await writeFile(path.join(outputDir, "README.txt"), summary, "utf8");
+  await recordRunConversation({
+    runId,
+    workId,
+    agentId: agent.agentId,
+    title: prompt,
+    state: "completed",
+    prompt,
+    summary: `Agent ${agent.agentId} 已完成运行，生成 ${result.files.length} 个产物。`,
+    artifactIds: runtime.snapshot.artifacts.map((artifact) => artifact.id),
+    startedAt: runtime.snapshot.run.startedAt,
+    updatedAt: runtime.snapshot.run.endedAt,
+  });
   return summary;
 }
 

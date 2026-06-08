@@ -29,6 +29,7 @@ export class RuntimeStore {
 
   static createRun(input: {
     id: string;
+    workId?: string | null;
     agentId: string;
     agentVersion: string;
     recipeId: string | null;
@@ -38,6 +39,7 @@ export class RuntimeStore {
   }) {
     return new RuntimeStore({
       id: input.id,
+      workId: input.workId ?? null,
       agentId: input.agentId,
       agentVersion: input.agentVersion,
       recipeId: input.recipeId,

@@ -33,6 +33,7 @@ Moyu 目前由单人维护，仍处于活跃原型开发阶段。它还没有大
 - Runtime Trace 已拆成 `Run / Step / Artifact` 结构。
 - 产物可以通过 CLI 查询、查看和打开。
 - 元智能体可以生成 Agent 草案，并安装审核后的 Agent。
+- Work 与对话消息会写入本地 Workbench store，支持任务会话恢复。
 - Workbench 原型默认中文，支持 English 切换。
 - 生图链路支持 OpenAI-compatible 图片接口，当前验证模型为 `gpt-image-2`。
 

@@ -1092,6 +1092,7 @@ function renderWorkbenchData() {
   currentArtifacts = getVisibleArtifacts();
   renderWorks(workbenchData.works || []);
   renderAgents(workbenchData.agents || []);
+  renderPersistentMessages(workbenchData.messages || []);
   renderArtifacts(currentArtifacts);
   renderConversationArtifacts(currentArtifacts);
   updateArtifactDetail(getSelectedArtifact(currentArtifacts));
@@ -1172,6 +1173,69 @@ function renderStateMessages() {
     scroll.append(createMessage("user", dict.you, dict.approveMessage, { stateMessage: true }));
   }
   scroll.append(createRunResultMessage(dict[prototypeState.lastRuntimeMessageKey] || dict.runAdvanceReply));
+}
+
+function renderPersistentMessages(persistentMessages) {
+  const scroll = document.querySelector("[data-message-scroll]");
+  if (!scroll) {
+    return;
+  }
+
+  const hasPersistentMessages = Array.isArray(persistentMessages) && persistentMessages.length > 0;
+  scroll.querySelectorAll("[data-persistent-message]").forEach((node) => node.remove());
+  scroll.querySelectorAll(".message:not([data-state-message])").forEach((node) => {
+    node.toggleAttribute("hidden", hasPersistentMessages && isStaticNarrativeMessage(node));
+  });
+  if (!hasPersistentMessages) {
+    return;
+  }
+
+  const anchor = scroll.querySelector("[data-state-message]") || scroll.firstElementChild;
+  const nodes = persistentMessages.map(createPersistentMessage);
+  if (anchor) {
+    scroll.insertBefore(createPersistentMessageGroup(nodes), anchor);
+    return;
+  }
+  scroll.append(...nodes);
+}
+
+function isStaticNarrativeMessage(node) {
+  return !node.querySelector(".checkpoint-card, .meta-agent-design-card, .conversation-run-card");
+}
+
+function createPersistentMessageGroup(nodes) {
+  const fragment = document.createDocumentFragment();
+  fragment.append(...nodes);
+  return fragment;
+}
+
+function createPersistentMessage(message) {
+  const role = message.role === "user" ? "user" : "agent";
+  const author = role === "user" ? messages[currentLang].you : getPersistentMessageAuthor(message);
+  const createdAt = formatMessageTime(message.createdAt);
+  const node = createMessage(role, author, message.content || "", {
+    createdAt,
+    persistent: true,
+  });
+  node.dataset.persistentMessage = "true";
+  if (Array.isArray(message.artifactIds) && message.artifactIds.length > 0) {
+    const body = node.querySelector(".message-body");
+    const refs = document.createElement("div");
+    refs.className = "message-artifact-refs";
+    refs.append(...message.artifactIds.map((id) => createText("span", id)));
+    body?.append(refs);
+  }
+  return node;
+}
+
+function getPersistentMessageAuthor(message) {
+  if (message.kind === "summary") {
+    return "Moyu Runtime";
+  }
+  if (message.kind === "checkpoint") {
+    return messages[currentLang].imageAgent;
+  }
+  return "Moyu";
 }
 
 function renderRunState() {
@@ -2782,6 +2846,9 @@ function createMessage(kind, author, text, options = {}) {
   if (options.stateMessage) {
     article.setAttribute("data-state-message", "true");
   }
+  if (options.persistent) {
+    article.setAttribute("data-persistent-message", "true");
+  }
 
   const avatar = document.createElement("div");
   avatar.className = `avatar-bubble${kind === "agent" ? " moyu" : ""}`;
@@ -2791,10 +2858,24 @@ function createMessage(kind, author, text, options = {}) {
   body.className = "message-body";
   const meta = document.createElement("div");
   meta.className = "message-meta";
-  meta.append(createText("strong", author), createText("span", getCurrentTime()));
+  meta.append(createText("strong", author), createText("span", options.createdAt || getCurrentTime()));
   body.append(meta, createText("p", text));
   article.append(avatar, body);
   return article;
+}
+
+function formatMessageTime(value) {
+  if (!value) {
+    return getCurrentTime();
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleTimeString(currentLang === "en" ? "en-US" : "zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function renderConversationArtifacts(artifacts) {

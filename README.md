@@ -33,6 +33,7 @@ The first end-to-end path is already working:
 - Runtime traces are modeled as `Run / Step / Artifact`.
 - Artifacts can be listed, inspected, and opened from the CLI.
 - The Meta-Agent can generate Agent drafts and install reviewed Agents.
+- Work and conversation messages now persist in a local Workbench store for session recovery.
 - The Workbench prototype defaults to Chinese and supports English.
 - The image generation path supports an OpenAI-compatible image API, currently tested with `gpt-image-2`.
 

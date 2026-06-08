@@ -5,6 +5,7 @@ import { parse, stringify } from "yaml";
 import { readAgentSummary } from "../agent/registry.js";
 import { validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
 import { listArtifacts } from "../runtime/artifacts.js";
+import { updateWorkStateForRun } from "../runtime/work-store.js";
 import { markAgentDraftInstallConflict, markAgentDraftInstalled, readAgentDraftRecordByRun } from "./agent-draft.js";
 
 export interface InstallAgentDraftOptions {
@@ -123,6 +124,14 @@ export async function installAgentDraft(options: InstallAgentDraftOptions): Prom
     targetPath,
     validation,
   });
+  await updateWorkStateForRun({
+    runId: options.runId,
+    state: validation.ok ? "completed" : "waiting_user",
+    summary: validation.ok
+      ? `Agent ${summary.agentId} 已安装到正式目录。`
+      : `Agent ${summary.agentId} 安装后校验未通过，请继续审核。`,
+    updatedAt: new Date().toISOString(),
+  });
   return {
     runId: options.runId,
     sourcePath,
@@ -167,6 +176,14 @@ export async function installAgentDraftAsVersion(
     agentId: versionTarget.agentId,
     targetPath: versionTarget.targetPath,
     validation,
+  });
+  await updateWorkStateForRun({
+    runId: options.runId,
+    state: validation.ok ? "completed" : "waiting_user",
+    summary: validation.ok
+      ? `Agent ${summary.agentId} 已安装为新版本 ${versionTarget.agentId}。`
+      : `Agent ${summary.agentId} 创建新版本后校验未通过，请继续审核。`,
+    updatedAt: new Date().toISOString(),
   });
 
   return {
