@@ -29,9 +29,34 @@ test("Settings API exposes the Workbench settings center independently", async (
     assert.equal(response.settings.modelRoles.some((item: { id?: string }) => item.id === "knowledge-embedding"), true);
     assert.equal(response.settings.modelRoles.some((item: { id?: string }) => item.id === "image-generation"), true);
     assert.equal(response.settings.knowledgeBases.some((item: { id?: string }) => item.id === "workspace-product"), true);
-    assert.equal(response.settings.skills.some((item: { id?: string }) => item.id === "image_gen_via_relay"), true);
-    assert.equal(response.settings.tools.some((item: { id?: string }) => item.id === "artifact-write"), true);
-    assert.equal(response.settings.mcpServers.some((item: { id?: string }) => item.id === "filesystem-mcp"), true);
+    const relaySkill = response.settings.skills.find(
+      (item: { id?: string }) => item.id === "image_gen_via_relay",
+    );
+    assert.equal(relaySkill.sourceType, "agent_local");
+    assert.equal(relaySkill.riskLevel, "medium");
+    assert.deepEqual(relaySkill.defaultEnabledFor, ["image-gen/prototype-v1"]);
+    assert.match(relaySkill.permissionBoundary.zh, /Artifact/);
+
+    const generatedSkill = response.settings.skills.find(
+      (item: { id?: string }) => item.id === "meta-agent-skill-review",
+    );
+    assert.equal(generatedSkill.sourceType, "controlled_generated");
+    assert.equal(generatedSkill.state, "review");
+    assert.equal(generatedSkill.riskLevel, "high");
+
+    const artifactTool = response.settings.tools.find(
+      (item: { id?: string }) => item.id === "artifact-write",
+    );
+    assert.equal(artifactTool.sourceType, "builtin");
+    assert.equal(artifactTool.riskLevel, "low");
+    assert.match(artifactTool.approval.zh, /默认启用/);
+
+    const filesystemMcp = response.settings.mcpServers.find(
+      (item: { id?: string }) => item.id === "filesystem-mcp",
+    );
+    assert.equal(filesystemMcp.sourceType, "mcp_server");
+    assert.equal(filesystemMcp.riskLevel, "high");
+    assert.match(filesystemMcp.permissionBoundary.zh, /路径/);
     assert.equal(response.settings.runtimePolicies.length > 0, true);
   } finally {
     await server.close();

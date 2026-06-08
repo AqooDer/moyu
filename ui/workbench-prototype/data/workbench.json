@@ -607,6 +607,7 @@
           "en": "Relay image generation skill"
         },
         "state": "enabled",
+        "sourceType": "agent_local",
         "scope": {
           "zh": "image-gen/prototype-v1 默认启用",
           "en": "Enabled by default for image-gen/prototype-v1"
@@ -615,6 +616,18 @@
           "zh": "agents/*/skills",
           "en": "agents/*/skills"
         },
+        "permissionBoundary": {
+          "zh": "仅允许读取当前 Agent 输入、调用配置好的图片中转 Provider，并写入本次 Run 的 Artifact 目录。",
+          "en": "May read current agent input, call the configured image relay provider, and write only to this run's artifact directory."
+        },
+        "approval": {
+          "zh": "随 Agent Manifest 一起审核；启用范围由 Agent 装配声明决定。",
+          "en": "Reviewed with the Agent manifest; enablement is scoped by agent assembly declarations."
+        },
+        "defaultEnabledFor": [
+          "image-gen/prototype-v1"
+        ],
+        "riskLevel": "medium",
         "note": {
           "zh": "负责生图协议适配与 artifact 落盘。",
           "en": "Handles image protocol adaptation and artifact persistence."
@@ -627,6 +640,7 @@
           "en": "Skill review flow"
         },
         "state": "review",
+        "sourceType": "controlled_generated",
         "scope": {
           "zh": "Meta-Agent 现造 Skill 前置",
           "en": "Precondition for generated skills"
@@ -635,6 +649,18 @@
           "zh": "受控生成流程",
           "en": "Controlled generation flow"
         },
+        "permissionBoundary": {
+          "zh": "生成的 Skill 默认不可执行；必须先通过静态检查、沙箱试跑和人工审核。",
+          "en": "Generated skills are not executable by default; they must pass static checks, sandbox dry-run, and human review first."
+        },
+        "approval": {
+          "zh": "人工审核通过后才可从 review 状态切换到 enabled。",
+          "en": "Human approval is required before moving from review to enabled."
+        },
+        "defaultEnabledFor": [
+          "meta/create-agent"
+        ],
+        "riskLevel": "high",
         "note": {
           "zh": "静态检查、沙箱试跑、人工审核后才可启用。",
           "en": "Enable only after static checks, sandbox dry-run, and human review."
@@ -649,6 +675,7 @@
           "en": "Artifact write tool"
         },
         "state": "enabled",
+        "sourceType": "builtin",
         "scope": {
           "zh": "所有运行时默认可用",
           "en": "Available to all runtime sessions"
@@ -657,6 +684,19 @@
           "zh": "builtin runtime",
           "en": "builtin runtime"
         },
+        "permissionBoundary": {
+          "zh": "只能写入 Runtime 分配的 Artifact 路径，并记录 Trace 元数据。",
+          "en": "Can write only to runtime-assigned artifact paths and must record trace metadata."
+        },
+        "approval": {
+          "zh": "内置工具默认启用，无需逐项审核。",
+          "en": "Builtin tool enabled by default; no per-run approval required."
+        },
+        "defaultEnabledFor": [
+          "meta/create-agent",
+          "image-gen/prototype-v1"
+        ],
+        "riskLevel": "low",
         "note": {
           "zh": "统一落盘并带 Trace 元数据。",
           "en": "Persists files with Trace metadata."
@@ -669,6 +709,7 @@
           "en": "Trace open tool"
         },
         "state": "enabled",
+        "sourceType": "builtin",
         "scope": {
           "zh": "Workbench 检查器",
           "en": "Workbench inspector"
@@ -677,6 +718,18 @@
           "zh": "builtin ui/runtime",
           "en": "builtin ui/runtime"
         },
+        "permissionBoundary": {
+          "zh": "只打开当前 Workspace 内已登记的 Trace 文件，不接受任意路径。",
+          "en": "Can open only registered trace files inside the current workspace; arbitrary paths are not accepted."
+        },
+        "approval": {
+          "zh": "内置只读检查工具默认启用。",
+          "en": "Builtin read-only inspection tool enabled by default."
+        },
+        "defaultEnabledFor": [
+          "meta/create-agent"
+        ],
+        "riskLevel": "low",
         "note": {
           "zh": "把运行证据暴露给用户，而不是静默隐藏。",
           "en": "Expose runtime evidence instead of hiding it."
@@ -689,6 +742,7 @@
           "en": "Knowledge ingest tool"
         },
         "state": "planned",
+        "sourceType": "planned",
         "scope": {
           "zh": "审核通过的 Agent 产物",
           "en": "Reviewed agent artifacts"
@@ -697,6 +751,16 @@
           "zh": "planned collection pipeline",
           "en": "planned collection pipeline"
         },
+        "permissionBoundary": {
+          "zh": "只能处理已审核的 Artifact，并受知识库集合 allowedArtifactTypes 约束。",
+          "en": "Can process only reviewed artifacts and must obey each collection's allowedArtifactTypes policy."
+        },
+        "approval": {
+          "zh": "每次入库都需要审核人、审核说明和目标集合记录。",
+          "en": "Each ingestion requires reviewer, review note, and target collection records."
+        },
+        "defaultEnabledFor": [],
+        "riskLevel": "medium",
         "note": {
           "zh": "把文档、摘要、图像描述写回知识库。",
           "en": "Write documents, summaries, and image descriptions back to KBs."
@@ -711,6 +775,7 @@
           "en": "Filesystem MCP"
         },
         "state": "review",
+        "sourceType": "mcp_server",
         "scope": {
           "zh": "受限目录访问",
           "en": "Restricted directory access"
@@ -719,6 +784,18 @@
           "zh": "MCP server",
           "en": "MCP server"
         },
+        "permissionBoundary": {
+          "zh": "只允许访问用户显式授权的 Workspace 路径，禁止默认暴露全盘文件系统。",
+          "en": "May access only explicitly authorized workspace paths; full filesystem exposure is blocked by default."
+        },
+        "approval": {
+          "zh": "启用前需要用户确认目录白名单。",
+          "en": "User must approve directory allowlists before enabling."
+        },
+        "defaultEnabledFor": [
+          "meta/create-agent"
+        ],
+        "riskLevel": "high",
         "note": {
           "zh": "用来替代直接暴露任意文件系统能力。",
           "en": "Replaces arbitrary filesystem access with scoped access."
@@ -731,6 +808,7 @@
           "en": "Web Search MCP"
         },
         "state": "planned",
+        "sourceType": "mcp_server",
         "scope": {
           "zh": "研究型 Agent 与运行时补证",
           "en": "Research agents and runtime evidence gathering"
@@ -739,6 +817,16 @@
           "zh": "MCP server",
           "en": "MCP server"
         },
+        "permissionBoundary": {
+          "zh": "只允许可追踪的外部搜索调用，结果必须进入 Trace 或 Artifact 证据链。",
+          "en": "Allows only traceable external search calls; results must be captured in trace or artifact evidence."
+        },
+        "approval": {
+          "zh": "接入前需要声明网络域名范围和引用记录策略。",
+          "en": "Domain scope and citation policy must be declared before integration."
+        },
+        "defaultEnabledFor": [],
+        "riskLevel": "medium",
         "note": {
           "zh": "适合可追踪外部搜索，不与主运行链路硬耦合。",
           "en": "Fits traceable external search without hard-coupling the main runtime."

@@ -70,8 +70,13 @@ export interface WorkbenchCapability {
   id: string;
   title: LocalizedText;
   state: "enabled" | "review" | "planned";
+  sourceType: "builtin" | "agent_local" | "controlled_generated" | "mcp_server" | "planned";
   scope: LocalizedText;
   source: LocalizedText;
+  permissionBoundary: LocalizedText;
+  approval: LocalizedText;
+  defaultEnabledFor: string[];
+  riskLevel: "low" | "medium" | "high";
   note: LocalizedText;
 }
 

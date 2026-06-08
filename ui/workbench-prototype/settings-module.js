@@ -52,6 +52,31 @@
     return !Boolean(input && input.canUseLocalApi) || !Boolean(input && input.apiAvailable);
   }
 
+  function getCapabilityDetailRows(item) {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+    return [
+      { kind: "text", labelKey: "scopeLabel", value: item.scope },
+      { kind: "text", labelKey: "sourceLabel", value: item.source },
+      { kind: "text", labelKey: "sourceTypeLabel", value: item.sourceType },
+      { kind: "text", labelKey: "permissionBoundaryLabel", value: item.permissionBoundary },
+      { kind: "text", labelKey: "approvalLabel", value: item.approval },
+      { kind: "tags", labelKey: "defaultEnabledForLabel", value: item.defaultEnabledFor },
+      { kind: "text", labelKey: "riskLevelLabel", value: item.riskLevel },
+    ].filter((row) => hasCapabilityRowValue(row.value));
+  }
+
+  function hasCapabilityRowValue(value) {
+    if (Array.isArray(value)) {
+      return value.length > 0;
+    }
+    if (value && typeof value === "object") {
+      return Boolean(value.zh || value.en);
+    }
+    return typeof value === "string" && value.trim().length > 0;
+  }
+
   function safeDecode(value) {
     try {
       return decodeURIComponent(value);
@@ -66,5 +91,6 @@
     normalizeSettingsPayload,
     resolveSettingsRenderState,
     shouldUsePreviewSettingsFallback,
+    getCapabilityDetailRows,
   };
 })(typeof window === "undefined" ? globalThis : window);

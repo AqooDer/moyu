@@ -219,6 +219,19 @@ const messages = {
     mcpHeading: "MCP 基础层",
     scopeLabel: "作用范围",
     sourceLabel: "来源",
+    sourceTypeLabel: "来源类型",
+    permissionBoundaryLabel: "权限边界",
+    approvalLabel: "审核要求",
+    defaultEnabledForLabel: "默认启用",
+    riskLevelLabel: "风险等级",
+    sourceTypeBuiltin: "内置",
+    sourceTypeAgentLocal: "Agent 本地",
+    sourceTypeControlledGenerated: "受控生成",
+    sourceTypeMcpServer: "MCP Server",
+    sourceTypePlanned: "规划中",
+    riskLow: "低",
+    riskMedium: "中",
+    riskHigh: "高",
     runtimeHeading: "运行策略与继承",
     agentDefaultsHeading: "Agent 默认继承示例",
     agentDefaultModels: "模型角色",
@@ -457,6 +470,19 @@ const messages = {
     mcpHeading: "MCP layer",
     scopeLabel: "Scope",
     sourceLabel: "Source",
+    sourceTypeLabel: "Source type",
+    permissionBoundaryLabel: "Permission boundary",
+    approvalLabel: "Approval",
+    defaultEnabledForLabel: "Enabled by default",
+    riskLevelLabel: "Risk",
+    sourceTypeBuiltin: "Builtin",
+    sourceTypeAgentLocal: "Agent local",
+    sourceTypeControlledGenerated: "Controlled generated",
+    sourceTypeMcpServer: "MCP Server",
+    sourceTypePlanned: "Planned",
+    riskLow: "Low",
+    riskMedium: "Medium",
+    riskHigh: "High",
     runtimeHeading: "Runtime policy and inheritance",
     agentDefaultsHeading: "Agent inheritance examples",
     agentDefaultModels: "Model roles",
@@ -1843,11 +1869,27 @@ function createCapabilityCard(item) {
 
   card.append(
     head,
-    createLabeledText("scopeLabel", localize(item.scope, "")),
-    createLabeledText("sourceLabel", localize(item.source, "")),
+    ...getSettingsModule().getCapabilityDetailRows(item).map(createCapabilityDetailRow),
     createText("p", localize(item.note, "")),
   );
   return card;
+}
+
+function createCapabilityDetailRow(row) {
+  if (row.kind === "tags") {
+    return createLabeledTags(row.labelKey, row.value);
+  }
+  return createLabeledText(row.labelKey, formatCapabilityDetailValue(row.labelKey, row.value));
+}
+
+function formatCapabilityDetailValue(labelKey, value) {
+  if (labelKey === "sourceTypeLabel") {
+    return resolveCapabilitySourceType(value);
+  }
+  if (labelKey === "riskLevelLabel") {
+    return resolveCapabilityRiskLevel(value);
+  }
+  return typeof value === "object" ? localize(value, "") : value || "-";
 }
 
 function createRuntimePolicyCard(item) {
@@ -1951,6 +1993,28 @@ function resolveCapabilityState(value) {
     enabled: "stateEnabled",
     review: "stateReview",
     planned: "statePlanned",
+  };
+  return dict[keyMap[value] || "notAvailable"] || value;
+}
+
+function resolveCapabilitySourceType(value) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    builtin: "sourceTypeBuiltin",
+    agent_local: "sourceTypeAgentLocal",
+    controlled_generated: "sourceTypeControlledGenerated",
+    mcp_server: "sourceTypeMcpServer",
+    planned: "sourceTypePlanned",
+  };
+  return dict[keyMap[value] || "notAvailable"] || value;
+}
+
+function resolveCapabilityRiskLevel(value) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    low: "riskLow",
+    medium: "riskMedium",
+    high: "riskHigh",
   };
   return dict[keyMap[value] || "notAvailable"] || value;
 }
