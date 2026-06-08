@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import type { AgentManifestSummary } from "../agent/registry.js";
+import type { AgentManifestSummary } from "../../agent/registry.js";
 import {
   readWorkspaceModelRoleConfig,
   resolveAgentModelRoles,

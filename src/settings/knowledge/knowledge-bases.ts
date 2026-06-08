@@ -1,12 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import type { LocalizedText } from "../types.js";
 
 export type KnowledgeBaseState = "ready" | "draft";
-
-export interface LocalizedText {
-  zh: string;
-  en: string;
-}
 
 export interface KnowledgeBaseWriteBackConfig {
   enabled: boolean;

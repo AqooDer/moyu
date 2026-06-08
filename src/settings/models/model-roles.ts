@@ -1,9 +1,9 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { parse } from "yaml";
-import type { AgentManifestSummary } from "../agent/registry.js";
-import { readImageRelayConfig, type ImageRelayConfig } from "../lib/env.js";
-import type { ModelRoleResolution, ModelRoleResolutionSource } from "./types.js";
+import type { AgentManifestSummary } from "../../agent/registry.js";
+import { readImageRelayConfig, type ImageRelayConfig } from "../../lib/env.js";
+import type { ModelRoleResolution, ModelRoleResolutionSource } from "../../runtime/types.js";
 
 export const DEFAULT_MODEL_ROLES: Record<string, ModelRoleConfig> = {
   "conversation-primary": {

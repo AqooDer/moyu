@@ -4,8 +4,8 @@ import { z } from "zod";
 import type { AgentManifestSummary } from "./registry.js";
 import { readImageRelayConfig } from "../lib/env.js";
 import { generateImagesWithRelay } from "../lib/openai-compat-image.js";
-import { resolveAgentModelRoles } from "../runtime/model-roles.js";
 import { RuntimeStore } from "../runtime/store.js";
+import { resolveAgentModelRoles } from "../settings/models/model-roles.js";
 
 const AgentRunOptions = z.object({
   prompt: z.string().min(1),

@@ -1,11 +1,11 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import { getArtifactDetail } from "./artifacts.js";
-import { getRunHistoryDetail, listRunHistory } from "./history.js";
 import {
   readWorkspaceKnowledgeBaseConfig,
   type WorkspaceKnowledgeBaseConfig,
-} from "./knowledge-bases.js";
+} from "../settings/knowledge/knowledge-bases.js";
+import { getArtifactDetail } from "./artifacts.js";
+import { getRunHistoryDetail, listRunHistory } from "./history.js";
 import type { ArtifactRecord, KnowledgeWriteBackRecord, RuntimeTrace } from "./types.js";
 
 export interface KnowledgeWriteBackHistoryItem extends KnowledgeWriteBackRecord {

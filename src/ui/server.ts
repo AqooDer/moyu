@@ -9,7 +9,8 @@ import { listAgentDraftRecords, type AgentDraftState } from "../meta/agent-draft
 import { InstallConflictError, installAgentDraft } from "../meta/install-agent.js";
 import { getArtifactDetail, openArtifact, readArtifactText } from "../runtime/artifacts.js";
 import { getRunHistoryDetail, openRunTrace } from "../runtime/history.js";
-import { buildWorkbenchData, buildWorkbenchSettings } from "../runtime/workbench-data.js";
+import { buildWorkbenchData } from "../runtime/workbench-data.js";
+import { buildWorkbenchSettings } from "../settings/workbench.js";
 
 interface ServeWorkbenchOptions {
   host?: string;
