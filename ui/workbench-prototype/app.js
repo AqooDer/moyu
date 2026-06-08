@@ -864,7 +864,8 @@ async function loadSettingsData(options = {}) {
   }
 
   const fallbackSettings = getPreviewSettingsData();
-  const settings = apiSettings || (canUsePreviewSettingsFallback() ? fallbackSettings : null);
+  const shouldUseFallback = !apiSettings && canUsePreviewSettingsFallback({ status: "error" });
+  const settings = apiSettings || (shouldUseFallback ? fallbackSettings : null);
   settingsState = {
     status: settings ? "ready" : "error",
     settings,
@@ -903,7 +904,7 @@ function hydrateSettingsFromWorkbenchData() {
   if (settingsState.status === "ready" || settingsState.status === "loading") {
     return;
   }
-  if (!canUsePreviewSettingsFallback()) {
+  if (!canUsePreviewSettingsFallback(settingsState)) {
     return;
   }
   const settings = getPreviewSettingsData();
@@ -918,8 +919,12 @@ function hydrateSettingsFromWorkbenchData() {
   };
 }
 
-function canUsePreviewSettingsFallback() {
-  return !canUseLocalApi() || !prototypeState.apiAvailable;
+function canUsePreviewSettingsFallback(state = settingsState) {
+  return getSettingsModule().shouldUsePreviewSettingsFallback({
+    status: state.status,
+    canUseLocalApi: canUseLocalApi(),
+    apiAvailable: prototypeState.apiAvailable,
+  });
 }
 
 function getSettingsModule() {

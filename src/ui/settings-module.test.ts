@@ -8,6 +8,7 @@ interface SettingsModule {
   toSettingsHash(sectionId: string): string;
   normalizeSettingsPayload(payload: unknown): unknown;
   resolveSettingsRenderState(input: { status?: string; settings?: unknown } | null): string;
+  shouldUsePreviewSettingsFallback(input: { status?: string; canUseLocalApi?: boolean; apiAvailable?: boolean }): boolean;
 }
 
 test("settings module resolves hash routing and render states", async () => {
@@ -31,6 +32,11 @@ test("settings module resolves hash routing and render states", async () => {
   assert.equal(module.resolveSettingsRenderState({ status: "error" }), "error");
   assert.equal(module.resolveSettingsRenderState({ status: "ready", settings: { nav: [] } }), "empty");
   assert.equal(module.resolveSettingsRenderState({ status: "ready", settings }), "ready");
+
+  assert.equal(module.shouldUsePreviewSettingsFallback({ status: "ready", canUseLocalApi: true, apiAvailable: true }), false);
+  assert.equal(module.shouldUsePreviewSettingsFallback({ status: "idle", canUseLocalApi: false, apiAvailable: false }), true);
+  assert.equal(module.shouldUsePreviewSettingsFallback({ status: "idle", canUseLocalApi: true, apiAvailable: false }), true);
+  assert.equal(module.shouldUsePreviewSettingsFallback({ status: "error", canUseLocalApi: true, apiAvailable: true }), true);
 });
 
 function assertSettingsRoute(route: { view: string; sectionId: string }, view: string, sectionId: string) {

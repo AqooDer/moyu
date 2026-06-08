@@ -44,6 +44,14 @@
     return "ready";
   }
 
+  function shouldUsePreviewSettingsFallback(input) {
+    const status = input && input.status ? input.status : "idle";
+    if (status === "error") {
+      return true;
+    }
+    return !Boolean(input && input.canUseLocalApi) || !Boolean(input && input.apiAvailable);
+  }
+
   function safeDecode(value) {
     try {
       return decodeURIComponent(value);
@@ -57,5 +65,6 @@
     toSettingsHash,
     normalizeSettingsPayload,
     resolveSettingsRenderState,
+    shouldUsePreviewSettingsFallback,
   };
 })(typeof window === "undefined" ? globalThis : window);
