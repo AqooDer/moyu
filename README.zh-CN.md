@@ -75,6 +75,7 @@ npm run dev -- agent run image-gen/prototype-v1 \
 - [Trace 数据模型](./docs/12-Trace数据模型.md)
 - [Artifact 契约](./docs/13-Artifact契约.md)
 - [任务会话式 Workbench 与多产物架构调整](./docs/20-任务会话式Workbench与多产物架构调整.md)
+- [协作与编码规范](./docs/24-协作与编码规范.md)
 
 ## 协议
 

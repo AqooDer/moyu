@@ -90,6 +90,9 @@ npm run build
 ├── 20-任务会话式Workbench与多产物架构调整.md # ★ 2026-05-28 修正:Workbench 以 Work Conversation 为中心,Artifact/Trace 进入右侧 Inspector
 ├── 21-工程运行与状态.md            # ★ 从根 README 迁移出的工程入口:目录、命令、配置、当前实现状态
 ├── 22-v0.1-alpha闭环规格.md        # ★ v0.1-alpha 主线:元智能体创建/审核/安装/运行 Agent 的最小闭环
+├── 24-协作与编码规范.md            # ★ 团队协作规范:Issue/Commit/Checklist/Karpathy 风格工程约束
+├── 25-当前需求任务清单.md          # ★ 当前 feature backlog:一条任务一个闭环
+├── 26-当前缺陷与质量修复清单.md    # ★ 当前 bug/quality backlog:一条问题一个闭环
 ├── logo                            # 项目素材
 └── ...
 ```

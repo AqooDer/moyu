@@ -75,6 +75,7 @@ Real image generation requires local `.env` configuration. See [Engineering Note
 - [Trace Data Model](./docs/12-Trace数据模型.md)
 - [Artifact Contract](./docs/13-Artifact契约.md)
 - [Workbench and Multi-Artifact Architecture](./docs/20-任务会话式Workbench与多产物架构调整.md)
+- [Collaboration and Coding Standards](./docs/24-协作与编码规范.md)
 
 ## License
 
