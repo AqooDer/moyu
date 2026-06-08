@@ -305,7 +305,7 @@ uiCommand
     }
     console.log(`workbench: ${server.url}`);
     console.log(
-      "api: /api/workbench, /api/agents, /api/runs/:id, /api/artifacts/:id, /api/artifact-content, /api/artifact/open, /api/run/open-trace, /api/meta/create-agent, /api/meta/install-agent, /api/agent/run",
+      "api: /api/workbench, /api/settings, /api/agents, /api/runs/:id, /api/artifacts/:id, /api/artifact-content, /api/artifact/open, /api/run/open-trace, /api/meta/create-agent, /api/meta/install-agent, /api/agent/run",
     );
   });
 

@@ -5,6 +5,40 @@ import path from "node:path";
 import test from "node:test";
 import { serveWorkbench } from "./server.js";
 
+test("Settings API exposes the Workbench settings center independently", async () => {
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-settings-test-"));
+  const server = await serveWorkbench({ port: 0, rootDir: workspace });
+
+  try {
+    const response = await getJson(apiUrl(server.url, "/api/settings"));
+    assert.equal(response.ok, true);
+    assert.equal(response.schemaVersion, 1);
+    assert.equal(Array.isArray(response.settings.nav), true);
+
+    const navIds = response.settings.nav.map((item: { id?: string }) => item.id);
+    assert.deepEqual(navIds, [
+      "overview",
+      "models",
+      "agent-context",
+      "knowledge",
+      "skills",
+      "tools",
+      "mcp",
+      "runtime",
+    ]);
+    assert.equal(response.settings.modelRoles.some((item: { id?: string }) => item.id === "knowledge-embedding"), true);
+    assert.equal(response.settings.modelRoles.some((item: { id?: string }) => item.id === "image-generation"), true);
+    assert.equal(response.settings.knowledgeBases.some((item: { id?: string }) => item.id === "workspace-product"), true);
+    assert.equal(response.settings.skills.some((item: { id?: string }) => item.id === "image_gen_via_relay"), true);
+    assert.equal(response.settings.tools.some((item: { id?: string }) => item.id === "artifact-write"), true);
+    assert.equal(response.settings.mcpServers.some((item: { id?: string }) => item.id === "filesystem-mcp"), true);
+    assert.equal(response.settings.runtimePolicies.length > 0, true);
+  } finally {
+    await server.close();
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
 test("Workbench API creates, installs, runs, and selects Agent runs", async () => {
   const previousCwd = process.cwd();
   const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-server-test-"));

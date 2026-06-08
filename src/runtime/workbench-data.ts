@@ -538,7 +538,7 @@ async function getWorkbenchAgents() {
   ].sort((left, right) => left.id.localeCompare(right.id));
 }
 
-function buildWorkbenchSettings(): WorkbenchSettings {
+export function buildWorkbenchSettings(): WorkbenchSettings {
   return {
     nav: [
       {

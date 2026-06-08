@@ -9,7 +9,7 @@ import { listAgentDraftRecords, type AgentDraftState } from "../meta/agent-draft
 import { InstallConflictError, installAgentDraft } from "../meta/install-agent.js";
 import { getArtifactDetail, openArtifact, readArtifactText } from "../runtime/artifacts.js";
 import { getRunHistoryDetail, openRunTrace } from "../runtime/history.js";
-import { buildWorkbenchData } from "../runtime/workbench-data.js";
+import { buildWorkbenchData, buildWorkbenchSettings } from "../runtime/workbench-data.js";
 
 interface ServeWorkbenchOptions {
   host?: string;
@@ -90,6 +90,15 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
 
   if (method === "GET" && url.pathname === "/api/workbench") {
     writeJson(response, 200, await buildWorkbenchData({ selectedRunId: url.searchParams.get("runId") || undefined }));
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/api/settings") {
+    writeJson(response, 200, {
+      ok: true,
+      schemaVersion: 1,
+      settings: buildWorkbenchSettings(),
+    });
     return;
   }
 

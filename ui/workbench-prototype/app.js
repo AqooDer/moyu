@@ -177,6 +177,13 @@ const messages = {
       "模型、知识库、Skills、工具与 MCP 共同构成 Agent 运行底座。优先声明默认角色，再允许 Agent 或运行时按状态覆盖。",
     backToWorkbench: "返回 Workbench",
     settingsOverviewFallback: "设置数据尚未准备好",
+    settingsLoadingTitle: "正在加载设置数据",
+    settingsLoadingDesc: "设置中心正在读取本地 Workbench API。",
+    settingsEmptyTitle: "暂无设置数据",
+    settingsEmptyDesc: "当前 Workspace 还没有可展示的模型、知识库、Skill、Tool、MCP 或运行策略。",
+    settingsErrorTitle: "设置数据加载失败",
+    settingsErrorDesc: "请确认已通过 `npm run prototype:workbench` 启动本地服务，或稍后重试。",
+    settingsRetry: "重试加载",
     settingsSectionOverview: "架构总览",
     settingsSectionModels: "模型管理",
     settingsSectionAgentContext: "Agent Context",
@@ -406,6 +413,13 @@ const messages = {
       "Models, knowledge bases, skills, tools, and MCP shape the agent runtime substrate. Define default roles first, then let agents or runs override with evidence.",
     backToWorkbench: "Back to Workbench",
     settingsOverviewFallback: "Settings data is not ready yet",
+    settingsLoadingTitle: "Loading settings data",
+    settingsLoadingDesc: "The Settings Center is reading the local Workbench API.",
+    settingsEmptyTitle: "No settings data yet",
+    settingsEmptyDesc: "This Workspace has no models, knowledge bases, skills, tools, MCP servers, or runtime policies to show yet.",
+    settingsErrorTitle: "Settings data failed to load",
+    settingsErrorDesc: "Start `npm run prototype:workbench` for the local API, or retry in a moment.",
+    settingsRetry: "Retry",
     settingsSectionOverview: "Overview",
     settingsSectionModels: "Models",
     settingsSectionAgentContext: "Agent Context",
@@ -468,6 +482,12 @@ const paneLimits = {
 const layoutStorageVersion = "7";
 let currentLang = localStorage.getItem("moyu.prototype.lang") || "zh";
 let workbenchData = null;
+let settingsState = {
+  status: "idle",
+  settings: null,
+  error: "",
+  requestId: 0,
+};
 let currentArtifacts = [];
 const prototypeState = {
   phase: "waiting",
@@ -498,6 +518,10 @@ bindComposer();
 bindStaticSelection();
 bindRunActions();
 bindSettings();
+syncViewFromHash({ render: false, load: false });
+if (prototypeState.centerView === "settings") {
+  loadSettingsData();
+}
 applyLanguage(currentLang);
 loadWorkbenchData();
 renderRuntimeMode();
@@ -754,19 +778,56 @@ function bindSettings() {
   document.querySelector("[data-back-to-workbench]")?.addEventListener("click", () => {
     openConversationView();
   });
+  window.addEventListener("hashchange", () => syncViewFromHash());
+  window.addEventListener("popstate", () => syncViewFromHash());
 }
 
 function openSettingsView(sectionId) {
-  prototypeState.centerView = "settings";
-  if (sectionId) {
-    prototypeState.selectedSettingsSection = sectionId;
-  }
-  renderCenterView();
+  writeSettingsHash(sectionId || prototypeState.selectedSettingsSection || "overview");
 }
 
 function openConversationView() {
+  if (getSettingsModule().parseSettingsHash(location.hash).view === "settings") {
+    history.pushState(null, "", `${location.pathname}${location.search}`);
+  }
   prototypeState.centerView = "conversation";
   renderCenterView();
+}
+
+function syncViewFromHash(options = {}) {
+  const shouldRender = options.render !== false;
+  const shouldLoad = options.load !== false;
+  const route = getSettingsModule().parseSettingsHash(location.hash);
+  if (route.view === "settings") {
+    prototypeState.centerView = "settings";
+    prototypeState.selectedSettingsSection = route.sectionId || "overview";
+    if (shouldLoad) {
+      loadSettingsData();
+    }
+    if (shouldRender) {
+      renderCenterView();
+    }
+    return;
+  }
+
+  prototypeState.centerView = "conversation";
+  if (shouldRender) {
+    renderCenterView();
+  }
+}
+
+function writeSettingsHash(sectionId, options = {}) {
+  const nextHash = getSettingsModule().toSettingsHash(sectionId || "overview");
+  if (location.hash === nextHash) {
+    syncViewFromHash();
+    return;
+  }
+  if (options.replace) {
+    history.replaceState(null, "", `${location.pathname}${location.search}${nextHash}`);
+    syncViewFromHash();
+    return;
+  }
+  location.hash = nextHash;
 }
 
 function renderCenterView() {
@@ -779,10 +840,97 @@ function renderCenterView() {
   }
 }
 
+async function loadSettingsData(options = {}) {
+  const force = Boolean(options.force);
+  if (!force && settingsState.status === "loading") {
+    return;
+  }
+  if (!force && settingsState.status === "ready" && settingsState.settings) {
+    return;
+  }
+
+  const requestId = settingsState.requestId + 1;
+  settingsState = {
+    ...settingsState,
+    status: "loading",
+    error: "",
+    requestId,
+  };
+  renderCenterView();
+
+  const apiSettings = await loadSettingsDataFromApi();
+  if (settingsState.requestId !== requestId) {
+    return;
+  }
+
+  const fallbackSettings = getPreviewSettingsData();
+  const settings = apiSettings || (canUsePreviewSettingsFallback() ? fallbackSettings : null);
+  settingsState = {
+    status: settings ? "ready" : "error",
+    settings,
+    error: settings ? "" : "settings api unavailable",
+    requestId,
+  };
+  renderCenterView();
+  renderRuntimeMode();
+}
+
+async function loadSettingsDataFromApi() {
+  if (!canUseLocalApi()) {
+    return null;
+  }
+
+  try {
+    const response = await fetch("/api/settings", { cache: "no-store" });
+    const data = await response.json().catch(() => null);
+    const settings = getSettingsModule().normalizeSettingsPayload(data);
+    if (!response.ok || !settings) {
+      return null;
+    }
+    prototypeState.apiAvailable = true;
+    return settings;
+  } catch {
+    return null;
+  }
+}
+
+function getPreviewSettingsData() {
+  const module = getSettingsModule();
+  return module.normalizeSettingsPayload(workbenchData?.settings) || module.normalizeSettingsPayload(workbenchData);
+}
+
+function hydrateSettingsFromWorkbenchData() {
+  if (settingsState.status === "ready" || settingsState.status === "loading") {
+    return;
+  }
+  if (!canUsePreviewSettingsFallback()) {
+    return;
+  }
+  const settings = getPreviewSettingsData();
+  if (!settings) {
+    return;
+  }
+  settingsState = {
+    ...settingsState,
+    status: "ready",
+    settings,
+    error: "",
+  };
+}
+
+function canUsePreviewSettingsFallback() {
+  return !canUseLocalApi() || !prototypeState.apiAvailable;
+}
+
+function getSettingsModule() {
+  return window.MoyuSettingsModule;
+}
+
 async function loadWorkbenchData() {
   const apiData = await loadWorkbenchDataFromApi();
   if (apiData) {
     workbenchData = apiData;
+    hydrateSettingsFromWorkbenchData();
     renderWorkbenchData();
     renderRuntimeMode();
     return;
@@ -796,6 +944,7 @@ async function loadWorkbenchData() {
     const data = await response.json();
     if (data && data.schemaVersion === 1) {
       workbenchData = data;
+      hydrateSettingsFromWorkbenchData();
       renderWorkbenchData();
       renderRuntimeMode();
     }
@@ -1471,20 +1620,49 @@ function renderSettingsCenter() {
     return;
   }
 
-  const settings = workbenchData?.settings;
+  const settings = settingsState.settings;
   const dict = messages[currentLang] ?? messages.zh;
-  if (!settings) {
+  const renderState = getSettingsModule().resolveSettingsRenderState(settingsState);
+  if (renderState !== "ready") {
     navRoot.replaceChildren();
-    contentRoot.replaceChildren(createText("p", dict.settingsOverviewFallback));
+    contentRoot.replaceChildren(createSettingsStateCard(renderState, settingsState.error));
     return;
   }
 
   if (!settings.nav.some((item) => item.id === prototypeState.selectedSettingsSection)) {
     prototypeState.selectedSettingsSection = settings.nav[0]?.id || "overview";
+    writeSettingsHash(prototypeState.selectedSettingsSection, { replace: true });
+    return;
   }
 
   navRoot.replaceChildren(...settings.nav.map((item) => createSettingsNavButton(item)));
   contentRoot.replaceChildren(renderSettingsContent(settings));
+}
+
+function createSettingsStateCard(state, error) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    loading: ["settingsLoadingTitle", "settingsLoadingDesc"],
+    empty: ["settingsEmptyTitle", "settingsEmptyDesc"],
+    error: ["settingsErrorTitle", "settingsErrorDesc"],
+  };
+  const [titleKey, descriptionKey] = keyMap[state] || keyMap.empty;
+  const card = document.createElement("section");
+  card.className = `settings-state-card ${state}`;
+  card.setAttribute("aria-live", state === "loading" ? "polite" : "assertive");
+  card.append(createText("strong", dict[titleKey]), createText("p", dict[descriptionKey]));
+  if (error && state === "error") {
+    card.append(createText("small", error));
+  }
+  if (state === "error") {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ghost-button settings-retry-button";
+    button.textContent = dict.settingsRetry;
+    button.addEventListener("click", () => loadSettingsData({ force: true }));
+    card.append(button);
+  }
+  return card;
 }
 
 function createSettingsNavButton(item) {
@@ -1496,8 +1674,7 @@ function createSettingsNavButton(item) {
     createText("small", localize(item.description, item.id)),
   );
   button.addEventListener("click", () => {
-    prototypeState.selectedSettingsSection = item.id;
-    renderSettingsCenter();
+    writeSettingsHash(item.id);
   });
   return button;
 }
