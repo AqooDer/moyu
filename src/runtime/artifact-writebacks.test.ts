@@ -119,3 +119,88 @@ test("marking a missing artifact returns null", async () => {
     await rm(workspace, { recursive: true, force: true });
   }
 });
+
+test("knowledge-base write-back policy blocks disabled or disallowed targets", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-artifact-writeback-policy-"));
+
+  try {
+    process.chdir(workspace);
+    const artifactPath = path.join(workspace, "concept.png");
+    await writeFile(artifactPath, "fake image bytes", "utf8");
+
+    const runtime = RuntimeStore.createRun({
+      id: "run-writeback-policy-test",
+      agentId: "image/concept-agent",
+      agentVersion: "0.1.0",
+      recipeId: "image-concept",
+      dryRun: false,
+      input: { prompt: "accepted concept" },
+    });
+    runtime.setRunState("running");
+    const step = runtime.startStep({
+      id: "step-image",
+      name: "image",
+      kind: "skill",
+    });
+    const artifact = await runtime.addArtifact({
+      producerStepId: step.id,
+      type: "png",
+      role: "primary",
+      filePath: artifactPath,
+    });
+    runtime.finishStep(step.id, "succeeded", { artifacts: 1 });
+    runtime.setRunState("succeeded");
+    await runtime.writeTrace();
+
+    await assert.rejects(
+      markArtifactForKnowledgeBase({
+        artifactId: artifact.id,
+        collectionId: "workspace-product",
+        reviewer: "Yuxi",
+      }),
+      /Artifact type "png" is not allowed/,
+    );
+
+    const visualResult = await markArtifactForKnowledgeBase({
+      artifactId: artifact.id,
+      collectionId: "workspace-visual",
+      reviewer: "Yuxi",
+    });
+    assert.ok(visualResult);
+    assert.equal(visualResult.created, true);
+    assert.equal(visualResult.record.collectionId, "workspace-visual");
+
+    await assert.rejects(
+      markArtifactForKnowledgeBase({
+        artifactId: artifact.id,
+        collectionId: "workspace-visual-disabled",
+        reviewer: "Yuxi",
+        knowledgeBaseConfig: {
+          source: "workspace_config",
+          configuredCollectionIds: ["workspace-visual-disabled"],
+          knowledgeBases: {
+            "workspace-visual-disabled": {
+              id: "workspace-visual-disabled",
+              title: { zh: "禁用视觉库", en: "Disabled visual KB" },
+              state: "ready",
+              embeddingRole: "knowledge-embedding",
+              chunkStrategy: { zh: "默认切片", en: "Default chunking" },
+              connectedAgents: [],
+              sources: [],
+              writeBack: {
+                enabled: false,
+                policy: { zh: "禁止回流", en: "Write-back disabled" },
+                allowedArtifactTypes: ["image"],
+              },
+            },
+          },
+        },
+      }),
+      /Knowledge base write-back is disabled/,
+    );
+  } finally {
+    process.chdir(previousCwd);
+    await rm(workspace, { recursive: true, force: true });
+  }
+});

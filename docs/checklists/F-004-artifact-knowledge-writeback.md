@@ -20,11 +20,12 @@
   - 写回记录包含来源 Artifact、目标集合与审核记录
   - Run Trace 与 `run show` 可看到 write-back 事件
   - 支持按 run / artifact / collection 查询回流记录
+  - 接入 F-003 Workspace 知识库配置，校验目标集合、回流启用状态与允许产物类型
 - [x] 非本次范围（Out of Scope）已写清：
   - 不实现真实切片、嵌入、向量索引或召回
   - 不实现设置中心 UI 编辑或审核弹窗
-  - 不依赖 F-003 尚未完成的知识库配置读取层做集合存在性校验
-- [x] 依赖 / 前置条件已确认：本分支可独立验证；F-003 完成后再接入知识库配置的集合校验和 allowed artifact types 策略。
+  - 不实现产物内容写入真实索引或后台 Worker
+- [x] 依赖 / 前置条件已确认：F-003 已完成，F-004 已基于其 `knowledge_bases` 配置层完成策略校验接线。
 
 ## 2. 验收标准
 
@@ -34,7 +35,7 @@
 
 ## 3. 设计与影响范围
 
-- [x] 受影响页面 / 命令 / Agent / 模块已列出：`artifact write-back`、`artifact write-backs`、Run Trace、Runtime Store。
+- [x] 受影响页面 / 命令 / Agent / 模块已列出：`artifact write-back`、`artifact write-backs`、Run Trace、Runtime Store、Workspace Knowledge Base Config。
 - [x] 数据结构 / 配置变更已列出：`RuntimeTrace.knowledgeWriteBacks` 新增 write-back ledger。
 - [x] 是否影响 README / docs / 示例：是，新增本 checklist。
 - [x] 是否影响测试用例：是，新增 `src/runtime/artifact-writebacks.test.ts`。
@@ -63,7 +64,7 @@
 - 验证环境：macOS，本地 `/private/tmp/moyu-f004` worktree
 - 验证输入：临时 Runtime Trace + markdown Artifact + `workspace-product` collection id
 - 预期结果：Artifact 可被幂等标记为知识库回流，Trace 中存在 write-back 记录，并可查询。
-- 实际结果：通过。完整测试 8/8 通过；F-004 单测 2/2 通过；类型检查、构建与 diff 空白检查通过。系统 `node` 为 v16，直接 `npm test` 会因不支持 `--import` 失败，因此使用 bundled Node v24 执行同等测试命令。
+- 实际结果：通过。完整测试 12/12 通过；F-004 单测 3/3 通过；类型检查、构建与 diff 空白检查通过。系统 `node` 为 v16，直接 `npm test` 会因不支持 `--import` 失败，因此使用 bundled Node v24 执行同等测试命令。
 
 ## 6. 文档同步
 
@@ -82,6 +83,6 @@
 
 ## 8. 完成说明
 
-- 结果摘要：新增 Artifact → Knowledge Base write-back ledger、CLI 标记/查询入口、Run Trace 展示和自动化测试。
-- 遗留问题：等待 F-003 完成后，把 `collectionId` 校验和 allowed artifact types 策略接入 Workspace 知识库配置层。
+- 结果摘要：新增 Artifact → Knowledge Base write-back ledger、CLI 标记/查询入口、Run Trace 展示、Workspace 知识库回流策略校验和自动化测试。
+- 遗留问题：真实切片、嵌入、向量索引、召回与审核 UI 不在本次范围。
 - 后续 Issue 建议：为 Workbench 增加产物“加入知识库”审核 UI。

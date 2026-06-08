@@ -284,6 +284,7 @@ artifactCommand
   .requiredOption("--reviewer <name>", "reviewer who approved the write-back")
   .option("--note <text>", "review note")
   .option("--traces <path>", "traces root directory", "traces")
+  .option("--config <path>", "workspace config path", "moyu.config.json")
   .action(async (artifactId, opts) => {
     const result = await markArtifactForKnowledgeBase({
       artifactId,
@@ -291,6 +292,7 @@ artifactCommand
       reviewer: opts.reviewer,
       note: opts.note,
       tracesRoot: opts.traces,
+      configPath: opts.config,
     });
     if (!result) {
       console.error(`Artifact not found: ${artifactId}`);

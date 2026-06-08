@@ -2,6 +2,10 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getArtifactDetail } from "./artifacts.js";
 import { getRunHistoryDetail, listRunHistory } from "./history.js";
+import {
+  readWorkspaceKnowledgeBaseConfig,
+  type WorkspaceKnowledgeBaseConfig,
+} from "./knowledge-bases.js";
 import type { ArtifactRecord, KnowledgeWriteBackRecord, RuntimeTrace } from "./types.js";
 
 export interface KnowledgeWriteBackHistoryItem extends KnowledgeWriteBackRecord {
@@ -20,6 +24,8 @@ export async function markArtifactForKnowledgeBase(input: {
   reviewer: string;
   note?: string | null;
   tracesRoot?: string;
+  configPath?: string;
+  knowledgeBaseConfig?: WorkspaceKnowledgeBaseConfig;
 }): Promise<MarkKnowledgeWriteBackResult | null> {
   const collectionId = normalizeRequired(input.collectionId, "collection id");
   const reviewer = normalizeRequired(input.reviewer, "reviewer");
@@ -37,6 +43,10 @@ export async function markArtifactForKnowledgeBase(input: {
   if (!runtimeArtifact) {
     return null;
   }
+
+  const knowledgeBaseConfig =
+    input.knowledgeBaseConfig ?? (await readWorkspaceKnowledgeBaseConfig(input.configPath));
+  assertWriteBackAllowed(knowledgeBaseConfig, collectionId, runtimeArtifact.type);
 
   const writeBacks = ensureKnowledgeWriteBacks(detail.trace);
   const existing = writeBacks.find(
@@ -177,6 +187,51 @@ function toWriteBackSource(artifact: ArtifactRecord): KnowledgeWriteBackRecord["
   };
 }
 
+function assertWriteBackAllowed(
+  config: WorkspaceKnowledgeBaseConfig,
+  collectionId: string,
+  artifactType: string,
+) {
+  const collection = config.knowledgeBases[collectionId];
+  if (!collection) {
+    throw new Error(`Knowledge base collection not found: ${collectionId}`);
+  }
+
+  if (!collection.writeBack.enabled) {
+    throw new Error(`Knowledge base write-back is disabled: ${collectionId}`);
+  }
+
+  if (!isArtifactTypeAllowed(artifactType, collection.writeBack.allowedArtifactTypes)) {
+    throw new Error(
+      `Artifact type "${artifactType}" is not allowed for knowledge base collection: ${collectionId}`,
+    );
+  }
+}
+
+function isArtifactTypeAllowed(artifactType: string, allowedTypes: string[]) {
+  const accepted = new Set(allowedTypes.map(normalizeArtifactType).filter(Boolean));
+  if (accepted.has("*")) {
+    return true;
+  }
+  const candidates = artifactTypeCandidates(artifactType);
+  return candidates.some((candidate) => accepted.has(candidate));
+}
+
+function artifactTypeCandidates(artifactType: string) {
+  const normalized = normalizeArtifactType(artifactType);
+  const aliases: Record<string, string[]> = {
+    md: ["markdown"],
+    markdown: ["md"],
+    png: ["image"],
+    jpg: ["image"],
+    jpeg: ["image"],
+    webp: ["image"],
+    gif: ["image"],
+    svg: ["image"],
+  };
+  return [normalized, ...(aliases[normalized] ?? [])].filter(Boolean);
+}
+
 function isRuntimeTrace(trace: unknown): trace is RuntimeTrace {
   return Boolean(
     trace &&
@@ -187,6 +242,10 @@ function isRuntimeTrace(trace: unknown): trace is RuntimeTrace {
       "steps" in trace &&
       "artifacts" in trace,
   );
+}
+
+function normalizeArtifactType(value: string) {
+  return value.trim().toLowerCase();
 }
 
 function normalizeRequired(value: string, label: string) {
