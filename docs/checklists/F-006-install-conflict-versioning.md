@@ -63,7 +63,7 @@
 - [x] Commit type：feat
 - [x] Commit scope：meta
 - [x] Commit subject：增加安装冲突版本化处理
-- [ ] Commit hash：
+- [x] Commit hash：325017f
 - [x] 已在本清单记录最终结果
 
 ## 8. 完成说明

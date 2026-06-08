@@ -63,7 +63,7 @@
 - [x] Commit type：feat
 - [x] Commit scope：runtime
 - [x] Commit subject：增加 Work 与 Message 持久化层
-- [ ] Commit hash：
+- [x] Commit hash：98d30b1
 - [x] 已在本清单记录最终结果
 
 ## 8. 完成说明

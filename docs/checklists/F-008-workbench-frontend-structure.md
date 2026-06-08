@@ -60,10 +60,10 @@
 ## 7. 提交闭环
 
 - [x] Commit 已按规范编写
-- [ ] Commit type：refactor
-- [ ] Commit scope：frontend
-- [ ] Commit subject：迁移 Workbench 正式前端结构
-- [ ] Commit hash：
+- [x] Commit type：refactor
+- [x] Commit scope：frontend
+- [x] Commit subject：迁移 Workbench 正式前端结构
+- [x] Commit hash：cececb3
 - [x] 已在本清单记录最终结果
 
 ## 8. 完成说明

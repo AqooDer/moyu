@@ -63,7 +63,7 @@
 - [x] Commit type：`feat`
 - [x] Commit scope：`settings`
 - [x] Commit subject：`补齐能力设置权限边界`
-- [x] Commit hash：提交后见最终回复
+- [x] Commit hash：dc4833f
 - [x] 已在本清单记录最终结果
 
 ## 8. 完成说明
