@@ -44,12 +44,12 @@
 
 ## 3. 启动与运行
 
-工程已具备可运行 CLI 与 Workbench 原型。常用入口:
+工程已具备可运行 CLI 与 Workbench。常用入口:
 
 ```bash
 npm install
 npm run dev -- help
-npm run prototype:workbench
+npm run workbench:serve
 ```
 
 完整命令见 `21-工程运行与状态.md`。
@@ -127,7 +127,7 @@ npm run build
 - [x] 新建 `20-任务会话式Workbench与多产物架构调整.md`(修正 Workbench 方向:对话中心、左右可收起、Artifact 归属当前 Work、多 Agent 调用进入 Trace)
 - [x] 根目录 `README.md` 改为面向大众的项目介绍;原工程运行内容迁移到 `21-工程运行与状态.md`
 - [x] 新建 `22-v0.1-alpha闭环规格.md`(锁定元智能体创建 Agent 的最小可用闭环)
-- [x] 建立 Workbench 静态原型 `ui/workbench-prototype/`,默认中文,支持中文 / English 切换
+- [x] 建立 Workbench 前端 `ui/workbench/`,默认中文,支持中文 / English 切换；旧 `ui/workbench-prototype/` 保留兼容跳转入口
 - [x] 改 `09-MVP-路线图.md`:加核心铁律 3(ADR-008 硬验收);v0.0 改为生图尖刺;v0.1 首发改为生图原型;v0.2 把写标书 Recipe 纳入;v0.3 加 Meta-Agent 现造 LLM Skill;v0.4 加现造 code Skill
 - [x] 改 `10-v0.0-技术尖刺.md`:从 PDF→docx 换为 prompt → openai-compat 中转站 → PNG;时间盒从 1 周压到 1 天
 - [x] 改 `11-写标书Recipe规格.md`:顶部加 banner,从 v0.1 首发让位为 v0.2+ 候选 Recipe

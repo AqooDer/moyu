@@ -21,7 +21,7 @@ A single task may involve several rounds of conversation, multiple intermediate 
 - **Multi-artifact task sessions**: one work session can produce documents, images, slide decks, traces, configuration files, and review reports.
 - **Local-first runtime**: Agents, traces, artifacts, and configuration live in the local project by default, making them inspectable and versionable.
 - **Reviewable generation**: generated Agents first land as drafts and can be reviewed before installation into the official `agents/` directory.
-- **Workbench prototype**: a Codex-inspired three-panel interface with conversation in the center, navigation on the left, and artifacts / traces / context on the right.
+- **Workbench**: a Codex-inspired three-panel interface with conversation in the center, navigation on the left, and artifacts / traces / context on the right.
 
 ## Current Status
 
@@ -34,7 +34,7 @@ The first end-to-end path is already working:
 - Artifacts can be listed, inspected, and opened from the CLI.
 - The Meta-Agent can generate Agent drafts and install reviewed Agents.
 - Work and conversation messages now persist in a local Workbench store for session recovery.
-- The Workbench prototype defaults to Chinese and supports English.
+- The Workbench defaults to Chinese and supports English.
 - The image generation path supports an OpenAI-compatible image API, currently tested with `gpt-image-2`.
 
 ## Quick Start
@@ -42,13 +42,13 @@ The first end-to-end path is already working:
 ```bash
 npm install
 npm run dev -- help
-npm run prototype:workbench
+npm run workbench:serve
 ```
 
 The Workbench server prints the actual local URL, usually:
 
 ```text
-http://127.0.0.1:4177/ui/workbench-prototype/
+http://127.0.0.1:4177/ui/workbench/
 ```
 
 If port `4177` is already in use, Moyu automatically switches to the next available port.

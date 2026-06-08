@@ -319,12 +319,12 @@ artifactCommand
     console.log(formatKnowledgeWriteBackList(items));
   });
 
-const uiCommand = program.command("ui").description("prepare local UI prototype data");
+const uiCommand = program.command("ui").description("prepare local Workbench data");
 
 uiCommand
   .command("export-data")
-  .description("export runtime data for the static Workbench prototype")
-  .option("--out <path>", "output JSON path", "ui/workbench-prototype/data/workbench.json")
+  .description("export runtime data for the static Workbench")
+  .option("--out <path>", "output JSON path", "ui/workbench/public/data/workbench.json")
   .option("--traces <path>", "traces root directory", "traces")
   .option("--limit <number>", "maximum number of artifacts to include", "12")
   .action(async (opts) => {
@@ -342,7 +342,7 @@ uiCommand
 
 uiCommand
   .command("serve")
-  .description("serve the Workbench prototype with local runtime APIs")
+  .description("serve the Workbench with local runtime APIs")
   .option("--host <host>", "host to bind", "127.0.0.1")
   .option("--port <number>", "port to listen on", "4177")
   .action(async (opts) => {

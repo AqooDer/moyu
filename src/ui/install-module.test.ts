@@ -108,7 +108,7 @@ test("install module rejects incomplete version actions", async () => {
 });
 
 async function loadInstallModule() {
-  const source = await readFile(new URL("../../ui/workbench-prototype/install-module.js", import.meta.url), "utf8");
+  const source = await readFile(new URL("../../ui/workbench/src/modules/install-module.js", import.meta.url), "utf8");
   const context = vm.createContext({ window: {} });
   vm.runInContext(source, context);
   const module = (context.window as { MoyuInstallModule?: InstallModule }).MoyuInstallModule;

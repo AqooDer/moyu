@@ -83,7 +83,7 @@ export async function serveWorkbench(input: ServeWorkbenchOptions = {}) {
     host,
     port,
     requestedPort,
-    url: `http://${host}:${port}/ui/workbench-prototype/`,
+    url: `http://${host}:${port}/ui/workbench/`,
     close: () =>
       new Promise<void>((resolve, reject) => {
         server.close((error) => (error ? reject(error) : resolve()));
@@ -437,7 +437,7 @@ function isAddressInUse(error: unknown) {
 }
 
 async function serveStaticFile(response: ServerResponse, rootDir: string, pathname: string, headOnly: boolean) {
-  const normalizedPath = pathname === "/" ? "/ui/workbench-prototype/" : decodeURIComponent(pathname);
+  const normalizedPath = pathname === "/" ? "/ui/workbench/" : decodeURIComponent(pathname);
   const relativePath = normalizedPath.replace(/^\/+/, "");
   let filePath = path.resolve(rootDir, relativePath);
 

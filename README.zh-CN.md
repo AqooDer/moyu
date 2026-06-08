@@ -21,7 +21,7 @@ Moyu 是一个早期开源项目，用来通过对话创建、运行和演进 AI
 - **多产物任务会话**：一个 Work 可以包含文档、图片、PPT、Trace、配置文件、审核报告等多种产物。
 - **本地优先运行**：Agent、Trace、Artifact 和配置默认保存在本地项目中，便于审查、版本化和迁移。
 - **可审查的生成流程**：生成的 Agent 先进入草案目录，用户审核后再安装到正式 `agents/`。
-- **Workbench 原型**：类似 Codex 的三栏工作台，中间是对话，左侧是导航，右侧是产物、Trace 和上下文检查器。
+- **Workbench**：类似 Codex 的三栏工作台，中间是对话，左侧是导航，右侧是产物、Trace 和上下文检查器。
 
 ## 当前状态
 
@@ -34,7 +34,7 @@ Moyu 目前由单人维护，仍处于活跃原型开发阶段。它还没有大
 - 产物可以通过 CLI 查询、查看和打开。
 - 元智能体可以生成 Agent 草案，并安装审核后的 Agent。
 - Work 与对话消息会写入本地 Workbench store，支持任务会话恢复。
-- Workbench 原型默认中文，支持 English 切换。
+- Workbench 默认中文，支持 English 切换。
 - 生图链路支持 OpenAI-compatible 图片接口，当前验证模型为 `gpt-image-2`。
 
 ## 快速开始
@@ -42,13 +42,13 @@ Moyu 目前由单人维护，仍处于活跃原型开发阶段。它还没有大
 ```bash
 npm install
 npm run dev -- help
-npm run prototype:workbench
+npm run workbench:serve
 ```
 
 Workbench 服务会在终端输出真实本地地址，通常是：
 
 ```text
-http://127.0.0.1:4177/ui/workbench-prototype/
+http://127.0.0.1:4177/ui/workbench/
 ```
 
 如果 `4177` 被占用，服务会自动切换到下一个可用端口。

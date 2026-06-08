@@ -94,7 +94,7 @@ export async function buildWorkbenchData(
   } = {},
 ): Promise<WorkbenchData> {
   const tracesRoot = input.tracesRoot ?? "traces";
-  const prototypeRoot = path.resolve(input.prototypeRoot ?? "ui/workbench-prototype");
+  const prototypeRoot = path.resolve(input.prototypeRoot ?? "ui/workbench");
   const artifactLimit = input.artifactLimit ?? 12;
   const runs = await listRunHistory({ tracesRoot, limit: 8 });
   const selectedRunId = input.selectedRunId || runs[0]?.id;

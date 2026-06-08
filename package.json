@@ -14,6 +14,8 @@
     "start": "node dist/cli.js",
     "test": "node --import tsx --test src/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "workbench:export-data": "tsx src/cli.ts ui export-data",
+    "workbench:serve": "tsx src/cli.ts ui serve",
     "prototype:export-data": "tsx src/cli.ts ui export-data",
     "prototype:workbench": "tsx src/cli.ts ui serve"
   },

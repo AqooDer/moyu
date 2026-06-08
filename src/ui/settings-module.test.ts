@@ -80,7 +80,7 @@ function assertSettingsRoute(route: { view: string; sectionId: string }, view: s
 }
 
 async function loadSettingsModule() {
-  const source = await readFile(new URL("../../ui/workbench-prototype/settings-module.js", import.meta.url), "utf8");
+  const source = await readFile(new URL("../../ui/workbench/src/modules/settings-module.js", import.meta.url), "utf8");
   const context = vm.createContext({ window: {} });
   vm.runInContext(source, context);
   const module = (context.window as { MoyuSettingsModule?: SettingsModule }).MoyuSettingsModule;

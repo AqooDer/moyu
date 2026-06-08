@@ -118,6 +118,24 @@ test("Settings API exposes workspace knowledge base config", async () => {
   }
 });
 
+test("Workbench static routes expose the formal frontend and prototype compatibility entry", async () => {
+  const server = await serveWorkbench({ port: 0, rootDir: path.resolve(".") });
+
+  try {
+    assert.match(server.url, /\/ui\/workbench\/$/);
+
+    const workbench = await getText(apiUrl(server.url, "/ui/workbench/"));
+    assert.match(workbench, /Moyu Workbench/);
+    assert.match(workbench, /\.\/src\/app\.js/);
+    assert.match(workbench, /\.\/src\/modules\/settings-module\.js/);
+
+    const compatibility = await getText(apiUrl(server.url, "/ui/workbench-prototype/"));
+    assert.match(compatibility, /ui\/workbench\//);
+  } finally {
+    await server.close();
+  }
+});
+
 test("Workbench API creates, installs, runs, and selects Agent runs", async () => {
   const previousCwd = process.cwd();
   const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-server-test-"));
@@ -350,6 +368,12 @@ async function getJson(url: string) {
   const response = await fetch(url);
   assert.equal(response.ok, true, `${url} should return ${response.status}`);
   return response.json();
+}
+
+async function getText(url: string) {
+  const response = await fetch(url);
+  assert.equal(response.ok, true, `${url} should return ${response.status}`);
+  return response.text();
 }
 
 async function postJson(url: string, body: unknown) {

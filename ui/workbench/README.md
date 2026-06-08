@@ -1,6 +1,6 @@
-# Moyu Workbench Prototype
+# Moyu Workbench
 
-这是 Moyu v0.1 的静态 Workbench 原型，默认中文，支持 English 切换。
+这是 Moyu v0.1 的本地 Workbench 前端，默认中文，支持 English 切换。
 
 ## 定位
 
@@ -18,20 +18,20 @@
 建议从仓库根目录启动带本地 API 的 Workbench 服务：
 
 ```bash
-npm run prototype:workbench
+npm run workbench:serve
 ```
 
 然后访问：
 
 ```text
-http://127.0.0.1:4177/ui/workbench-prototype/
+http://127.0.0.1:4177/ui/workbench/
 ```
 
 如果 `4177` 已被普通静态服务占用，命令会自动换到下一个可用端口，并在终端打印真实地址，例如：
 
 ```text
 port 4177 is busy, using 4178 instead
-workbench: http://127.0.0.1:4178/ui/workbench-prototype/
+workbench: http://127.0.0.1:4178/ui/workbench/
 ```
 
 此时必须打开终端打印的 `workbench:` 地址；继续停留在旧的 `4177` 静态页面时，创建、打开和安装 Agent 的 API 动作不会生效。
@@ -45,16 +45,18 @@ python3 -m http.server 4177 --bind 127.0.0.1
 然后访问：
 
 ```text
-http://127.0.0.1:4177/ui/workbench-prototype/
+http://127.0.0.1:4177/ui/workbench/
 ```
 
 也可以先导出运行数据：
 
 ```bash
-npm run prototype:export-data
+npm run workbench:export-data
 ```
 
-`prototype:export-data` 会生成 `ui/workbench-prototype/data/workbench.json`。原型页面会优先读取这份数据；如果没有生成数据，则使用页面内置的静态演示内容。
+`workbench:export-data` 会生成 `ui/workbench/public/data/workbench.json`。Workbench 页面会优先读取这份数据；如果没有生成数据，则使用页面内置的静态演示内容。
+
+旧脚本 `prototype:workbench` 和 `prototype:export-data` 仍保留为兼容别名。
 
 `prototype:workbench` 会额外提供本地 API：
 
@@ -96,7 +98,7 @@ npm run dev -- meta install-agent --run <meta_create_run_id>
 npm run dev -- agent validate /private/tmp/moyu-meta-create-agent/custom__meta-image-prototype-v1
 ```
 
-## 原型范围
+## 当前范围
 
 - Codex 式三栏工作台
 - 左右侧栏折叠，折叠后保留稳定窄轨道
@@ -112,7 +114,7 @@ npm run dev -- agent validate /private/tmp/moyu-meta-create-agent/custom__meta-i
 - 设置中心支持 `#settings/<section>` 直达分组，例如 `#settings/models`、`#settings/knowledge`、`#settings/mcp`
 - 设置中心具备独立加载态、空态、失败态与重试，不依赖 Workbench 会话状态
 - 中英文切换
-- 读取 `data/workbench.json` 中的运行与产物数据
+- 读取 `public/data/workbench.json` 中的运行与产物数据
 
 ## 视觉方向
 
