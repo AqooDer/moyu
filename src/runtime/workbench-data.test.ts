@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import type { AgentManifestSummary } from "../agent/registry.js";
 import { listAgents } from "../agent/registry.js";
 import { runImageAgent } from "../agent/run.js";
 import { listAgentDraftRecords, readAgentDraftRecordByRun } from "../meta/agent-draft.js";
@@ -261,6 +262,137 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
   }
 });
 
+test("failed image Agent runs still persist trace, plan, and Workbench conversation", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-workbench-failed-image-"));
+  const previousImageProviderBaseUrl = process.env.MOYU_IMAGE_PROVIDER_BASE_URL;
+  const previousImageProviderApiKey = process.env.MOYU_IMAGE_PROVIDER_API_KEY;
+  const previousImageProviderModel = process.env.MOYU_IMAGE_PROVIDER_MODEL;
+  const previousFetch = globalThis.fetch;
+
+  try {
+    process.chdir(workspace);
+    globalThis.fetch = async () => new Response("provider unavailable", { status: 500 });
+    process.env.MOYU_IMAGE_PROVIDER_BASE_URL = "http://image-provider.test";
+    process.env.MOYU_IMAGE_PROVIDER_API_KEY = "test-key";
+    process.env.MOYU_IMAGE_PROVIDER_MODEL = "gpt-image-2";
+
+    const agent = createImageAgentSummary();
+    await writeMinimalAgentManifest(agent);
+    await assert.rejects(
+      () =>
+        runImageAgent(agent, {
+          prompt: "a clean app dashboard",
+          count: 1,
+          size: "1024x1024",
+          style: "realistic",
+          rawPrompt: true,
+          dryRun: false,
+        }),
+      /image relay request failed: 500 provider unavailable/,
+    );
+
+    const runId = await findOnlyRunId();
+    const trace = await readTrace(runId);
+    assert.equal(trace.run.state, "failed");
+    assert.match(trace.run.reason, /image relay request failed: 500 provider unavailable/);
+    assert.equal(trace.plan.title, "生图 Agent 运行计划");
+    assert.equal(trace.plan.state, "failed");
+    assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "step-image-gen")?.state, "failed");
+    assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "register-artifacts")?.state, "pending");
+    assert.equal(trace.steps.find((step: { id: string }) => step.id === "step-image-gen")?.state, "failed");
+    assert.equal(
+      trace.steps.find((step: { id: string }) => step.id === "step-image-gen")?.error?.code,
+      "runtime_step_error",
+    );
+    assert.match(
+      trace.steps.find((step: { id: string }) => step.id === "step-image-gen")?.error?.message,
+      /provider unavailable/,
+    );
+    assert.ok(trace.notes.some((note: string) => note.includes("Run failed: runtime_step_error")));
+
+    const workbench = await buildWorkbenchData({ selectedRunId: runId });
+    assert.equal(workbench.selectedRun?.id, runId);
+    assert.equal(workbench.selectedRun?.state, "failed");
+    assert.equal(workbench.selectedRun?.plan?.state, "failed");
+    const activeWork = workbench.works.find((work) => work.active);
+    assert.equal(activeWork?.state, "failed");
+    assert.equal(activeWork?.storedState, "completed");
+    assert.equal(activeWork?.lifecycle.runState, "failed");
+    assert.equal(activeWork?.lifecycle.planState, "failed");
+    assert.equal(activeWork?.progress.failedSteps, 1);
+    assert.equal(workbench.messages.length, 3);
+    assert.equal(workbench.messages[0].role, "user");
+    assert.equal(workbench.messages[1].kind, "plan");
+    assert.match(workbench.messages[1].content, /执行图片生成/);
+    assert.equal(workbench.messages[2].kind, "summary");
+    assert.match(workbench.messages[2].content, /运行失败/);
+    assert.match(workbench.messages[2].content, /provider unavailable/);
+  } finally {
+    globalThis.fetch = previousFetch;
+    process.chdir(previousCwd);
+    restoreEnv("MOYU_IMAGE_PROVIDER_BASE_URL", previousImageProviderBaseUrl);
+    restoreEnv("MOYU_IMAGE_PROVIDER_API_KEY", previousImageProviderApiKey);
+    restoreEnv("MOYU_IMAGE_PROVIDER_MODEL", previousImageProviderModel);
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test("failed Meta-Agent persist step still persists trace, plan, and Workbench conversation", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-workbench-failed-meta-"));
+
+  try {
+    process.chdir(workspace);
+    await mkdir(path.join("agents", "custom__image-prototype-v1"), { recursive: true });
+
+    await assert.rejects(
+      () =>
+        createAgentWithMeta({
+          prompt: "Create an image prototype Agent",
+          agentId: "custom/image-prototype-v1",
+          persist: true,
+        }),
+      /Target Agent folder already exists/,
+    );
+
+    const runId = await findOnlyRunId();
+    const trace = await readTrace(runId);
+    assert.equal(trace.run.state, "failed");
+    assert.match(trace.run.reason, /Target Agent folder already exists/);
+    assert.equal(trace.plan.title, "Meta-Agent 创建 Agent 计划");
+    assert.equal(trace.plan.state, "failed");
+    assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "intake")?.state, "succeeded");
+    assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "spec-draft")?.state, "succeeded");
+    assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "persist")?.state, "failed");
+    assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "validate")?.state, "pending");
+    assert.match(
+      trace.steps.find((step: { id: string }) => step.id === "persist")?.error?.message,
+      /Target Agent folder already exists/,
+    );
+
+    const workbench = await buildWorkbenchData({ selectedRunId: runId });
+    assert.equal(workbench.selectedRun?.id, runId);
+    assert.equal(workbench.selectedRun?.agentId, "meta/create-agent");
+    assert.equal(workbench.selectedRun?.state, "failed");
+    assert.equal(workbench.selectedRun?.plan?.state, "failed");
+    const activeWork = workbench.works.find((work) => work.active);
+    assert.equal(activeWork?.state, "failed");
+    assert.equal(activeWork?.storedState, "completed");
+    assert.equal(activeWork?.lifecycle.runState, "failed");
+    assert.equal(activeWork?.progress.failedSteps, 1);
+    assert.equal(workbench.messages.length, 3);
+    assert.equal(workbench.messages[1].kind, "plan");
+    assert.match(workbench.messages[1].content, /写入 Agent 草案/);
+    assert.equal(workbench.messages[2].kind, "summary");
+    assert.match(workbench.messages[2].content, /Meta-Agent 创建 Agent custom\/image-prototype-v1 失败/);
+    assert.match(workbench.messages[2].content, /Target Agent folder already exists/);
+  } finally {
+    process.chdir(previousCwd);
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
 function readSummaryValue(summary: string, key: string) {
   const prefix = `${key}: `;
   const line = summary.split("\n").find((item) => item.startsWith(prefix));
@@ -274,4 +406,61 @@ function restoreEnv(key: string, value: string | undefined) {
     return;
   }
   process.env[key] = value;
+}
+
+function createImageAgentSummary(): AgentManifestSummary {
+  const agentPath = path.resolve("agents", "custom__image-prototype-v1");
+  return {
+    agentId: "custom/image-prototype-v1",
+    name: "Image Prototype Agent",
+    description: "Generate UI concept images and keep traceable artifacts.",
+    version: "0.1.0",
+    recipeRef: "image-gen/prototype-v1",
+    uiRef: "./ui.yaml",
+    folderName: "custom__image-prototype-v1",
+    path: agentPath,
+    tags: ["image-generation"],
+    mcpServers: [
+      {
+        id: "analytics-db-mcp",
+        transport: "stdio",
+        state: "review",
+        description: "Read-only analytics query gateway",
+        permissions: ["database.query.read"],
+      },
+    ],
+  };
+}
+
+async function findOnlyRunId() {
+  const entries = await readdir("traces", { withFileTypes: true });
+  const runIds = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  assert.equal(runIds.length, 1);
+  return runIds[0];
+}
+
+async function readTrace(runId: string) {
+  return JSON.parse(await readFile(path.join("traces", runId, "run.json"), "utf8"));
+}
+
+async function writeMinimalAgentManifest(agent: AgentManifestSummary) {
+  await mkdir(agent.path, { recursive: true });
+  await writeFile(
+    path.join(agent.path, "manifest.yaml"),
+    [
+      'schema_version: "1"',
+      `agent_id: ${agent.agentId}`,
+      `name: ${agent.name}`,
+      `description: ${agent.description}`,
+      `version: ${agent.version}`,
+      `recipe_ref: ${agent.recipeRef}`,
+      "routing:",
+      "  model_roles:",
+      "    image-generation:",
+      "      provider: openai-compat",
+      "      model: gpt-image-2",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
 }

@@ -3,6 +3,7 @@ import path from "node:path";
 import { stringify } from "yaml";
 import { formatValidationResult, validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
 import { createPlanRecord, formatPlanSummary } from "../runtime/plans.js";
+import { finalizeFailedRun } from "../runtime/run-finalizer.js";
 import { runRuntimeStep } from "../runtime/step-runner.js";
 import { RuntimeStore } from "../runtime/store.js";
 import { createWorkIdFromRunId, recordRunConversation } from "../runtime/work-store.js";
@@ -103,167 +104,184 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
     }),
   );
   runtime.setRunState("running");
-  await runRuntimeStep({
-    runtime,
-    id: "intake",
-    name: "INTAKE",
-    kind: "llm",
-    execute: () => ({
-      outputSummary: {
-        prompt_chars: options.prompt.length,
-        target_agent_id: spec.agentId,
-      },
-    }),
-  });
-  await runRuntimeStep({
-    runtime,
-    id: "spec-draft",
-    name: "SPEC_DRAFT",
-    kind: "llm",
-    execute: () => ({
-      outputSummary: {
-        manifest: "manifest.yaml",
-        ui: "ui.yaml",
-        skill: spec.skillName,
-      },
-    }),
-  });
-
-  await assertWritableTarget(agentPath, Boolean(options.force));
-  const files = await runRuntimeStep<string[]>({
-    runtime,
-    id: "persist",
-    name: "PERSIST",
-    kind: "tool",
-    inputSummary: {
-      agent_path: agentPath,
-      persisted: Boolean(options.persist),
-    },
-    execute: async () => {
-      const scaffoldFiles = await writeAgentScaffold(agentPath, spec, options.prompt);
-      return {
-        outputSummary: { files: scaffoldFiles.length },
-        value: scaffoldFiles,
-      };
-    },
-  }).then((result) => result.value ?? []);
-
-  const validationStep = await runRuntimeStep<{
-    validation: AgentValidationResult;
-    verificationFile: string;
-  }>({
-    runtime,
-    id: "validate",
-    name: "VALIDATE",
-    kind: "tool",
-    inputSummary: { agent_path: agentPath },
-    execute: async () => {
-      const validation = await validateAgentFolder(agentPath);
-      const verificationFile = path.join(agentPath, "verification.trace.json");
-      await writeFile(
-        verificationFile,
-        JSON.stringify(
-          {
-            schemaVersion: 1,
-            runId,
-            agentId: spec.agentId,
-            state: validation.ok ? "validated" : "failed",
-            validation,
-            checkedAt: new Date().toISOString(),
-          },
-          null,
-          2,
-        ),
-        "utf8",
-      );
-      return {
-        state: validation.ok ? "succeeded" : "failed",
+  try {
+    await runRuntimeStep({
+      runtime,
+      id: "intake",
+      name: "INTAKE",
+      kind: "llm",
+      execute: () => ({
         outputSummary: {
-          errors: validation.errors.length,
-          warnings: validation.warnings.length,
+          prompt_chars: options.prompt.length,
+          target_agent_id: spec.agentId,
         },
-        error: validation.ok
-          ? null
-          : {
-              code: "agent_validation_failed",
-              message: `${validation.errors.length} validation error(s).`,
+      }),
+    });
+    await runRuntimeStep({
+      runtime,
+      id: "spec-draft",
+      name: "SPEC_DRAFT",
+      kind: "llm",
+      execute: () => ({
+        outputSummary: {
+          manifest: "manifest.yaml",
+          ui: "ui.yaml",
+          skill: spec.skillName,
+        },
+      }),
+    });
+
+    const files = await runRuntimeStep<string[]>({
+      runtime,
+      id: "persist",
+      name: "PERSIST",
+      kind: "tool",
+      inputSummary: {
+        agent_path: agentPath,
+        persisted: Boolean(options.persist),
+      },
+      execute: async () => {
+        await assertWritableTarget(agentPath, Boolean(options.force));
+        const scaffoldFiles = await writeAgentScaffold(agentPath, spec, options.prompt);
+        return {
+          outputSummary: { files: scaffoldFiles.length },
+          value: scaffoldFiles,
+        };
+      },
+    }).then((result) => result.value ?? []);
+
+    const validationStep = await runRuntimeStep<{
+      validation: AgentValidationResult;
+      verificationFile: string;
+    }>({
+      runtime,
+      id: "validate",
+      name: "VALIDATE",
+      kind: "tool",
+      inputSummary: { agent_path: agentPath },
+      execute: async () => {
+        const validation = await validateAgentFolder(agentPath);
+        const verificationFile = path.join(agentPath, "verification.trace.json");
+        await writeFile(
+          verificationFile,
+          JSON.stringify(
+            {
+              schemaVersion: 1,
+              runId,
+              agentId: spec.agentId,
+              state: validation.ok ? "validated" : "failed",
+              validation,
+              checkedAt: new Date().toISOString(),
             },
-        value: { validation, verificationFile },
-      };
-    },
-  });
-  const validation = validationStep.value?.validation ?? failedValidation("Agent validation did not return a result.");
-  const verificationFile = path.join(agentPath, "verification.trace.json");
-  files.push(validationStep.value?.verificationFile ?? verificationFile);
+            null,
+            2,
+          ),
+          "utf8",
+        );
+        return {
+          state: validation.ok ? "succeeded" : "failed",
+          outputSummary: {
+            errors: validation.errors.length,
+            warnings: validation.warnings.length,
+          },
+          error: validation.ok
+            ? null
+            : {
+                code: "agent_validation_failed",
+                message: `${validation.errors.length} validation error(s).`,
+              },
+          value: { validation, verificationFile },
+        };
+      },
+    });
+    const validation = validationStep.value?.validation ?? failedValidation("Agent validation did not return a result.");
+    const verificationFile = path.join(agentPath, "verification.trace.json");
+    files.push(validationStep.value?.verificationFile ?? verificationFile);
 
-  const draftRecordFile = path.join(path.dirname(agentPath), "agent-draft.json");
-  const draftCreatedAt = new Date().toISOString();
-  await writeAgentDraftRecord(draftRecordFile, {
-    schemaVersion: 1,
-    revision: 1,
-    runId,
-    agentId: spec.agentId,
-    draftPath: agentPath,
-    targetPath: path.resolve(options.rootDir || "agents", spec.folderName),
-    state: validation.ok ? "drafted" : "validation_failed",
-    validation,
-    createdAt: draftCreatedAt,
-    updatedAt: draftCreatedAt,
-    installedAt: null,
-  });
-  files.push(draftRecordFile);
+    const draftRecordFile = path.join(path.dirname(agentPath), "agent-draft.json");
+    const draftCreatedAt = new Date().toISOString();
+    await writeAgentDraftRecord(draftRecordFile, {
+      schemaVersion: 1,
+      revision: 1,
+      runId,
+      agentId: spec.agentId,
+      draftPath: agentPath,
+      targetPath: path.resolve(options.rootDir || "agents", spec.folderName),
+      state: validation.ok ? "drafted" : "validation_failed",
+      validation,
+      createdAt: draftCreatedAt,
+      updatedAt: draftCreatedAt,
+      installedAt: null,
+    });
+    files.push(draftRecordFile);
 
-  await runRuntimeStep({
-    runtime,
-    id: "register-artifacts",
-    name: "REGISTER_ARTIFACTS",
-    kind: "tool",
-    inputSummary: { files: files.length },
-    execute: async () => {
-      for (const file of files) {
-        await runtime.addArtifact({
-          producerStepId: "persist",
-          type: path.extname(file).slice(1) || "text",
-          role: file.endsWith("verification.trace.json") ? "log" : "primary",
-          filePath: file,
-        });
-      }
-      return { outputSummary: { artifacts: runtime.snapshot.artifacts.length } };
-    },
-  });
+    await runRuntimeStep({
+      runtime,
+      id: "register-artifacts",
+      name: "REGISTER_ARTIFACTS",
+      kind: "tool",
+      inputSummary: { files: files.length },
+      execute: async () => {
+        for (const file of files) {
+          await runtime.addArtifact({
+            producerStepId: "persist",
+            type: path.extname(file).slice(1) || "text",
+            role: file.endsWith("verification.trace.json") ? "log" : "primary",
+            filePath: file,
+          });
+        }
+        return { outputSummary: { artifacts: runtime.snapshot.artifacts.length } };
+      },
+    });
 
-  runtime.addNote(
-    options.persist
-      ? "Meta-Agent scaffold persisted into the local Agents root."
-      : "Meta-Agent scaffold generated as a reviewable draft; pass --persist to install it.",
-  );
-  runtime.setRunState(validation.ok ? "succeeded" : "failed", validation.ok ? null : "agent validation failed");
-  const traceFile = await runtime.writeTrace();
-  await recordRunConversation({
-    runId,
-    workId,
-    agentId: "meta/create-agent",
-    title: options.prompt,
-    state: validation.ok ? "waiting_user" : "completed",
-    prompt: options.prompt,
-    planSummary: formatPlanSummary(runtime.snapshot.plan),
-    summary: validation.ok
-      ? `已生成 Agent 草案 ${spec.agentId}，请审核产物后安装。`
-      : `Agent 草案 ${spec.agentId} 校验失败，请查看验证结果。`,
-    artifactIds: runtime.snapshot.artifacts.map((artifact) => artifact.id),
-    startedAt: runtime.snapshot.run.startedAt,
-    updatedAt: runtime.snapshot.run.endedAt,
-  });
+    runtime.addNote(
+      options.persist
+        ? "Meta-Agent scaffold persisted into the local Agents root."
+        : "Meta-Agent scaffold generated as a reviewable draft; pass --persist to install it.",
+    );
+    runtime.setRunState(validation.ok ? "succeeded" : "failed", validation.ok ? null : "agent validation failed");
+    const traceFile = await runtime.writeTrace();
+    await recordRunConversation({
+      runId,
+      workId,
+      agentId: "meta/create-agent",
+      title: options.prompt,
+      state: validation.ok ? "waiting_user" : "completed",
+      prompt: options.prompt,
+      planSummary: formatPlanSummary(runtime.snapshot.plan),
+      summary: validation.ok
+        ? `已生成 Agent 草案 ${spec.agentId}，请审核产物后安装。`
+        : `Agent 草案 ${spec.agentId} 校验失败，请查看验证结果。`,
+      artifactIds: runtime.snapshot.artifacts.map((artifact) => artifact.id),
+      startedAt: runtime.snapshot.run.startedAt,
+      updatedAt: runtime.snapshot.run.endedAt,
+    });
 
-  return {
-    runId,
-    agentId: spec.agentId,
-    agentPath,
-    persisted: Boolean(options.persist),
-    traceFile,
-    files,
-    validation,
-  };
+    return {
+      runId,
+      agentId: spec.agentId,
+      agentPath,
+      persisted: Boolean(options.persist),
+      traceFile,
+      files,
+      validation,
+    };
+  } catch (error) {
+    try {
+      await finalizeFailedRun({
+        runtime,
+        workId,
+        agentId: "meta/create-agent",
+        title: options.prompt,
+        prompt: options.prompt,
+        error,
+        summary: `Meta-Agent 创建 Agent ${spec.agentId} 失败。`,
+      });
+    } catch {
+      // Keep CLI/API semantics anchored to the original execution failure.
+    }
+    throw error;
+  }
 }
 
 export function formatMetaCreateAgentResult(result: MetaCreateAgentResult) {
