@@ -144,6 +144,9 @@ const messages = {
     previewStaticHint: "启动 `npm run workbench:serve` 后可预览真实文件内容",
     binaryPreviewUnavailable: "二进制文件暂不提供文本预览",
     previewTruncated: "已截断显示",
+    previewOpenExternal: "可用系统应用打开",
+    previewUnsupported: "当前类型不支持内嵌预览",
+    previewSandboxScope: "沙盒",
     installAgent: "安装 Agent",
     installingAgent: "正在安装...",
     installSucceeded: "已安装到正式 Agents 目录，运行时可以加载这个 Agent。",
@@ -416,6 +419,9 @@ const messages = {
     previewStaticHint: "Start `npm run workbench:serve` to preview real file contents",
     binaryPreviewUnavailable: "Binary files do not have a text preview yet",
     previewTruncated: "Preview truncated",
+    previewOpenExternal: "Can open with system app",
+    previewUnsupported: "Inline preview is not available",
+    previewSandboxScope: "Sandbox",
     installAgent: "Install Agent",
     installingAgent: "Installing...",
     installSucceeded: "Installed into the formal Agents directory. The runtime can load this Agent.",
@@ -1611,8 +1617,32 @@ function normalizeWorkbenchArtifacts(artifacts) {
       ...artifact,
       type: artifact.type || getExtension(artifact.name) || "file",
       sizeBytes: typeof artifact.sizeBytes === "number" ? artifact.sizeBytes : null,
+      path: artifact.path || artifact.name,
       url: artifact.url || "",
+      preview: normalizeArtifactPreview(artifact),
     }));
+}
+
+function normalizeArtifactPreview(artifact) {
+  const type = artifact.type || getExtension(artifact.name) || "file";
+  const isImage = /image|png|jpe?g|webp|gif|svg/i.test(type || artifact.name || "");
+  const isText = /text|md|markdown|json|ya?ml|tsx?|jsx?|css|html|txt|log|patch|diff/i.test(type || artifact.name || "");
+  return {
+    kind: artifact.preview?.kind || (isImage ? "image" : isText ? "text" : "binary"),
+    label: artifact.preview?.label || (isImage ? "Image preview" : isText ? "Text preview" : "Binary file"),
+    mime: artifact.preview?.mime || "",
+    encoding: artifact.preview?.encoding || (isText ? "utf8" : "binary"),
+    canInline: typeof artifact.preview?.canInline === "boolean" ? artifact.preview.canInline : isImage || isText,
+    canOpenExternal:
+      typeof artifact.preview?.canOpenExternal === "boolean" ? artifact.preview.canOpenExternal : true,
+    canExtractText: typeof artifact.preview?.canExtractText === "boolean" ? artifact.preview.canExtractText : isText,
+    maxPreviewBytes: typeof artifact.preview?.maxPreviewBytes === "number" ? artifact.preview.maxPreviewBytes : null,
+    sandbox: {
+      scope: artifact.preview?.sandbox?.scope || "workspace",
+      relativePath: artifact.preview?.sandbox?.relativePath || artifact.path || artifact.name,
+    },
+    reason: artifact.preview?.reason || null,
+  };
 }
 
 function getTimelineFromRun(run) {
@@ -2383,19 +2413,7 @@ function updateArtifactDetail(artifact) {
   const previewStatus = detail.querySelector("[data-artifact-preview-status]");
 
   if (preview) {
-    preview.replaceChildren();
-    detail.classList.toggle("image-artifact", isImageArtifact(artifact));
-    if (isImageArtifact(artifact)) {
-      const image = document.createElement("img");
-      image.src = artifact.url;
-      image.alt = artifact.name;
-      preview.append(image);
-    } else {
-      const file = document.createElement("span");
-      file.className = "file-preview large";
-      file.textContent = getFileIconLabel(artifact);
-      preview.append(file);
-    }
+    renderArtifactPreviewHero(preview, artifact, dict);
   }
 
   if (title) {
@@ -2405,7 +2423,7 @@ function updateArtifactDetail(artifact) {
     kicker.textContent = dict.selectedArtifact;
   }
   if (meta) {
-    meta.textContent = `${artifact.type.toUpperCase()} · ${formatBytes(artifact.sizeBytes)} · ${dict.generatedFromRun}`;
+    meta.textContent = formatArtifactMeta(artifact, dict);
   }
   if (codeHead) {
     codeHead.textContent = dict.previewContent;
@@ -2415,6 +2433,52 @@ function updateArtifactDetail(artifact) {
   setArtifactActionDisabled(false);
   syncInstallButton();
   syncRunAgentButton();
+}
+
+function renderArtifactPreviewHero(container, artifact, dict) {
+  container.replaceChildren();
+  const preview = artifact.preview || {};
+  const canShowImage = preview.kind === "image" && artifact.url;
+  const detail = container.closest(".artifact-detail");
+  detail?.classList.toggle("image-artifact", canShowImage);
+  detail?.classList.toggle("preview-placeholder-artifact", !canShowImage);
+
+  if (canShowImage) {
+    const image = document.createElement("img");
+    image.src = artifact.url;
+    image.alt = artifact.name;
+    container.append(image);
+    return;
+  }
+
+  const badge = document.createElement("span");
+  badge.className = "file-preview large";
+  badge.textContent = getFileIconLabel(artifact);
+  const body = document.createElement("span");
+  body.className = "artifact-preview-summary";
+  body.append(
+    createText("strong", preview.label || dict.previewUnsupported),
+    createText("small", `${dict.previewSandboxScope}: ${preview.sandbox?.scope || "workspace"}`),
+  );
+  container.append(badge, body);
+}
+
+function formatArtifactMeta(artifact, dict) {
+  const preview = artifact.preview || {};
+  const parts = [
+    String(artifact.type || "file").toUpperCase(),
+    formatBytes(artifact.sizeBytes),
+    preview.kind || "preview",
+  ];
+  if (preview.mime) {
+    parts.push(preview.mime.split(";")[0]);
+  }
+  if (preview.sandbox?.relativePath) {
+    parts.push(preview.sandbox.relativePath);
+  } else {
+    parts.push(dict.generatedFromRun);
+  }
+  return parts.join(" · ");
 }
 
 function renderEmptyArtifactDetail(detail) {
@@ -2428,7 +2492,7 @@ function renderEmptyArtifactDetail(detail) {
   const code = detail.querySelector("[data-artifact-code]");
   const previewStatus = detail.querySelector("[data-artifact-preview-status]");
 
-  detail.classList.remove("image-artifact");
+  detail.classList.remove("image-artifact", "preview-placeholder-artifact");
   detail.classList.add("empty-artifact-detail");
   preview?.replaceChildren(createText("span", "TRACE"));
   if (title) {
@@ -2490,7 +2554,7 @@ function renderInstallDiffPreview(diff, dict) {
   const code = detail.querySelector("[data-artifact-code]");
   const previewStatus = detail.querySelector("[data-artifact-preview-status]");
 
-  detail.classList.remove("empty-artifact-detail", "image-artifact");
+  detail.classList.remove("empty-artifact-detail", "image-artifact", "preview-placeholder-artifact");
   detail.querySelector("[data-empty-artifact-note]")?.remove();
   preview?.replaceChildren(createText("span", "DIFF"));
   if (kicker) {
@@ -2525,8 +2589,9 @@ async function loadArtifactPreview(artifact, nodes) {
   if (!codePanel || !code || !previewStatus) {
     return;
   }
+  const preview = artifact.preview || {};
 
-  if (isImageArtifact(artifact)) {
+  if (preview.kind === "image" || isImageArtifact(artifact)) {
     codePanel.hidden = true;
     code.textContent = "";
     previewStatus.textContent = "";
@@ -2535,15 +2600,18 @@ async function loadArtifactPreview(artifact, nodes) {
 
   codePanel.hidden = false;
   if (!canUseWorkbenchApi() || !artifact.id) {
-    code.textContent = dict.previewStaticHint;
-    previewStatus.textContent = "";
+    code.textContent =
+      preview.kind && preview.kind !== "text"
+        ? formatPreviewUnavailable(preview, dict)
+        : dict.previewStaticHint;
+    previewStatus.textContent = formatPreviewStatus(preview, dict);
     return;
   }
 
   code.textContent = dict.loadingPreview;
   previewStatus.textContent = "";
   try {
-    const response = await fetch(`/api/artifact-content?id=${encodeURIComponent(artifact.id)}`, { cache: "no-store" });
+    const response = await fetch(`/api/artifact-preview?id=${encodeURIComponent(artifact.id)}`, { cache: "no-store" });
     const data = await response.json();
     if (requestId !== prototypeState.previewRequestId) {
       return;
@@ -2552,17 +2620,42 @@ async function loadArtifactPreview(artifact, nodes) {
       code.textContent = data?.error || dict.installFailed;
       return;
     }
-    if (data.binary) {
-      code.textContent = dict.binaryPreviewUnavailable;
+    if (data.preview) {
+      artifact.preview = data.preview;
+    }
+    const nextPreview = data.preview || preview;
+    if (data.binary || nextPreview.kind !== "text") {
+      code.textContent = formatPreviewUnavailable(nextPreview, dict);
+      previewStatus.textContent = formatPreviewStatus(nextPreview, dict);
       return;
     }
     code.textContent = data.text || "";
-    previewStatus.textContent = data.truncated ? dict.previewTruncated : "";
+    previewStatus.textContent = formatPreviewStatus(nextPreview, dict, data.truncated);
   } catch {
     if (requestId === prototypeState.previewRequestId) {
       code.textContent = dict.previewStaticHint;
     }
   }
+}
+
+function formatPreviewUnavailable(preview, dict) {
+  const reason = preview?.reason || dict.previewUnsupported;
+  const openHint = preview?.canOpenExternal ? `\n${dict.previewOpenExternal}` : "";
+  return `${reason}${openHint}`;
+}
+
+function formatPreviewStatus(preview, dict, truncated = false) {
+  const parts = [];
+  if (preview?.kind) {
+    parts.push(preview.kind);
+  }
+  if (preview?.sandbox?.scope) {
+    parts.push(`${dict.previewSandboxScope}: ${preview.sandbox.scope}`);
+  }
+  if (truncated) {
+    parts.push(dict.previewTruncated);
+  }
+  return parts.join(" · ");
 }
 
 async function installAgentDraftFromCurrentRun() {

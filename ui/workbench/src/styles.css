@@ -1832,8 +1832,11 @@ kbd {
     #f4f3ef;
 }
 
-.artifact-detail:not(.image-artifact) .artifact-detail-preview {
-  display: none;
+.artifact-detail.preview-placeholder-artifact .artifact-detail-preview {
+  display: flex;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 10px;
 }
 
 .artifact-detail-preview img {
@@ -1848,6 +1851,23 @@ kbd {
   height: 44px;
   border-radius: 10px;
   font-size: 12px;
+}
+
+.artifact-preview-summary {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  text-align: left;
+}
+
+.artifact-preview-summary strong {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.artifact-preview-summary small {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .artifact-detail-body {

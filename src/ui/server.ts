@@ -13,7 +13,7 @@ import {
   installAgentDraft,
   installAgentDraftAsVersion,
 } from "../meta/install-agent.js";
-import { getArtifactDetail, openArtifact, readArtifactText } from "../runtime/artifacts.js";
+import { getArtifactDetail, openArtifact, readArtifactPreview, readArtifactText } from "../runtime/artifacts.js";
 import { getRunHistoryDetail, openRunTrace } from "../runtime/history.js";
 import { listWorkSummaries, type WorkLifecycleState } from "../runtime/work-manager.js";
 import { listConversationMessages } from "../runtime/work-store.js";
@@ -174,7 +174,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
   const artifactMatch = url.pathname.match(/^\/api\/artifacts\/([^/]+)$/);
   if (method === "GET" && artifactMatch) {
     const artifactId = decodeURIComponent(artifactMatch[1]);
-    const artifact = await getArtifactDetail(artifactId);
+    const artifact = await getArtifactDetail(artifactId, { tracesRoot: tracesRoot(rootDir) });
     if (!artifact) {
       writeJson(response, 404, { ok: false, error: "artifact not found" });
       return;
@@ -190,12 +190,31 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       return;
     }
 
-    const content = await readArtifactText(artifactId);
+    const content = await readArtifactText(artifactId, { tracesRoot: tracesRoot(rootDir) });
     if (!content) {
       writeJson(response, 404, { ok: false, error: "artifact not found" });
       return;
     }
     writeJson(response, 200, { ok: true, ...content });
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/api/artifact-preview") {
+    const artifactId = url.searchParams.get("id");
+    if (!artifactId) {
+      writeJson(response, 400, { ok: false, error: "id is required" });
+      return;
+    }
+
+    const preview = await readArtifactPreview(artifactId, {
+      tracesRoot: tracesRoot(rootDir),
+      maxBytes: readMaxBytes(url.searchParams.get("maxBytes")),
+    });
+    if (!preview) {
+      writeJson(response, 404, { ok: false, error: "artifact not found" });
+      return;
+    }
+    writeJson(response, 200, { ok: true, ...preview });
     return;
   }
 
@@ -207,7 +226,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       return;
     }
 
-    const artifact = await openArtifact(artifactId);
+    const artifact = await openArtifact(artifactId, { tracesRoot: tracesRoot(rootDir) });
     if (!artifact) {
       writeJson(response, 404, { ok: false, error: "artifact not found" });
       return;
@@ -530,6 +549,14 @@ function getContentType(filePath: string) {
 function normalizeCount(value: unknown) {
   const count = typeof value === "number" ? value : Number(value);
   return Number.isFinite(count) && count > 0 ? Math.min(Math.floor(count), 12) : 1;
+}
+
+function readMaxBytes(value: string | null) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return undefined;
+  }
+  return Math.min(Math.floor(parsed), 512 * 1024);
 }
 
 function readDraftState(value: string | null): AgentDraftState | undefined {

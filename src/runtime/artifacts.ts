@@ -5,6 +5,33 @@ import path from "node:path";
 import { getRunHistoryDetail, listRunHistory } from "./history.js";
 import type { ArtifactRecord, RuntimeTrace } from "./types.js";
 
+export type ArtifactPreviewKind = "text" | "image" | "pdf" | "office" | "binary" | "unsupported";
+export type ArtifactSandboxScope = "workspace" | "artifacts" | "traces" | "agents" | "temp" | "external";
+
+export interface ArtifactPreviewMetadata {
+  kind: ArtifactPreviewKind;
+  label: string;
+  mime: string;
+  encoding: "utf8" | "binary";
+  canInline: boolean;
+  canOpenExternal: boolean;
+  canExtractText: boolean;
+  maxPreviewBytes: number | null;
+  sandbox: {
+    scope: ArtifactSandboxScope;
+    relativePath: string | null;
+  };
+  reason: string | null;
+}
+
+export interface ArtifactPreviewResult {
+  artifact: ArtifactHistoryItem;
+  preview: ArtifactPreviewMetadata;
+  text: string | null;
+  truncated: boolean;
+  binary: boolean;
+}
+
 export interface ArtifactHistoryItem {
   id: string;
   runId: string;
@@ -18,6 +45,7 @@ export interface ArtifactHistoryItem {
   createdAt: string | null;
   traceFile: string;
   schema: "runtime-v1" | "legacy";
+  preview: ArtifactPreviewMetadata;
 }
 
 export async function listArtifacts(
@@ -58,14 +86,32 @@ export async function readArtifactText(
   artifactId: string,
   input: { tracesRoot?: string; maxBytes?: number } = {},
 ) {
+  const preview = await readArtifactPreview(artifactId, input);
+  if (!preview) {
+    return null;
+  }
+  return {
+    artifact: preview.artifact,
+    text: preview.text,
+    truncated: preview.truncated,
+    binary: preview.binary,
+  };
+}
+
+export async function readArtifactPreview(
+  artifactId: string,
+  input: { tracesRoot?: string; maxBytes?: number } = {},
+): Promise<ArtifactPreviewResult | null> {
   const artifact = await getArtifactDetail(artifactId, { tracesRoot: input.tracesRoot });
   if (!artifact) {
     return null;
   }
 
-  if (isBinaryArtifact(artifact)) {
+  const preview = buildArtifactPreviewMetadata(artifact, { maxBytes: input.maxBytes });
+  if (preview.kind !== "text") {
     return {
       artifact,
+      preview,
       text: null,
       truncated: false,
       binary: true,
@@ -78,6 +124,7 @@ export async function readArtifactText(
   const slice = content.subarray(0, maxBytes);
   return {
     artifact,
+    preview,
     text: slice.toString("utf8"),
     truncated: content.length > slice.length,
     binary: false,
@@ -125,9 +172,95 @@ export function formatArtifactDetail(item: ArtifactHistoryItem) {
     `sha256: ${item.sha256 ?? "-"}`,
     `created_at: ${item.createdAt ?? "-"}`,
     `path: ${path.relative(process.cwd(), item.path)}`,
+    `preview: ${item.preview.kind} inline=${item.preview.canInline ? "yes" : "no"} scope=${item.preview.sandbox.scope}`,
     `absolute_path: ${item.path}`,
     `trace: ${path.relative(process.cwd(), item.traceFile)}`,
   ].join("\n");
+}
+
+export function buildArtifactPreviewMetadata(
+  artifact: Pick<ArtifactHistoryItem, "type" | "name" | "path">,
+  input: { maxBytes?: number } = {},
+): ArtifactPreviewMetadata {
+  const extension = normalizeExtension(path.extname(artifact.name || artifact.path));
+  const type = normalizeExtension(artifact.type);
+  const normalized = type || extension || "file";
+  const mime = getArtifactMime(normalized, artifact.name);
+  const sandbox = classifySandboxPath(artifact.path);
+  const maxPreviewBytes = input.maxBytes ?? 64 * 1024;
+
+  if (isTextArtifact(normalized, mime)) {
+    return {
+      kind: "text",
+      label: textLabel(normalized),
+      mime,
+      encoding: "utf8",
+      canInline: true,
+      canOpenExternal: true,
+      canExtractText: true,
+      maxPreviewBytes,
+      sandbox,
+      reason: null,
+    };
+  }
+
+  if (isImageType(normalized, mime)) {
+    return {
+      kind: "image",
+      label: "Image preview",
+      mime,
+      encoding: "binary",
+      canInline: true,
+      canOpenExternal: true,
+      canExtractText: false,
+      maxPreviewBytes: null,
+      sandbox,
+      reason: null,
+    };
+  }
+
+  if (normalized === "pdf") {
+    return {
+      kind: "pdf",
+      label: "PDF document",
+      mime,
+      encoding: "binary",
+      canInline: false,
+      canOpenExternal: true,
+      canExtractText: false,
+      maxPreviewBytes: null,
+      sandbox,
+      reason: "PDF text extraction is not enabled in Previewer v1.",
+    };
+  }
+
+  if (isOfficeType(normalized)) {
+    return {
+      kind: "office",
+      label: "Office document",
+      mime,
+      encoding: "binary",
+      canInline: false,
+      canOpenExternal: true,
+      canExtractText: false,
+      maxPreviewBytes: null,
+      sandbox,
+      reason: "Office parsing is not enabled in Previewer v1.",
+    };
+  }
+
+  return {
+    kind: isKnownBinaryType(normalized) ? "binary" : "unsupported",
+    label: isKnownBinaryType(normalized) ? "Binary file" : "Unsupported file",
+    mime,
+    encoding: "binary",
+    canInline: false,
+    canOpenExternal: true,
+    canExtractText: false,
+    maxPreviewBytes: null,
+    sandbox,
+    reason: "This artifact type does not have an inline preview in Previewer v1.",
+  };
 }
 
 function artifactsFromTrace(
@@ -167,6 +300,11 @@ function fromRuntimeArtifact(
     createdAt: artifact.createdAt,
     traceFile,
     schema: "runtime-v1",
+    preview: buildArtifactPreviewMetadata({
+      type: artifact.type,
+      name: artifact.name,
+      path: artifact.path,
+    }),
   };
 }
 
@@ -200,12 +338,13 @@ function fromLegacyOutput(
       createdAt: null,
       traceFile,
       schema: "legacy",
+      preview: buildArtifactPreviewMetadata({
+        type: path.extname(file).replace(".", "") || "file",
+        name: path.basename(file),
+        path: path.resolve(file),
+      }),
     },
   ];
-}
-
-function isBinaryArtifact(artifact: ArtifactHistoryItem) {
-  return /png|jpe?g|webp|gif|zip|pdf|pptx|docx|xlsx/i.test(artifact.type || artifact.name);
 }
 
 function isRuntimeTrace(trace: unknown): trace is RuntimeTrace {
@@ -218,6 +357,125 @@ function isRuntimeTrace(trace: unknown): trace is RuntimeTrace {
       "steps" in trace &&
       "artifacts" in trace,
   );
+}
+
+function classifySandboxPath(filePath: string): ArtifactPreviewMetadata["sandbox"] {
+  const absolute = path.resolve(filePath);
+  const relative = path.relative(process.cwd(), absolute);
+  const normalized = relative.split(path.sep).join("/");
+  if (!relative.startsWith("..") && !path.isAbsolute(relative)) {
+    return {
+      scope: scopeFromWorkspaceRelative(normalized),
+      relativePath: normalized || ".",
+    };
+  }
+
+  const tempRelative = path.relative(path.resolve("/tmp"), absolute);
+  if (!tempRelative.startsWith("..") && !path.isAbsolute(tempRelative)) {
+    return {
+      scope: "temp",
+      relativePath: tempRelative.split(path.sep).join("/"),
+    };
+  }
+
+  return {
+    scope: "external",
+    relativePath: null,
+  };
+}
+
+function scopeFromWorkspaceRelative(relativePath: string): ArtifactSandboxScope {
+  const first = relativePath.split("/")[0];
+  if (first === "artifacts") {
+    return "artifacts";
+  }
+  if (first === "traces") {
+    return "traces";
+  }
+  if (first === "agents") {
+    return "agents";
+  }
+  return "workspace";
+}
+
+function getArtifactMime(type: string, name: string) {
+  const extension = normalizeExtension(type || path.extname(name));
+  const mimeTypes: Record<string, string> = {
+    css: "text/css; charset=utf-8",
+    csv: "text/csv; charset=utf-8",
+    diff: "text/x-diff; charset=utf-8",
+    gif: "image/gif",
+    html: "text/html; charset=utf-8",
+    jpeg: "image/jpeg",
+    jpg: "image/jpeg",
+    js: "text/javascript; charset=utf-8",
+    json: "application/json; charset=utf-8",
+    jsonl: "application/x-ndjson; charset=utf-8",
+    log: "text/plain; charset=utf-8",
+    md: "text/markdown; charset=utf-8",
+    markdown: "text/markdown; charset=utf-8",
+    pdf: "application/pdf",
+    png: "image/png",
+    svg: "image/svg+xml",
+    text: "text/plain; charset=utf-8",
+    ts: "text/plain; charset=utf-8",
+    txt: "text/plain; charset=utf-8",
+    webp: "image/webp",
+    yaml: "text/yaml; charset=utf-8",
+    yml: "text/yaml; charset=utf-8",
+  };
+  if (extension === "doc" || extension === "docx") {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+  if (extension === "ppt" || extension === "pptx") {
+    return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  }
+  if (extension === "xls" || extension === "xlsx") {
+    return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  }
+  return mimeTypes[extension] ?? "application/octet-stream";
+}
+
+function normalizeExtension(value: string | null | undefined) {
+  return String(value || "")
+    .replace(/^\./, "")
+    .trim()
+    .toLowerCase();
+}
+
+function isTextArtifact(type: string, mime: string) {
+  return (
+    mime.startsWith("text/") ||
+    ["json", "jsonl", "yaml", "yml", "md", "markdown", "ts", "tsx", "js", "jsx", "css", "html", "xml", "log", "patch", "diff"].includes(type)
+  );
+}
+
+function isImageType(type: string, mime: string) {
+  return mime.startsWith("image/") || ["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(type);
+}
+
+function isOfficeType(type: string) {
+  return ["doc", "docx", "ppt", "pptx", "xls", "xlsx"].includes(type);
+}
+
+function isKnownBinaryType(type: string) {
+  return ["zip", "gz", "tar", "bin", "sqlite", "db", "mp4", "mov"].includes(type);
+}
+
+function textLabel(type: string) {
+  if (type === "md" || type === "markdown") {
+    return "Markdown text";
+  }
+  if (type === "json" || type === "jsonl") {
+    return "JSON text";
+  }
+  if (type === "yaml" || type === "yml") {
+    return "YAML text";
+  }
+  if (type === "html") {
+    return "HTML source";
+  }
+  return "Text preview";
 }
 
 function limitArtifacts(items: ArtifactHistoryItem[], limit?: number) {

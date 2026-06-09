@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -178,6 +178,16 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     const artifact = await getJson(apiUrl(server.url, `/api/artifacts/${encodeURIComponent(artifactId)}`));
     assert.equal(artifact.ok, true);
     assert.equal(artifact.artifact.name, "manifest.yaml");
+    assert.equal(artifact.artifact.preview.kind, "text");
+    assert.equal(artifact.artifact.preview.canInline, true);
+    assert.equal(artifact.artifact.preview.sandbox.scope, "artifacts");
+
+    const manifestPreview = await getJson(apiUrl(server.url, `/api/artifact-preview?id=${encodeURIComponent(artifactId)}`));
+    assert.equal(manifestPreview.ok, true);
+    assert.equal(manifestPreview.preview.kind, "text");
+    assert.equal(manifestPreview.binary, false);
+    assert.match(manifestPreview.text, /agent_id: custom\/image-prototype-v1/);
+    assert.match(manifestPreview.preview.sandbox.relativePath, /^artifacts\/meta-agent-runs\//);
 
     const draftRun = await getJson(apiUrl(server.url, `/api/runs/${encodeURIComponent(created.body.result.runId)}`));
     assert.equal(draftRun.ok, true);
@@ -362,6 +372,7 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(typeof selectedDraft.selectedRun.workId, "string");
     assert.equal(selectedDraft.selectedRun.plan.title, "Meta-Agent 创建 Agent 计划");
     assert.equal(selectedDraft.artifacts.length, created.body.result.files.length);
+    assert.equal(selectedDraft.artifacts.find((item: { id?: string }) => item.id === artifactId)?.preview.kind, "text");
     assert.equal(selectedDraft.messages.length, 4);
     assert.equal(Array.isArray(selectedDraft.settings.nav), true);
     assert.equal(selectedDraft.settings.nav.some((item: { id?: string }) => item.id === "models"), true);
@@ -392,6 +403,84 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
       ),
       true,
     );
+  } finally {
+    await server.close();
+    process.chdir(previousCwd);
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test("Artifact preview API returns metadata-only responses for Office-like binary files", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-preview-test-"));
+  process.chdir(workspace);
+
+  const server = await serveWorkbench({ port: 0, rootDir: workspace });
+
+  try {
+    await mkdir("artifacts/manual", { recursive: true });
+    await mkdir(path.join("traces", "run-preview-office"), { recursive: true });
+    const docxPath = path.resolve("artifacts/manual/report.docx");
+    await writeFile(docxPath, Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+    await writeFile(
+      path.join("traces", "run-preview-office", "run.json"),
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          run: {
+            id: "run-preview-office",
+            workId: "work-preview-office",
+            agentId: "test/preview",
+            agentVersion: "0.1.0",
+            recipeId: null,
+            state: "succeeded",
+            dryRun: false,
+            startedAt: "2026-01-01T00:00:00.000Z",
+            endedAt: "2026-01-01T00:00:01.000Z",
+            durationMs: 1000,
+            input: { prompt: "preview office" },
+            reason: null,
+            modelRoles: [],
+            mcpServers: [],
+          },
+          plan: null,
+          steps: [],
+          artifacts: [
+            {
+              id: "art-run-preview-office-1",
+              runId: "run-preview-office",
+              producerStepId: "manual",
+              type: "docx",
+              role: "report",
+              name: "report.docx",
+              path: docxPath,
+              sizeBytes: 4,
+              sha256: "sha",
+              createdAt: "2026-01-01T00:00:00.500Z",
+            },
+          ],
+          knowledgeWriteBacks: [],
+          notes: [],
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    const preview = await getJson(
+      apiUrl(server.url, "/api/artifact-preview?id=art-run-preview-office-1"),
+    );
+    assert.equal(preview.ok, true);
+    assert.equal(preview.preview.kind, "office");
+    assert.equal(preview.preview.canInline, false);
+    assert.equal(preview.preview.canOpenExternal, true);
+    assert.equal(preview.binary, true);
+    assert.equal(preview.text, null);
+
+    const workbench = await getJson(apiUrl(server.url, "/api/workbench?runId=run-preview-office"));
+    assert.equal(workbench.artifacts[0].preview.kind, "office");
+    assert.equal(workbench.artifacts[0].preview.sandbox.scope, "artifacts");
   } finally {
     await server.close();
     process.chdir(previousCwd);

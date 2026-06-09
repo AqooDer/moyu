@@ -2,7 +2,12 @@ import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { listAgents, type AgentMcpServerSummary } from "../agent/registry.js";
 import { buildWorkbenchSettings, type WorkbenchSettings } from "../settings/workbench.js";
-import { listArtifacts, type ArtifactHistoryItem } from "./artifacts.js";
+import {
+  buildArtifactPreviewMetadata,
+  listArtifacts,
+  type ArtifactHistoryItem,
+  type ArtifactPreviewMetadata,
+} from "./artifacts.js";
 import { getRunHistoryDetail, listRunHistory } from "./history.js";
 import type {
   ConversationMessage,
@@ -64,10 +69,12 @@ export interface WorkbenchArtifact {
   type: string;
   role: string;
   name: string;
+  path: string;
   url: string;
   sizeBytes: number | null;
   sha256: string | null;
   createdAt: string | null;
+  preview: ArtifactPreviewMetadata;
 }
 
 export interface WorkbenchWork {
@@ -239,10 +246,12 @@ function toWorkbenchArtifact(
     type: artifact.type,
     role: artifact.role,
     name: artifact.name,
+    path: artifact.preview.sandbox.relativePath ?? artifact.path,
     url: toRelativeUrl(artifact.path, prototypeRoot),
     sizeBytes: artifact.sizeBytes,
     sha256: artifact.sha256,
     createdAt: artifact.createdAt,
+    preview: artifact.preview,
   };
 }
 
@@ -537,10 +546,16 @@ async function fallbackWorkbenchArtifacts(prototypeRoot: string): Promise<Workbe
       type: "png",
       role: artifacts.length === 0 ? "primary" : "intermediate",
       name: candidate.name,
+      path: candidate.path,
       url: toRelativeUrl(resolvedPath, prototypeRoot),
       sizeBytes: fileInfo.size,
       sha256: null,
       createdAt: null,
+      preview: buildArtifactPreviewMetadata({
+        type: "png",
+        name: candidate.name,
+        path: resolvedPath,
+      }),
     });
   }
 
