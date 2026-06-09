@@ -11,6 +11,7 @@ import {
 import { getRunHistoryDetail, listRunHistory } from "./history.js";
 import type {
   ConversationMessage,
+  MiddlewarePipelineRecord,
   McpServerResolution,
   ModelRoleResolution,
   PlanRecord,
@@ -52,6 +53,7 @@ export interface WorkbenchRun {
   modelRoles: ModelRoleResolution[];
   mcpServers: McpServerResolution[];
   plan: PlanRecord | null;
+  middleware: MiddlewarePipelineRecord | null;
   steps: WorkbenchStep[];
 }
 
@@ -201,6 +203,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
       modelRoles: detail.trace.run.modelRoles ?? [],
       mcpServers: detail.trace.run.mcpServers ?? [],
       plan: detail.trace.plan ?? null,
+      middleware: detail.trace.middleware ?? null,
       steps: detail.trace.steps.map(toWorkbenchStep),
     };
   }
@@ -222,6 +225,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
     modelRoles: [],
     mcpServers: [],
     plan: null,
+    middleware: null,
     steps: [],
   };
 }

@@ -95,6 +95,19 @@ const messages = {
     trace: "Trace",
     context: "上下文",
     details: "详情",
+    contextPipelineTitle: "运行上下文管线",
+    contextPipelineEmpty: "暂无上下文管线",
+    contextPipelineFallback: "等待真实运行写入 middleware trace",
+    contextPipelineStageInput: "输入",
+    contextPipelineStageOutput: "输出",
+    contextPipelineCapabilities: "能力",
+    contextPipelinePolicies: "策略",
+    contextPipelineSources: "来源",
+    contextPipelineReady: "就绪",
+    contextPipelinePartial: "部分就绪",
+    contextPipelineSkipped: "跳过",
+    contextPipelinePlanned: "规划中",
+    contextPipelineFailed: "失败",
     draftContent: "能力契约",
     traceStarted: "创建会话启动",
     traceAgentCall: "解析 Agent 需求",
@@ -379,6 +392,19 @@ const messages = {
     trace: "Trace",
     context: "Context",
     details: "Details",
+    contextPipelineTitle: "Runtime context pipeline",
+    contextPipelineEmpty: "No context pipeline",
+    contextPipelineFallback: "Waiting for a real run to write middleware trace",
+    contextPipelineStageInput: "Input",
+    contextPipelineStageOutput: "Output",
+    contextPipelineCapabilities: "Capabilities",
+    contextPipelinePolicies: "Policies",
+    contextPipelineSources: "Sources",
+    contextPipelineReady: "Ready",
+    contextPipelinePartial: "Partial",
+    contextPipelineSkipped: "Skipped",
+    contextPipelinePlanned: "Planned",
+    contextPipelineFailed: "Failed",
     draftContent: "Capability contract",
     traceStarted: "Creation session started",
     traceAgentCall: "Parsed Agent requirement",
@@ -1139,6 +1165,7 @@ function renderWorkbenchData() {
   updateArtifactDetail(getSelectedArtifact(currentArtifacts));
   renderTimelineSteps(getVisibleTimelineSteps());
   renderRunDetails(run, currentArtifacts);
+  renderContextPipeline(run?.middleware || null);
   renderRunState();
   renderStateMessages();
   renderActionHint();
@@ -1440,6 +1467,110 @@ function createTimelineItem(step) {
   body.append(createText("strong", title), createText("small", step.subtitle));
   item.append(dot, body, createText("em", step.duration));
   return item;
+}
+
+function renderContextPipeline(pipeline) {
+  const root = document.querySelector("[data-context-pipeline]");
+  if (!root) {
+    return;
+  }
+
+  const dict = messages[currentLang] ?? messages.zh;
+  if (!pipeline || !Array.isArray(pipeline.stages) || pipeline.stages.length === 0) {
+    root.replaceChildren(createContextEmptyState(dict));
+    return;
+  }
+
+  const header = document.createElement("div");
+  header.className = "context-pipeline-head";
+  header.append(
+    createText("strong", pipeline.title || dict.contextPipelineTitle),
+    createStatusPill(resolveContextPipelineState(pipeline.state), pipeline.state || "ready"),
+    createText("small", `${pipeline.stages.length} stages`),
+  );
+
+  const list = document.createElement("ol");
+  list.className = "context-stage-list";
+  list.append(...pipeline.stages.map((stage, index) => createContextStageItem(stage, index, dict)));
+  root.replaceChildren(header, list);
+}
+
+function createContextEmptyState(dict) {
+  const state = document.createElement("article");
+  state.className = "context-empty-state";
+  state.append(createText("strong", dict.contextPipelineEmpty), createText("small", dict.contextPipelineFallback));
+  return state;
+}
+
+function createContextStageItem(stage, index, dict) {
+  const item = document.createElement("li");
+  item.className = `context-stage ${stage.state || "planned"}`;
+  const marker = document.createElement("span");
+  marker.className = "context-stage-index";
+  marker.textContent = String(index + 1);
+
+  const body = document.createElement("div");
+  body.className = "context-stage-body";
+  const head = document.createElement("div");
+  head.className = "context-stage-head";
+  head.append(
+    createText("strong", stage.title || stage.id || "-"),
+    createStatusPill(resolveContextPipelineState(stage.state), stage.state || "planned"),
+  );
+
+  body.append(
+    head,
+    createText("small", stage.kind || "-"),
+    createContextSummaryRow(dict.contextPipelineStageInput, stage.inputSummary),
+    createContextSummaryRow(dict.contextPipelineStageOutput, stage.outputSummary),
+    createContextTagRow(dict.contextPipelineCapabilities, stage.capabilityIds),
+    createContextTagRow(dict.contextPipelinePolicies, stage.policyIds),
+    createContextTagRow(dict.contextPipelineSources, stage.sources),
+  );
+  item.append(marker, body);
+  return item;
+}
+
+function createContextSummaryRow(label, value) {
+  const row = document.createElement("div");
+  row.className = "context-summary-row";
+  row.append(createText("span", label), createText("p", value || "-"));
+  return row;
+}
+
+function createContextTagRow(label, values) {
+  const row = document.createElement("div");
+  row.className = "context-tag-row";
+  row.append(createText("span", label));
+  const tags = document.createElement("div");
+  tags.className = "context-tag-list";
+  (Array.isArray(values) && values.length > 0 ? values : ["-"]).forEach((value) => {
+    const tag = document.createElement("em");
+    tag.textContent = value;
+    tags.append(tag);
+  });
+  row.append(tags);
+  return row;
+}
+
+function createStatusPill(label, state) {
+  const pill = document.createElement("span");
+  pill.className = "context-status-pill";
+  pill.dataset.state = state || "";
+  pill.textContent = label;
+  return pill;
+}
+
+function resolveContextPipelineState(state) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    ready: "contextPipelineReady",
+    partial: "contextPipelinePartial",
+    skipped: "contextPipelineSkipped",
+    planned: "contextPipelinePlanned",
+    failed: "contextPipelineFailed",
+  };
+  return dict[keyMap[state] || "contextPipelinePlanned"] || state || "-";
 }
 
 function renderRunDetails(run, artifacts) {

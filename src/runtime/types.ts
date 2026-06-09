@@ -3,6 +3,13 @@ export type WorkState = "active" | "waiting_user" | "running" | "completed" | "a
 export type PlanState = "drafted" | "running" | "succeeded" | "failed" | "cancelled";
 export type StepState = "pending" | "running" | "succeeded" | "failed" | "skipped";
 export type StepKind = "llm" | "tool" | "skill" | "agent_call" | "control" | "user_checkpoint";
+export type MiddlewarePipelineState = "ready" | "partial" | "skipped" | "failed";
+export type MiddlewareStageState = "ready" | "partial" | "skipped" | "planned" | "failed";
+export type MiddlewareStageKind =
+  | "attachment-intake"
+  | "history-summary"
+  | "knowledge-context"
+  | "capability-injection";
 export type ArtifactRole = "primary" | "intermediate" | "report" | "log";
 export type ConversationRole = "user" | "agent" | "system";
 export type ModelRoleResolutionSource =
@@ -98,6 +105,29 @@ export interface PlanRecord {
   updatedAt: string;
 }
 
+export interface MiddlewareStageRecord {
+  id: string;
+  title: string;
+  kind: MiddlewareStageKind;
+  state: MiddlewareStageState;
+  capabilityIds: string[];
+  policyIds: string[];
+  inputSummary: string;
+  outputSummary: string;
+  sources: string[];
+}
+
+export interface MiddlewarePipelineRecord {
+  id: string;
+  runId: string;
+  workId: string;
+  title: string;
+  state: MiddlewarePipelineState;
+  stages: MiddlewareStageRecord[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StepRecord {
   id: string;
   runId: string;
@@ -156,6 +186,7 @@ export interface RuntimeTrace {
   schemaVersion: 1;
   run: RunRecord;
   plan: PlanRecord | null;
+  middleware: MiddlewarePipelineRecord | null;
   steps: StepRecord[];
   artifacts: ArtifactRecord[];
   knowledgeWriteBacks: KnowledgeWriteBackRecord[];

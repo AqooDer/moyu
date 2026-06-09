@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createMiddlewarePipelineRecord } from "./middleware-pipeline.js";
 import { createPlanRecord } from "./plans.js";
 import { runRuntimeStep } from "./step-runner.js";
 import { RuntimeStore } from "./store.js";
@@ -104,6 +105,40 @@ test("runtime step runner accepts explicit failed results without throwing", asy
     message: "Validation failed.",
   });
   assert.equal(runtime.snapshot.plan?.steps.find((step) => step.id === "execute")?.state, "failed");
+});
+
+test("runtime store records middleware pipeline snapshots", () => {
+  const runtime = createRuntimeWithPlan("run-middleware");
+
+  const pipeline = runtime.setMiddlewarePipeline(
+    createMiddlewarePipelineRecord({
+      runId: runtime.runId,
+      workId: `work-${runtime.runId}`,
+      title: "Test middleware pipeline",
+      createdAt: runtime.snapshot.run.startedAt,
+      stages: [
+        {
+          id: "capability-injection",
+          title: "Capability injection",
+          kind: "capability-injection",
+          state: "ready",
+          capabilityIds: ["artifact-write"],
+          policyIds: ["artifact.write.scoped"],
+          inputSummary: "Read registry.",
+          outputSummary: "Injected artifact writer.",
+          sources: ["plugin-registry"],
+        },
+      ],
+    }),
+  );
+
+  assert.equal(runtime.snapshot.middleware?.id, `middleware-${runtime.runId}`);
+  assert.equal(runtime.snapshot.middleware?.title, "Test middleware pipeline");
+  assert.equal(runtime.snapshot.middleware?.state, "ready");
+  assert.equal(pipeline.stages[0].kind, "capability-injection");
+  assert.deepEqual(pipeline.stages[0].capabilityIds, ["artifact-write"]);
+  assert.deepEqual(pipeline.stages[0].policyIds, ["artifact.write.scoped"]);
+  assert.deepEqual(pipeline.stages[0].sources, ["plugin-registry"]);
 });
 
 function createRuntimeWithPlan(runId: string) {

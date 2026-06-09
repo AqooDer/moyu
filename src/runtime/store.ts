@@ -4,6 +4,10 @@ import path from "node:path";
 import type {
   ArtifactRecord,
   ArtifactRole,
+  MiddlewarePipelineRecord,
+  MiddlewarePipelineState,
+  MiddlewareStageKind,
+  MiddlewareStageState,
   PlanRecord,
   PlanState,
   RunRecord,
@@ -24,6 +28,7 @@ export class RuntimeStore {
       schemaVersion: 1,
       run,
       plan: null,
+      middleware: null,
       steps: [],
       artifacts: [],
       knowledgeWriteBacks: [],
@@ -75,6 +80,11 @@ export class RuntimeStore {
   setPlan(plan: PlanRecord) {
     this.trace.plan = normalizePlan(plan, this.trace.run.id, this.trace.run.workId);
     return this.trace.plan;
+  }
+
+  setMiddlewarePipeline(pipeline: MiddlewarePipelineRecord) {
+    this.trace.middleware = normalizeMiddlewarePipeline(pipeline, this.trace.run.id, this.trace.run.workId);
+    return this.trace.middleware;
   }
 
   updatePlanStep(stepId: string, state: StepState) {
@@ -221,6 +231,67 @@ function normalizePlanState(value: unknown): PlanState {
   return ["drafted", "running", "succeeded", "failed", "cancelled"].includes(String(value))
     ? (value as PlanState)
     : "drafted";
+}
+
+function normalizeMiddlewarePipeline(
+  pipeline: MiddlewarePipelineRecord,
+  runId: string,
+  workId?: string | null,
+): MiddlewarePipelineRecord {
+  const updatedAt =
+    typeof pipeline.updatedAt === "string" && pipeline.updatedAt ? pipeline.updatedAt : now();
+  return {
+    id: pipeline.id || `middleware-${runId}`,
+    runId,
+    workId: workId || pipeline.workId || `work-${runId}`,
+    title: pipeline.title || "Runtime context pipeline",
+    state: normalizeMiddlewarePipelineState(pipeline.state),
+    stages: Array.isArray(pipeline.stages)
+      ? pipeline.stages.map((stage) => ({
+          id: stage.id,
+          title: stage.title,
+          kind: normalizeMiddlewareStageKind(stage.kind),
+          state: normalizeMiddlewareStageState(stage.state),
+          capabilityIds: normalizeStringList(stage.capabilityIds),
+          policyIds: normalizeStringList(stage.policyIds),
+          inputSummary: typeof stage.inputSummary === "string" ? stage.inputSummary : "",
+          outputSummary: typeof stage.outputSummary === "string" ? stage.outputSummary : "",
+          sources: normalizeStringList(stage.sources),
+        }))
+      : [],
+    createdAt:
+      typeof pipeline.createdAt === "string" && pipeline.createdAt ? pipeline.createdAt : updatedAt,
+    updatedAt,
+  };
+}
+
+function normalizeMiddlewarePipelineState(value: unknown): MiddlewarePipelineState {
+  return ["ready", "partial", "skipped", "failed"].includes(String(value))
+    ? (value as MiddlewarePipelineState)
+    : "ready";
+}
+
+function normalizeMiddlewareStageState(value: unknown): MiddlewareStageState {
+  return ["ready", "partial", "skipped", "planned", "failed"].includes(String(value))
+    ? (value as MiddlewareStageState)
+    : "planned";
+}
+
+function normalizeMiddlewareStageKind(value: unknown): MiddlewareStageKind {
+  return [
+    "attachment-intake",
+    "history-summary",
+    "knowledge-context",
+    "capability-injection",
+  ].includes(String(value))
+    ? (value as MiddlewareStageKind)
+    : "capability-injection";
+}
+
+function normalizeStringList(values: unknown) {
+  return Array.isArray(values)
+    ? values.filter((item): item is string => typeof item === "string" && Boolean(item))
+    : [];
 }
 
 function toPlanState(runState: RunState, current: PlanState): PlanState {

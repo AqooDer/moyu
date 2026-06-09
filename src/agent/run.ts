@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AgentManifestSummary } from "./registry.js";
 import { readImageRelayConfig } from "../lib/env.js";
 import { generateImagesWithRelay } from "../lib/openai-compat-image.js";
+import { createImageAgentMiddlewarePipeline } from "../runtime/middleware-pipeline.js";
 import { createPlanRecord, formatPlanSummary } from "../runtime/plans.js";
 import { finalizeFailedRun } from "../runtime/run-finalizer.js";
 import { runRuntimeStep } from "../runtime/step-runner.js";
@@ -102,6 +103,16 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
           dependsOn: ["register-artifacts"],
         },
       ],
+    }),
+  );
+  runtime.setMiddlewarePipeline(
+    createImageAgentMiddlewarePipeline({
+      runId,
+      workId,
+      prompt,
+      mcpServers,
+      dryRun: options.dryRun,
+      createdAt: runtime.snapshot.run.startedAt,
     }),
   );
   runtime.updatePlanStep("input", "succeeded");

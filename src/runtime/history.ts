@@ -2,7 +2,13 @@ import { spawn } from "node:child_process";
 import { platform } from "node:os";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import type { ArtifactRecord, KnowledgeWriteBackRecord, PlanRecord, RuntimeTrace } from "./types.js";
+import type {
+  ArtifactRecord,
+  KnowledgeWriteBackRecord,
+  MiddlewarePipelineRecord,
+  RuntimeTrace,
+  PlanRecord,
+} from "./types.js";
 
 export interface RunHistoryItem {
   id: string;
@@ -125,6 +131,8 @@ export function formatRunHistoryDetail(detail: RunHistoryDetail) {
     lines.push(...formatObjectLines(trace.run.input));
     lines.push("", "plan:");
     lines.push(...formatPlanLines(trace.plan));
+    lines.push("", "middleware:");
+    lines.push(...formatMiddlewareLines(trace.middleware));
     lines.push("", "steps:");
     lines.push(...formatStepLines(trace));
     lines.push("", "artifacts:");
@@ -263,6 +271,7 @@ function normalizeRuntimeTrace(trace: RuntimeTrace): RuntimeTrace {
   return {
     ...trace,
     plan: normalizePlan(trace.plan),
+    middleware: normalizeMiddlewarePipeline(trace.middleware),
     run: {
       ...trace.run,
       modelRoles: trace.run.modelRoles ?? [],
@@ -307,6 +316,64 @@ function normalizePlan(plan: unknown): PlanRecord | null {
     createdAt: typeof raw.createdAt === "string" && raw.createdAt ? raw.createdAt : new Date(0).toISOString(),
     updatedAt: typeof raw.updatedAt === "string" && raw.updatedAt ? raw.updatedAt : new Date(0).toISOString(),
   };
+}
+
+function normalizeMiddlewarePipeline(pipeline: unknown): MiddlewarePipelineRecord | null {
+  if (!pipeline || typeof pipeline !== "object") {
+    return null;
+  }
+  const raw = pipeline as MiddlewarePipelineRecord;
+  return {
+    id: typeof raw.id === "string" && raw.id ? raw.id : `middleware-${raw.runId || "unknown"}`,
+    runId: typeof raw.runId === "string" && raw.runId ? raw.runId : "run-unknown",
+    workId: typeof raw.workId === "string" && raw.workId ? raw.workId : "work-unknown",
+    title: typeof raw.title === "string" && raw.title ? raw.title : "Runtime context pipeline",
+    state: ["ready", "partial", "skipped", "failed"].includes(String(raw.state)) ? raw.state : "ready",
+    stages: Array.isArray(raw.stages)
+      ? raw.stages.map((stage) => ({
+          id: typeof stage.id === "string" && stage.id ? stage.id : "stage-unknown",
+          title: typeof stage.title === "string" && stage.title ? stage.title : "Untitled stage",
+          kind: [
+            "attachment-intake",
+            "history-summary",
+            "knowledge-context",
+            "capability-injection",
+          ].includes(String(stage.kind))
+            ? stage.kind
+            : "capability-injection",
+          state: ["ready", "partial", "skipped", "planned", "failed"].includes(String(stage.state))
+            ? stage.state
+            : "planned",
+          capabilityIds: Array.isArray(stage.capabilityIds)
+            ? stage.capabilityIds.filter((item): item is string => typeof item === "string" && Boolean(item))
+            : [],
+          policyIds: Array.isArray(stage.policyIds)
+            ? stage.policyIds.filter((item): item is string => typeof item === "string" && Boolean(item))
+            : [],
+          inputSummary: typeof stage.inputSummary === "string" ? stage.inputSummary : "",
+          outputSummary: typeof stage.outputSummary === "string" ? stage.outputSummary : "",
+          sources: Array.isArray(stage.sources)
+            ? stage.sources.filter((item): item is string => typeof item === "string" && Boolean(item))
+            : [],
+        }))
+      : [],
+    createdAt: typeof raw.createdAt === "string" && raw.createdAt ? raw.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof raw.updatedAt === "string" && raw.updatedAt ? raw.updatedAt : new Date(0).toISOString(),
+  };
+}
+
+function formatMiddlewareLines(pipeline: MiddlewarePipelineRecord | null) {
+  if (!pipeline) {
+    return ["- none"];
+  }
+
+  const lines = [`- ${pipeline.id} ${pipeline.title} ${pipeline.state}`];
+  for (const stage of pipeline.stages) {
+    const capabilities = stage.capabilityIds.length > 0 ? ` capabilities=${stage.capabilityIds.join(",")}` : "";
+    const policies = stage.policyIds.length > 0 ? ` policies=${stage.policyIds.join(",")}` : "";
+    lines.push(`  - ${stage.id} [${stage.kind}] ${stage.state}${capabilities}${policies}: ${stage.title}`);
+  }
+  return lines;
 }
 
 function formatKnowledgeWriteBackLines(writeBacks: KnowledgeWriteBackRecord[]) {
