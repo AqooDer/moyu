@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AgentManifestSummary } from "./registry.js";
 import { readImageRelayConfig } from "../lib/env.js";
 import { generateImagesWithRelay } from "../lib/openai-compat-image.js";
+import { startInlineWorkerJob } from "../runtime/async-worker.js";
 import { createImageAgentMiddlewarePipeline } from "../runtime/middleware-pipeline.js";
 import { createPolicyEvaluationRecord } from "../runtime/policy-gate.js";
 import { createPlanRecord, formatPlanSummary } from "../runtime/plans.js";
@@ -61,6 +62,11 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     },
     modelRoles,
     mcpServers,
+  });
+  startInlineWorkerJob({
+    runtime,
+    queue: "agent.run.inline",
+    requestedBy: agent.agentId,
   });
   runtime.setPlan(
     createPlanRecord({

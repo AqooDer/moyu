@@ -108,6 +108,24 @@ const messages = {
     contextPipelineSkipped: "跳过",
     contextPipelinePlanned: "规划中",
     contextPipelineFailed: "失败",
+    workerTitle: "Worker 任务",
+    workerEmpty: "暂无 Worker 任务",
+    workerFallback: "等待运行写入 worker trace",
+    workerQueue: "队列",
+    workerMode: "模式",
+    workerAttempt: "尝试",
+    workerRequestedBy: "请求方",
+    workerDuration: "耗时",
+    workerQueued: "已排队",
+    workerRunning: "运行中",
+    workerSucceeded: "成功",
+    workerFailed: "失败",
+    workerCancelled: "已取消",
+    traceEventsTitle: "Trace 事件流",
+    traceEventsEmpty: "暂无 Trace 事件",
+    traceEventsFallback: "等待运行写入 events trace",
+    traceEventStep: "Step",
+    traceEventArtifact: "Artifact",
     policyGateTitle: "策略评估",
     policyGateEmpty: "暂无策略评估",
     policyGateFallback: "等待真实运行写入 policy trace",
@@ -420,6 +438,24 @@ const messages = {
     contextPipelineSkipped: "Skipped",
     contextPipelinePlanned: "Planned",
     contextPipelineFailed: "Failed",
+    workerTitle: "Worker job",
+    workerEmpty: "No worker job",
+    workerFallback: "Waiting for a run to write worker trace",
+    workerQueue: "Queue",
+    workerMode: "Mode",
+    workerAttempt: "Attempt",
+    workerRequestedBy: "Requested by",
+    workerDuration: "Duration",
+    workerQueued: "Queued",
+    workerRunning: "Running",
+    workerSucceeded: "Succeeded",
+    workerFailed: "Failed",
+    workerCancelled: "Cancelled",
+    traceEventsTitle: "Trace event stream",
+    traceEventsEmpty: "No trace events",
+    traceEventsFallback: "Waiting for a run to write events trace",
+    traceEventStep: "Step",
+    traceEventArtifact: "Artifact",
     policyGateTitle: "Policy evaluation",
     policyGateEmpty: "No policy evaluation",
     policyGateFallback: "Waiting for a real run to write policy trace",
@@ -1195,7 +1231,7 @@ function renderWorkbenchData() {
   updateArtifactDetail(getSelectedArtifact(currentArtifacts));
   renderTimelineSteps(getVisibleTimelineSteps());
   renderRunDetails(run, currentArtifacts);
-  renderContextPipeline(run?.middleware || null, run?.policy || null);
+  renderContextPipeline(run?.middleware || null, run?.policy || null, run?.worker || null, run?.events || []);
   renderRunState();
   renderStateMessages();
   renderActionHint();
@@ -1499,7 +1535,7 @@ function createTimelineItem(step) {
   return item;
 }
 
-function renderContextPipeline(pipeline, policy) {
+function renderContextPipeline(pipeline, policy, worker, events) {
   const root = document.querySelector("[data-context-pipeline]");
   if (!root) {
     return;
@@ -1514,6 +1550,8 @@ function renderContextPipeline(pipeline, policy) {
   }
 
   nodes.push(createPolicyEvaluationSection(policy, dict));
+  nodes.push(createWorkerJobSection(worker, dict));
+  nodes.push(createTraceEventSection(events, dict));
   root.replaceChildren(...nodes);
 }
 
@@ -1590,6 +1628,106 @@ function createPolicyCheckItem(check, index, dict) {
   return item;
 }
 
+function createWorkerJobSection(worker, dict) {
+  if (!worker) {
+    return createContextEmptyState(dict.workerEmpty, dict.workerFallback);
+  }
+
+  const section = document.createElement("section");
+  section.className = "context-section worker-job";
+  const header = document.createElement("div");
+  header.className = "context-pipeline-head";
+  header.append(
+    createText("strong", dict.workerTitle),
+    createStatusPill(resolveWorkerState(worker.state), worker.state || "queued"),
+    createText("small", `${worker.id || "-"} · ${worker.queue || "-"}`),
+  );
+
+  const list = document.createElement("ol");
+  list.className = "context-stage-list";
+  const item = document.createElement("li");
+  item.className = `context-stage ${worker.state || "queued"}`;
+  const marker = document.createElement("span");
+  marker.className = "context-stage-index";
+  marker.textContent = "W";
+  const body = document.createElement("div");
+  body.className = "context-stage-body";
+  const head = document.createElement("div");
+  head.className = "context-stage-head";
+  head.append(
+    createText("strong", worker.queue || dict.workerTitle),
+    createStatusPill(resolveWorkerState(worker.state), worker.state || "queued"),
+  );
+  body.append(
+    head,
+    createText("small", worker.id || "-"),
+    createContextSummaryRow(dict.workerQueue, worker.queue || "-"),
+    createContextSummaryRow(dict.workerMode, worker.mode || "-"),
+    createContextSummaryRow(dict.workerAttempt, `${worker.attempt || 1}/${worker.maxAttempts || 1}`),
+    createContextSummaryRow(dict.workerRequestedBy, worker.requestedBy || "-"),
+    createContextSummaryRow(dict.workerDuration, formatDuration(worker.durationMs)),
+  );
+  if (worker.error?.message) {
+    body.append(createContextSummaryRow(dict.policyGateSummary, worker.error.message));
+  }
+  item.append(marker, body);
+  list.append(item);
+  section.append(header, list);
+  return section;
+}
+
+function createTraceEventSection(events, dict) {
+  if (!Array.isArray(events) || events.length === 0) {
+    return createContextEmptyState(dict.traceEventsEmpty, dict.traceEventsFallback);
+  }
+
+  const section = document.createElement("section");
+  section.className = "context-section trace-events";
+  const header = document.createElement("div");
+  header.className = "context-pipeline-head";
+  header.append(
+    createText("strong", dict.traceEventsTitle),
+    createStatusPill(String(events.length), "succeeded"),
+    createText("small", `${events.length} events`),
+  );
+
+  const list = document.createElement("ol");
+  list.className = "context-stage-list context-event-list";
+  list.append(...events.map((event) => createTraceEventItem(event, dict)));
+  section.append(header, list);
+  return section;
+}
+
+function createTraceEventItem(event, dict) {
+  const item = document.createElement("li");
+  item.className = `context-stage context-event ${event.state || "planned"}`;
+  const marker = document.createElement("span");
+  marker.className = "context-stage-index";
+  marker.textContent = String(event.sequence || "-");
+
+  const body = document.createElement("div");
+  body.className = "context-stage-body";
+  const head = document.createElement("div");
+  head.className = "context-stage-head";
+  head.append(
+    createText("strong", event.title || event.kind || "-"),
+    createStatusPill(event.kind || "-", event.state || "planned"),
+  );
+
+  body.append(head, createText("small", `${event.kind || "-"} · ${formatDateTime(event.createdAt)}`));
+  if (event.summary) {
+    body.append(createContextSummaryRow(dict.policyGateSummary, event.summary));
+  }
+  if (event.stepId) {
+    body.append(createContextSummaryRow(dict.traceEventStep, event.stepId));
+  }
+  if (event.artifactId) {
+    body.append(createContextSummaryRow(dict.traceEventArtifact, event.artifactId));
+  }
+  item.append(marker, body);
+  return item;
+}
+
 function createContextEmptyState(title, fallback) {
   const state = document.createElement("article");
   state.className = "context-empty-state";
@@ -1660,12 +1798,27 @@ function resolveContextPipelineState(state) {
   const dict = messages[currentLang] ?? messages.zh;
   const keyMap = {
     ready: "contextPipelineReady",
+    succeeded: "workerSucceeded",
+    queued: "workerQueued",
+    running: "workerRunning",
     partial: "contextPipelinePartial",
     skipped: "contextPipelineSkipped",
     planned: "contextPipelinePlanned",
     failed: "contextPipelineFailed",
   };
   return dict[keyMap[state] || "contextPipelinePlanned"] || state || "-";
+}
+
+function resolveWorkerState(state) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    queued: "workerQueued",
+    running: "workerRunning",
+    succeeded: "workerSucceeded",
+    failed: "workerFailed",
+    cancelled: "workerCancelled",
+  };
+  return dict[keyMap[state] || "workerQueued"] || state || "-";
 }
 
 function resolvePolicyState(state) {

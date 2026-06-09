@@ -191,6 +191,15 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(created.body.workbench.selectedRun.middleware.stages.length, 4);
     assert.equal(created.body.workbench.selectedRun.policy.title, "Meta-Agent 创建策略评估");
     assert.equal(created.body.workbench.selectedRun.policy.state, "review_required");
+    assert.equal(created.body.workbench.selectedRun.worker.queue, "meta.create-agent.inline");
+    assert.equal(created.body.workbench.selectedRun.worker.state, "succeeded");
+    assert.equal(
+      created.body.workbench.selectedRun.events.some(
+        (event: { kind?: string; state?: string }) =>
+          event.kind === "worker_finished" && event.state === "succeeded",
+      ),
+      true,
+    );
     assert.equal(created.body.workbench.messages.length, 3);
     assert.equal(created.body.workbench.messages[0].role, "user");
     assert.equal(created.body.workbench.messages[1].kind, "plan");
@@ -229,6 +238,12 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(draftRun.trace.middleware.title, "Meta-Agent 上下文装配管线");
     assert.equal(draftRun.trace.policy.title, "Meta-Agent 创建策略评估");
     assert.equal(draftRun.trace.policy.state, "review_required");
+    assert.equal(draftRun.trace.worker.queue, "meta.create-agent.inline");
+    assert.equal(draftRun.trace.worker.state, "succeeded");
+    assert.equal(
+      draftRun.trace.events.some((event: { kind?: string }) => event.kind === "trace_written"),
+      true,
+    );
     assert.equal(
       draftRun.trace.middleware.stages.find((stage: { id?: string }) => stage.id === "capability-injection")?.capabilityIds.includes("filesystem-mcp"),
       true,
@@ -376,6 +391,15 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(run.body.workbench.selectedRun.middleware.title, "Agent 运行上下文装配管线");
     assert.equal(run.body.workbench.selectedRun.policy.title, "Agent 运行策略评估");
     assert.equal(run.body.workbench.selectedRun.policy.state, "review_required");
+    assert.equal(run.body.workbench.selectedRun.worker.queue, "agent.run.inline");
+    assert.equal(run.body.workbench.selectedRun.worker.state, "succeeded");
+    assert.equal(
+      run.body.workbench.selectedRun.events.some(
+        (event: { kind?: string; state?: string }) =>
+          event.kind === "worker_finished" && event.state === "succeeded",
+      ),
+      true,
+    );
     assert.equal(run.body.workbench.messages.length, 3);
     assert.equal(run.body.workbench.messages[0].content, "a clean app dashboard");
     assert.equal(run.body.workbench.messages[1].kind, "plan");
@@ -388,6 +412,12 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(runDetail.trace.middleware.title, "Agent 运行上下文装配管线");
     assert.equal(runDetail.trace.policy.title, "Agent 运行策略评估");
     assert.equal(runDetail.trace.policy.state, "review_required");
+    assert.equal(runDetail.trace.worker.queue, "agent.run.inline");
+    assert.equal(runDetail.trace.worker.state, "succeeded");
+    assert.equal(
+      runDetail.trace.events.some((event: { kind?: string }) => event.kind === "trace_written"),
+      true,
+    );
     assert.equal(runDetail.trace.middleware.stages.find((stage: { id?: string }) => stage.id === "knowledge-context")?.state, "planned");
     assert.equal(runDetail.trace.plan.steps.find((step: { id?: string }) => step.id === "step-image-gen")?.state, "skipped");
 
@@ -419,6 +449,12 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedDraft.selectedRun.plan.title, "Meta-Agent 创建 Agent 计划");
     assert.equal(selectedDraft.selectedRun.middleware.title, "Meta-Agent 上下文装配管线");
     assert.equal(selectedDraft.selectedRun.policy.title, "Meta-Agent 创建策略评估");
+    assert.equal(selectedDraft.selectedRun.worker.queue, "meta.create-agent.inline");
+    assert.equal(selectedDraft.selectedRun.worker.state, "succeeded");
+    assert.equal(
+      selectedDraft.selectedRun.events.some((event: { kind?: string }) => event.kind === "worker_finished"),
+      true,
+    );
     assert.equal(selectedDraft.artifacts.length, created.body.result.files.length);
     assert.equal(selectedDraft.artifacts.find((item: { id?: string }) => item.id === artifactId)?.preview.kind, "text");
     assert.equal(selectedDraft.messages.length, 4);
@@ -445,6 +481,12 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedRun.selectedRun.middleware.stages.length, 4);
     assert.equal(selectedRun.selectedRun.policy.title, "Agent 运行策略评估");
     assert.equal(selectedRun.selectedRun.policy.state, "review_required");
+    assert.equal(selectedRun.selectedRun.worker.queue, "agent.run.inline");
+    assert.equal(selectedRun.selectedRun.worker.state, "succeeded");
+    assert.equal(
+      selectedRun.selectedRun.events.some((event: { kind?: string }) => event.kind === "trace_written"),
+      true,
+    );
     assert.equal(selectedRun.artifacts.length, 0);
     assert.equal(selectedRun.messages.length, 3);
     assert.equal(selectedRun.settings.agentDefaults.some((item: { agentId?: string }) => item.agentId === "image-gen/prototype-v1"), true);
@@ -536,11 +578,15 @@ test("Artifact preview API returns metadata-only responses for Office-like binar
     assert.equal(workbench.artifacts[0].preview.sandbox.scope, "artifacts");
     assert.equal(workbench.selectedRun.middleware, null);
     assert.equal(workbench.selectedRun.policy, null);
+    assert.equal(workbench.selectedRun.worker, null);
+    assert.deepEqual(workbench.selectedRun.events, []);
 
     const run = await getJson(apiUrl(server.url, "/api/runs/run-preview-office"));
     assert.equal(run.ok, true);
     assert.equal(run.trace.middleware, null);
     assert.equal(run.trace.policy, null);
+    assert.equal(run.trace.worker, null);
+    assert.deepEqual(run.trace.events, []);
   } finally {
     await server.close();
     process.chdir(previousCwd);

@@ -18,6 +18,8 @@ import type {
   PolicyEvaluationRecord,
   RuntimeTrace,
   StepRecord,
+  TraceEventRecord,
+  WorkerJobRecord,
 } from "./types.js";
 import {
   buildWorkSummaries,
@@ -56,6 +58,8 @@ export interface WorkbenchRun {
   plan: PlanRecord | null;
   middleware: MiddlewarePipelineRecord | null;
   policy: PolicyEvaluationRecord | null;
+  worker: WorkerJobRecord | null;
+  events: TraceEventRecord[];
   steps: WorkbenchStep[];
 }
 
@@ -207,6 +211,8 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
       plan: detail.trace.plan ?? null,
       middleware: detail.trace.middleware ?? null,
       policy: detail.trace.policy ?? null,
+      worker: detail.trace.worker ?? null,
+      events: detail.trace.events ?? [],
       steps: detail.trace.steps.map(toWorkbenchStep),
     };
   }
@@ -230,6 +236,8 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
     plan: null,
     middleware: null,
     policy: null,
+    worker: null,
+    events: [],
     steps: [],
   };
 }

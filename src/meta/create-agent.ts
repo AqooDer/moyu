@@ -2,6 +2,7 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { stringify } from "yaml";
 import { formatValidationResult, validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
+import { startInlineWorkerJob } from "../runtime/async-worker.js";
 import { createMetaAgentMiddlewarePipeline } from "../runtime/middleware-pipeline.js";
 import { createPolicyEvaluationRecord } from "../runtime/policy-gate.js";
 import { createPlanRecord, formatPlanSummary } from "../runtime/plans.js";
@@ -59,6 +60,11 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
       target_agent_id: spec.agentId,
       persist: Boolean(options.persist),
     },
+  });
+  startInlineWorkerJob({
+    runtime,
+    queue: "meta.create-agent.inline",
+    requestedBy: "meta/create-agent",
   });
 
   runtime.setPlan(

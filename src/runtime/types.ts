@@ -13,6 +13,21 @@ export type MiddlewareStageKind =
 export type PolicyDecisionState = "allowed" | "review_required" | "blocked" | "unknown";
 export type PolicyRiskLevel = "low" | "medium" | "high" | "unknown";
 export type PolicyCheckKind = "capability" | "permission" | "mcp" | "runtime" | "model" | "artifact";
+export type WorkerJobState = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+export type WorkerJobMode = "inline" | "background";
+export type TraceEventKind =
+  | "worker_queued"
+  | "worker_started"
+  | "worker_finished"
+  | "run_state_changed"
+  | "plan_created"
+  | "middleware_created"
+  | "policy_evaluated"
+  | "step_started"
+  | "step_finished"
+  | "artifact_created"
+  | "trace_written"
+  | "note_added";
 export type ArtifactRole = "primary" | "intermediate" | "report" | "log";
 export type ConversationRole = "user" | "agent" | "system";
 export type ModelRoleResolutionSource =
@@ -166,6 +181,41 @@ export interface PolicyEvaluationRecord {
   updatedAt: string;
 }
 
+export interface WorkerJobRecord {
+  id: string;
+  runId: string;
+  workId: string;
+  queue: string;
+  mode: WorkerJobMode;
+  state: WorkerJobState;
+  attempt: number;
+  maxAttempts: number;
+  requestedBy: string;
+  cancelRequested: boolean;
+  startedAt: string | null;
+  endedAt: string | null;
+  durationMs: number | null;
+  error: { code: string; message: string } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TraceEventRecord {
+  id: string;
+  runId: string;
+  workId: string | null;
+  sequence: number;
+  kind: TraceEventKind;
+  title: string;
+  summary: string;
+  state: string | null;
+  stepId: string | null;
+  artifactId: string | null;
+  workerJobId: string | null;
+  createdAt: string;
+  data: Record<string, unknown>;
+}
+
 export interface StepRecord {
   id: string;
   runId: string;
@@ -226,6 +276,8 @@ export interface RuntimeTrace {
   plan: PlanRecord | null;
   middleware: MiddlewarePipelineRecord | null;
   policy: PolicyEvaluationRecord | null;
+  worker: WorkerJobRecord | null;
+  events: TraceEventRecord[];
   steps: StepRecord[];
   artifacts: ArtifactRecord[];
   knowledgeWriteBacks: KnowledgeWriteBackRecord[];

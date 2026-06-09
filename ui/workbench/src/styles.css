@@ -2277,9 +2277,16 @@ kbd {
   background: rgba(224, 244, 241, 0.28);
 }
 
-.context-stage.allowed {
+.context-stage.allowed,
+.context-stage.succeeded {
   border-color: rgba(7, 140, 132, 0.16);
   background: rgba(224, 244, 241, 0.28);
+}
+
+.context-stage.queued,
+.context-stage.running {
+  border-color: rgba(67, 117, 204, 0.2);
+  background: rgba(230, 239, 255, 0.52);
 }
 
 .context-stage.review_required,
@@ -2289,7 +2296,8 @@ kbd {
 }
 
 .context-stage.blocked,
-.context-stage.failed {
+.context-stage.failed,
+.context-stage.cancelled {
   border-color: rgba(239, 96, 89, 0.22);
   background: #fff0ef;
 }
@@ -2397,10 +2405,18 @@ kbd {
   color: var(--accent-ink);
 }
 
-.context-status-pill[data-state="allowed"] {
+.context-status-pill[data-state="allowed"],
+.context-status-pill[data-state="succeeded"] {
   border-color: rgba(7, 140, 132, 0.2);
   background: var(--accent-soft);
   color: var(--accent-ink);
+}
+
+.context-status-pill[data-state="queued"],
+.context-status-pill[data-state="running"] {
+  border-color: rgba(67, 117, 204, 0.28);
+  background: rgba(230, 239, 255, 0.78);
+  color: #27589c;
 }
 
 .context-status-pill[data-state="partial"],
@@ -2413,10 +2429,23 @@ kbd {
 }
 
 .context-status-pill[data-state="blocked"],
-.context-status-pill[data-state="failed"] {
+.context-status-pill[data-state="failed"],
+.context-status-pill[data-state="cancelled"] {
   border-color: rgba(239, 96, 89, 0.24);
   background: #fff0ef;
   color: #9b3631;
+}
+
+.context-event-list {
+  max-height: 420px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.context-event .context-stage-index {
+  width: 24px;
+  border-radius: 7px;
+  font-size: 10px;
 }
 
 .full-width-button {

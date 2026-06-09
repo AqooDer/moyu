@@ -12,6 +12,11 @@ import type {
   PolicyRiskLevel,
   RuntimeTrace,
   PlanRecord,
+  TraceEventKind,
+  TraceEventRecord,
+  WorkerJobMode,
+  WorkerJobRecord,
+  WorkerJobState,
 } from "./types.js";
 
 export interface RunHistoryItem {
@@ -139,6 +144,10 @@ export function formatRunHistoryDetail(detail: RunHistoryDetail) {
     lines.push(...formatMiddlewareLines(trace.middleware));
     lines.push("", "policy:");
     lines.push(...formatPolicyLines(trace.policy));
+    lines.push("", "worker:");
+    lines.push(...formatWorkerLines(trace.worker));
+    lines.push("", "events:");
+    lines.push(...formatEventLines(trace.events));
     lines.push("", "steps:");
     lines.push(...formatStepLines(trace));
     lines.push("", "artifacts:");
@@ -279,6 +288,8 @@ function normalizeRuntimeTrace(trace: RuntimeTrace): RuntimeTrace {
     plan: normalizePlan(trace.plan),
     middleware: normalizeMiddlewarePipeline(trace.middleware),
     policy: normalizePolicyEvaluation(trace.policy),
+    worker: normalizeWorkerJob(trace.worker),
+    events: normalizeTraceEvents(trace.events),
     run: {
       ...trace.run,
       modelRoles: trace.run.modelRoles ?? [],
@@ -401,6 +412,58 @@ function normalizePolicyEvaluation(policy: unknown): PolicyEvaluationRecord | nu
   };
 }
 
+function normalizeWorkerJob(worker: unknown): WorkerJobRecord | null {
+  if (!worker || typeof worker !== "object") {
+    return null;
+  }
+  const raw = worker as WorkerJobRecord;
+  const startedAt = typeof raw.startedAt === "string" && raw.startedAt ? raw.startedAt : null;
+  const endedAt = typeof raw.endedAt === "string" && raw.endedAt ? raw.endedAt : null;
+  return {
+    id: typeof raw.id === "string" && raw.id ? raw.id : `worker-${raw.runId || "unknown"}`,
+    runId: typeof raw.runId === "string" && raw.runId ? raw.runId : "run-unknown",
+    workId: typeof raw.workId === "string" && raw.workId ? raw.workId : "work-unknown",
+    queue: typeof raw.queue === "string" && raw.queue ? raw.queue : "runtime.inline",
+    mode: normalizeWorkerJobMode(raw.mode),
+    state: normalizeWorkerJobState(raw.state),
+    attempt: normalizePositiveCount(raw.attempt, 1),
+    maxAttempts: normalizePositiveCount(raw.maxAttempts, 1),
+    requestedBy: typeof raw.requestedBy === "string" && raw.requestedBy ? raw.requestedBy : "unknown",
+    cancelRequested: Boolean(raw.cancelRequested),
+    startedAt,
+    endedAt,
+    durationMs: normalizeNullableDuration(raw.durationMs),
+    error: normalizeError(raw.error),
+    createdAt: typeof raw.createdAt === "string" && raw.createdAt ? raw.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof raw.updatedAt === "string" && raw.updatedAt ? raw.updatedAt : endedAt ?? startedAt ?? new Date(0).toISOString(),
+  };
+}
+
+function normalizeTraceEvents(events: unknown): TraceEventRecord[] {
+  if (!Array.isArray(events)) {
+    return [];
+  }
+  return events.map((event, index) => {
+    const raw = event as TraceEventRecord;
+    const sequence = normalizePositiveCount(raw.sequence, index + 1);
+    return {
+      id: typeof raw.id === "string" && raw.id ? raw.id : `evt-${raw.runId || "unknown"}-${String(sequence).padStart(4, "0")}`,
+      runId: typeof raw.runId === "string" && raw.runId ? raw.runId : "run-unknown",
+      workId: typeof raw.workId === "string" && raw.workId ? raw.workId : null,
+      sequence,
+      kind: normalizeTraceEventKind(raw.kind),
+      title: typeof raw.title === "string" && raw.title ? raw.title : "Runtime event",
+      summary: typeof raw.summary === "string" ? raw.summary : "",
+      state: typeof raw.state === "string" && raw.state ? raw.state : null,
+      stepId: typeof raw.stepId === "string" && raw.stepId ? raw.stepId : null,
+      artifactId: typeof raw.artifactId === "string" && raw.artifactId ? raw.artifactId : null,
+      workerJobId: typeof raw.workerJobId === "string" && raw.workerJobId ? raw.workerJobId : null,
+      createdAt: typeof raw.createdAt === "string" && raw.createdAt ? raw.createdAt : new Date(0).toISOString(),
+      data: raw.data && typeof raw.data === "object" && !Array.isArray(raw.data) ? raw.data : {},
+    };
+  });
+}
+
 function formatMiddlewareLines(pipeline: MiddlewarePipelineRecord | null) {
   if (!pipeline) {
     return ["- none"];
@@ -413,6 +476,30 @@ function formatMiddlewareLines(pipeline: MiddlewarePipelineRecord | null) {
     lines.push(`  - ${stage.id} [${stage.kind}] ${stage.state}${capabilities}${policies}: ${stage.title}`);
   }
   return lines;
+}
+
+function formatWorkerLines(worker: WorkerJobRecord | null) {
+  if (!worker) {
+    return ["- none"];
+  }
+
+  const error = worker.error ? ` error=${worker.error.code}` : "";
+  return [
+    `- ${worker.id} ${worker.queue} ${worker.state} mode=${worker.mode} attempt=${worker.attempt}/${worker.maxAttempts} duration=${formatDuration(worker.durationMs)}${error}`,
+  ];
+}
+
+function formatEventLines(events: TraceEventRecord[]) {
+  if (events.length === 0) {
+    return ["- none"];
+  }
+
+  return events.map((event) => {
+    const state = event.state ? ` ${event.state}` : "";
+    const step = event.stepId ? ` step=${event.stepId}` : "";
+    const artifact = event.artifactId ? ` artifact=${event.artifactId}` : "";
+    return `- #${event.sequence} ${event.kind}${state}${step}${artifact}: ${event.title}`;
+  });
 }
 
 function formatPolicyLines(policy: PolicyEvaluationRecord | null) {
@@ -509,6 +596,54 @@ function normalizeStringList(values: unknown) {
 
 function normalizeCount(value: unknown, fallback: number) {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
+}
+
+function normalizePositiveCount(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : fallback;
+}
+
+function normalizeNullableDuration(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function normalizeError(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const raw = value as { code?: unknown; message?: unknown };
+  return {
+    code: typeof raw.code === "string" && raw.code ? raw.code : "runtime_error",
+    message: typeof raw.message === "string" && raw.message ? raw.message : "",
+  };
+}
+
+function normalizeWorkerJobState(value: unknown): WorkerJobState {
+  return ["queued", "running", "succeeded", "failed", "cancelled"].includes(String(value))
+    ? (value as WorkerJobState)
+    : "queued";
+}
+
+function normalizeWorkerJobMode(value: unknown): WorkerJobMode {
+  return ["inline", "background"].includes(String(value)) ? (value as WorkerJobMode) : "inline";
+}
+
+function normalizeTraceEventKind(value: unknown): TraceEventKind {
+  return [
+    "worker_queued",
+    "worker_started",
+    "worker_finished",
+    "run_state_changed",
+    "plan_created",
+    "middleware_created",
+    "policy_evaluated",
+    "step_started",
+    "step_finished",
+    "artifact_created",
+    "trace_written",
+    "note_added",
+  ].includes(String(value))
+    ? (value as TraceEventKind)
+    : "run_state_changed";
 }
 
 function formatTable(headers: string[], rows: string[][]) {

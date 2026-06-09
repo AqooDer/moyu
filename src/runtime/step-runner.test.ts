@@ -3,6 +3,7 @@ import test from "node:test";
 import { createMiddlewarePipelineRecord } from "./middleware-pipeline.js";
 import { createPolicyEvaluationRecord } from "./policy-gate.js";
 import { createPlanRecord } from "./plans.js";
+import { startInlineWorkerJob } from "./async-worker.js";
 import { runRuntimeStep } from "./step-runner.js";
 import { RuntimeStore } from "./store.js";
 
@@ -29,6 +30,12 @@ test("runtime step runner records succeeded steps and syncs plan state", async (
   assert.deepEqual(runtime.snapshot.steps[0].outputSummary, { files: 2 });
   assert.equal(runtime.snapshot.steps[0].error, null);
   assert.equal(runtime.snapshot.plan?.steps.find((step) => step.id === "execute")?.state, "succeeded");
+  assert.deepEqual(
+    runtime.snapshot.events.map((event) => event.kind),
+    ["plan_created", "step_started", "step_finished"],
+  );
+  assert.equal(runtime.snapshot.events[1].stepId, "execute");
+  assert.equal(runtime.snapshot.events[2].state, "succeeded");
 });
 
 test("runtime step runner records skipped steps", async () => {
@@ -49,6 +56,7 @@ test("runtime step runner records skipped steps", async () => {
   assert.deepEqual(runtime.snapshot.steps[0].outputSummary, { reason: "dry-run" });
   assert.equal(runtime.snapshot.steps[0].error, null);
   assert.equal(runtime.snapshot.plan?.steps.find((step) => step.id === "execute")?.state, "skipped");
+  assert.equal(runtime.snapshot.events.some((event) => event.kind === "step_finished" && event.state === "skipped"), true);
 });
 
 test("runtime step runner records failed steps before rethrowing", async () => {
@@ -78,6 +86,7 @@ test("runtime step runner records failed steps before rethrowing", async () => {
     message: "provider refused request",
   });
   assert.equal(runtime.snapshot.plan?.steps.find((step) => step.id === "execute")?.state, "failed");
+  assert.equal(runtime.snapshot.events.some((event) => event.kind === "step_finished" && event.state === "failed"), true);
 });
 
 test("runtime step runner accepts explicit failed results without throwing", async () => {
@@ -106,6 +115,37 @@ test("runtime step runner accepts explicit failed results without throwing", asy
     message: "Validation failed.",
   });
   assert.equal(runtime.snapshot.plan?.steps.find((step) => step.id === "execute")?.state, "failed");
+  assert.equal(runtime.snapshot.events.some((event) => event.kind === "step_finished" && event.state === "failed"), true);
+});
+
+test("runtime store records inline worker lifecycle events", () => {
+  const runtime = createRuntimeWithPlan("run-worker");
+
+  const worker = startInlineWorkerJob({
+    runtime,
+    queue: "test.inline",
+    requestedBy: "test/runner",
+  });
+  runtime.setRunState("running");
+  runtime.setRunState("succeeded");
+  runtime.finishWorkerJob("succeeded");
+
+  assert.equal(worker.id, "worker-run-worker");
+  assert.equal(runtime.snapshot.worker?.queue, "test.inline");
+  assert.equal(runtime.snapshot.worker?.state, "succeeded");
+  assert.deepEqual(
+    runtime.snapshot.events.map((event) => event.kind),
+    [
+      "plan_created",
+      "worker_queued",
+      "worker_started",
+      "run_state_changed",
+      "run_state_changed",
+      "worker_finished",
+    ],
+  );
+  assert.equal(runtime.snapshot.events[1].workerJobId, "worker-run-worker");
+  assert.equal(runtime.snapshot.events[5].state, "succeeded");
 });
 
 test("runtime store records middleware pipeline snapshots", () => {
