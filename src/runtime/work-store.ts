@@ -26,6 +26,7 @@ export interface RecordRunConversationInput {
   title: string;
   state: WorkState;
   prompt?: string | null;
+  planSummary?: string | null;
   summary?: string | null;
   artifactIds?: string[];
   startedAt?: string | null;
@@ -127,7 +128,23 @@ export async function recordRunConversation(
       }),
     );
   }
+  if (input.planSummary) {
+    messages.push(
+      createConversationMessage({
+        id: createMessageId(input.runId, "plan"),
+        workId,
+        runId: input.runId,
+        role: "agent",
+        kind: "plan",
+        content: input.planSummary,
+        createdAt: addMilliseconds(createdAt, 1),
+      }),
+    );
+  }
   if (input.summary) {
+    const summaryCreatedAt = input.planSummary
+      ? maxIsoTimestamp(updatedAt, addMilliseconds(createdAt, 2))
+      : updatedAt;
     messages.push(
       createConversationMessage({
         id: createMessageId(input.runId, "summary"),
@@ -137,7 +154,7 @@ export async function recordRunConversation(
         kind: "summary",
         content: input.summary,
         artifactIds: input.artifactIds ?? [],
-        createdAt: updatedAt,
+        createdAt: summaryCreatedAt,
       }),
     );
   }
@@ -329,4 +346,21 @@ function readString(value: unknown, fallback: string) {
 
 function mergeUnique(values: string[]) {
   return [...new Set(values)];
+}
+
+function addMilliseconds(value: string, milliseconds: number) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Date(date.getTime() + milliseconds).toISOString();
+}
+
+function maxIsoTimestamp(left: string, right: string) {
+  const leftTime = new Date(left).getTime();
+  const rightTime = new Date(right).getTime();
+  if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+    return left;
+  }
+  return leftTime >= rightTime ? left : right;
 }

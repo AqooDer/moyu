@@ -1,5 +1,6 @@
 export type RunState = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 export type WorkState = "active" | "waiting_user" | "running" | "completed" | "archived";
+export type PlanState = "drafted" | "running" | "succeeded" | "failed" | "cancelled";
 export type StepState = "pending" | "running" | "succeeded" | "failed" | "skipped";
 export type StepKind = "llm" | "tool" | "skill" | "agent_call" | "control" | "user_checkpoint";
 export type ArtifactRole = "primary" | "intermediate" | "report" | "log";
@@ -77,6 +78,26 @@ export interface RunRecord {
   mcpServers: McpServerResolution[];
 }
 
+export interface PlanStepRecord {
+  id: string;
+  title: string;
+  kind: StepKind;
+  state: StepState;
+  dependsOn: string[];
+  summary: string;
+}
+
+export interface PlanRecord {
+  id: string;
+  runId: string;
+  workId: string;
+  title: string;
+  state: PlanState;
+  steps: PlanStepRecord[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StepRecord {
   id: string;
   runId: string;
@@ -134,6 +155,7 @@ export interface KnowledgeWriteBackRecord {
 export interface RuntimeTrace {
   schemaVersion: 1;
   run: RunRecord;
+  plan: PlanRecord | null;
   steps: StepRecord[];
   artifacts: ArtifactRecord[];
   knowledgeWriteBacks: KnowledgeWriteBackRecord[];

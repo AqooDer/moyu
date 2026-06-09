@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AgentManifestSummary } from "./registry.js";
 import { readImageRelayConfig } from "../lib/env.js";
 import { generateImagesWithRelay } from "../lib/openai-compat-image.js";
+import { createPlanRecord, formatPlanSummary } from "../runtime/plans.js";
 import { RuntimeStore } from "../runtime/store.js";
 import type { McpServerResolution } from "../runtime/types.js";
 import { createWorkIdFromRunId, recordRunConversation } from "../runtime/work-store.js";
@@ -57,6 +58,52 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     modelRoles,
     mcpServers,
   });
+  runtime.setPlan(
+    createPlanRecord({
+      runId,
+      workId,
+      title: "生图 Agent 运行计划",
+      createdAt: runtime.snapshot.run.startedAt,
+      steps: [
+        {
+          id: "input",
+          title: "整理输入参数",
+          kind: "control",
+          summary: "规范 prompt、数量、尺寸和风格参数。",
+        },
+        {
+          id: "resolve-context",
+          title: "装配运行上下文",
+          kind: "control",
+          summary: "解析模型角色、MCP 装配快照和 Provider 配置。",
+          dependsOn: ["input"],
+        },
+        {
+          id: "step-image-gen",
+          title: "执行图片生成",
+          kind: "skill",
+          summary: "调用生图能力，dry-run 时跳过外部 Provider 调用。",
+          dependsOn: ["resolve-context"],
+        },
+        {
+          id: "register-artifacts",
+          title: "登记产物",
+          kind: "tool",
+          summary: "把生成图片登记为 Artifact，并保留摘要信息。",
+          dependsOn: ["step-image-gen"],
+        },
+        {
+          id: "write-trace",
+          title: "写入 Trace 与对话记录",
+          kind: "tool",
+          summary: "输出 run.json，并把计划和总结写入 Work 会话。",
+          dependsOn: ["register-artifacts"],
+        },
+      ],
+    }),
+  );
+  runtime.updatePlanStep("input", "succeeded");
+  runtime.updatePlanStep("resolve-context", "succeeded");
   runtime.setRunState("running");
 
   const step = runtime.startStep({
@@ -86,6 +133,8 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       fallback_reason: imageModelRole?.fallbackReason,
       mcp_servers: mcpServers.map((server) => server.id),
     });
+    runtime.updatePlanStep("register-artifacts", "skipped");
+    runtime.updatePlanStep("write-trace", "succeeded");
     runtime.setRunState("succeeded");
     const traceFile = await runtime.writeTrace();
     const summary = formatRunSummary({
@@ -110,6 +159,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       title: prompt,
       state: "completed",
       prompt,
+      planSummary: formatPlanSummary(runtime.snapshot.plan),
       summary: `Agent ${agent.agentId} dry-run 已完成，Provider 调用已跳过。`,
       artifactIds: runtime.snapshot.artifacts.map((artifact) => artifact.id),
       startedAt: runtime.snapshot.run.startedAt,
@@ -133,6 +183,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       filePath: file,
     });
   }
+  runtime.updatePlanStep("register-artifacts", "succeeded");
   runtime.finishStep(step.id, "succeeded", {
     files: result.files.length,
     model_role: imageModelRole?.roleId ?? "image-generation",
@@ -144,6 +195,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     mcp_servers: mcpServers.map((server) => server.id),
   });
   runtime.addNote("Generated via agent runtime prototype.");
+  runtime.updatePlanStep("write-trace", "succeeded");
   runtime.setRunState("succeeded");
   const traceFile = await runtime.writeTrace();
   const summary = formatRunSummary({
@@ -168,6 +220,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     title: prompt,
     state: "completed",
     prompt,
+    planSummary: formatPlanSummary(runtime.snapshot.plan),
     summary: `Agent ${agent.agentId} 已完成运行，生成 ${result.files.length} 个产物。`,
     artifactIds: runtime.snapshot.artifacts.map((artifact) => artifact.id),
     startedAt: runtime.snapshot.run.startedAt,

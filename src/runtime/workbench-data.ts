@@ -8,6 +8,7 @@ import type {
   ConversationMessage,
   McpServerResolution,
   ModelRoleResolution,
+  PlanRecord,
   RuntimeTrace,
   StepRecord,
   WorkRecord,
@@ -41,6 +42,7 @@ export interface WorkbenchRun {
   artifactCount: number;
   modelRoles: ModelRoleResolution[];
   mcpServers: McpServerResolution[];
+  plan: PlanRecord | null;
   steps: WorkbenchStep[];
 }
 
@@ -178,6 +180,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
       artifactCount: detail.trace.artifacts.length,
       modelRoles: detail.trace.run.modelRoles ?? [],
       mcpServers: detail.trace.run.mcpServers ?? [],
+      plan: detail.trace.plan ?? null,
       steps: detail.trace.steps.map(toWorkbenchStep),
     };
   }
@@ -198,6 +201,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
     artifactCount: detail.item.artifactCount,
     modelRoles: [],
     mcpServers: [],
+    plan: null,
     steps: [],
   };
 }
@@ -388,6 +392,18 @@ function getFallbackMessagesFromRun(run: WorkbenchRun): WorkbenchMessage[] {
       createdAt,
     });
   }
+  if (run.plan) {
+    messages.push({
+      id: `fallback-${run.id}-plan`,
+      workId,
+      runId: run.id,
+      role: "agent",
+      kind: "plan",
+      content: formatFallbackPlan(run.plan),
+      artifactIds: [],
+      createdAt: addMilliseconds(createdAt, 1),
+    });
+  }
   messages.push({
     id: `fallback-${run.id}-summary`,
     workId,
@@ -399,6 +415,14 @@ function getFallbackMessagesFromRun(run: WorkbenchRun): WorkbenchMessage[] {
     createdAt,
   });
   return messages;
+}
+
+function formatFallbackPlan(plan: PlanRecord) {
+  const lines = [`计划：${plan.title}`];
+  for (const [index, step] of plan.steps.entries()) {
+    lines.push(`${index + 1}. ${step.title}：${step.summary}`);
+  }
+  return lines.join("\n");
 }
 
 function getWorkbenchWorkTitle(run: RunHistoryItem, selectedRun: WorkbenchRun | null) {
@@ -485,6 +509,14 @@ function compactText(value: string, maxLength: number) {
     return normalized;
   }
   return `${normalized.slice(0, Math.max(0, maxLength - 1))}...`;
+}
+
+function addMilliseconds(value: string, milliseconds: number) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return new Date(date.getTime() + milliseconds).toISOString();
 }
 
 async function fallbackWorkbenchArtifacts(prototypeRoot: string): Promise<WorkbenchArtifact[]> {

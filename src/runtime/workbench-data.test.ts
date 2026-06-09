@@ -55,8 +55,10 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftStore.works.length, 1);
     assert.equal(draftStore.works[0].runIds[0], draft.runId);
     assert.equal(draftStore.works[0].state, "waiting_user");
-    assert.equal(draftStore.messages.length, 2);
+    assert.equal(draftStore.messages.length, 3);
     assert.equal(draftStore.messages[0].content, "Create an image prototype Agent that stores traceable UI concept artifacts");
+    assert.equal(draftStore.messages[1].kind, "plan");
+    assert.match(draftStore.messages[1].content, /Meta-Agent 创建 Agent 计划/);
 
     const installed = await installAgentDraft({ runId: draft.runId });
     assert.equal(installed.installed, true);
@@ -75,8 +77,8 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
 
     const installedStore = await readWorkStore();
     assert.equal(installedStore.works[0].state, "completed");
-    assert.equal(installedStore.messages.length, 3);
-    assert.match(installedStore.messages[2].content, /已安装到正式目录/);
+    assert.equal(installedStore.messages.length, 4);
+    assert.match(installedStore.messages[3].content, /已安装到正式目录/);
 
     const installedManifestPath = path.join(installed.targetPath, "manifest.yaml");
     const installedManifest = await readFile(installedManifestPath, "utf8");
@@ -123,6 +125,18 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.match(runId, /^run-custom__image-prototype-v1-/);
     const runTrace = JSON.parse(await readFile(path.join("traces", runId, "run.json"), "utf8"));
     assert.match(runTrace.run.workId, /^work-run-custom__image-prototype-v1-/);
+    assert.equal(runTrace.plan.title, "生图 Agent 运行计划");
+    assert.equal(runTrace.plan.state, "succeeded");
+    assert.deepEqual(
+      runTrace.plan.steps.map((step: { id: string; state: string }) => [step.id, step.state]),
+      [
+        ["input", "succeeded"],
+        ["resolve-context", "succeeded"],
+        ["step-image-gen", "skipped"],
+        ["register-artifacts", "skipped"],
+        ["write-trace", "succeeded"],
+      ],
+    );
     assert.deepEqual(runTrace.run.modelRoles, [
       {
         roleId: "conversation-primary",
@@ -161,12 +175,16 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftWorkbench.selectedRun?.id, draft.runId);
     assert.equal(draftWorkbench.selectedRun?.agentId, "meta/create-agent");
     assert.equal(draftWorkbench.selectedRun?.workId, installedStore.works[0].id);
+    assert.equal(draftWorkbench.selectedRun?.plan?.title, "Meta-Agent 创建 Agent 计划");
+    assert.equal(draftWorkbench.selectedRun?.plan?.state, "succeeded");
     assert.equal(draftWorkbench.artifacts.length, draft.files.length);
     assert.equal(draftWorkbench.works.find((work) => work.active)?.runId, draft.runId);
     assert.equal(draftWorkbench.works.find((work) => work.active)?.state, "completed");
-    assert.equal(draftWorkbench.messages.length, 3);
+    assert.equal(draftWorkbench.messages.length, 4);
     assert.equal(draftWorkbench.messages[0].role, "user");
-    assert.match(draftWorkbench.messages[2].content, /已安装到正式目录/);
+    assert.equal(draftWorkbench.messages[1].kind, "plan");
+    assert.match(draftWorkbench.messages[1].content, /草拟 Agent 规格/);
+    assert.match(draftWorkbench.messages[3].content, /已安装到正式目录/);
     assert.equal(draftWorkbench.settings.nav.length > 0, true);
     assert.equal(draftWorkbench.settings.nav.some((item) => item.id === "agent-context"), true);
     assert.equal(draftWorkbench.settings.modelRoles.some((item) => item.id === "image-generation"), true);
@@ -186,6 +204,8 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runWorkbench.selectedRun?.modelRoles[1]?.roleId, "image-generation");
     assert.equal(runWorkbench.selectedRun?.modelRoles[1]?.source, "agent_manifest");
     assert.deepEqual(runWorkbench.selectedRun?.mcpServers.map((server) => server.id), ["analytics-db-mcp"]);
+    assert.equal(runWorkbench.selectedRun?.plan?.title, "生图 Agent 运行计划");
+    assert.equal(runWorkbench.selectedRun?.plan?.steps.find((step) => step.id === "step-image-gen")?.state, "skipped");
     assert.deepEqual(
       runWorkbench.agents.find((agent) => agent.id === "custom/image-prototype-v1")?.mcpServers.map((server) => server.id),
       ["analytics-db-mcp"],
@@ -193,9 +213,11 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runWorkbench.artifacts.length, 0);
     assert.equal(runWorkbench.works.find((work) => work.active)?.runId, runId);
     assert.equal(runWorkbench.works.find((work) => work.active)?.title.zh, "a clean app dashboard");
-    assert.equal(runWorkbench.messages.length, 2);
+    assert.equal(runWorkbench.messages.length, 3);
     assert.equal(runWorkbench.messages[0].content, "a clean app dashboard");
-    assert.match(runWorkbench.messages[1].content, /dry-run 已完成/);
+    assert.equal(runWorkbench.messages[1].kind, "plan");
+    assert.match(runWorkbench.messages[1].content, /执行图片生成/);
+    assert.match(runWorkbench.messages[2].content, /dry-run 已完成/);
     assert.equal(runWorkbench.settings.providers.length >= 1, true);
     assert.equal(
       runWorkbench.settings.agentContexts.some(

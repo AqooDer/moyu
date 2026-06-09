@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { platform } from "node:os";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
-import type { ArtifactRecord, KnowledgeWriteBackRecord, RuntimeTrace } from "./types.js";
+import type { ArtifactRecord, KnowledgeWriteBackRecord, PlanRecord, RuntimeTrace } from "./types.js";
 
 export interface RunHistoryItem {
   id: string;
@@ -123,6 +123,8 @@ export function formatRunHistoryDetail(detail: RunHistoryDetail) {
   if (isRuntimeTrace(trace)) {
     lines.push("", "input:");
     lines.push(...formatObjectLines(trace.run.input));
+    lines.push("", "plan:");
+    lines.push(...formatPlanLines(trace.plan));
     lines.push("", "steps:");
     lines.push(...formatStepLines(trace));
     lines.push("", "artifacts:");
@@ -143,7 +145,8 @@ export function formatRunHistoryDetail(detail: RunHistoryDetail) {
 
 async function readRunTraceFile(traceFile: string): Promise<RunHistoryDetail> {
   const raw = await readFile(traceFile, "utf8");
-  const trace = JSON.parse(raw) as RuntimeTrace | LegacyTrace | Record<string, unknown>;
+  const parsed = JSON.parse(raw) as RuntimeTrace | LegacyTrace | Record<string, unknown>;
+  const trace = isRuntimeTrace(parsed) ? normalizeRuntimeTrace(parsed) : parsed;
   return {
     item: summarizeTrace(trace, traceFile),
     trace,
@@ -230,6 +233,19 @@ function formatStepLines(trace: RuntimeTrace) {
   });
 }
 
+function formatPlanLines(plan: PlanRecord | null) {
+  if (!plan) {
+    return ["- none"];
+  }
+
+  const lines = [`- ${plan.id} ${plan.title} ${plan.state}`];
+  for (const step of plan.steps) {
+    const dependsOn = step.dependsOn.length > 0 ? ` depends_on=${step.dependsOn.join(",")}` : "";
+    lines.push(`  - ${step.id} [${step.kind}] ${step.state}${dependsOn}: ${step.title}`);
+  }
+  return lines;
+}
+
 function formatArtifactLines(artifacts: ArtifactRecord[]) {
   if (artifacts.length === 0) {
     return ["- none"];
@@ -241,6 +257,56 @@ function formatArtifactLines(artifacts: ArtifactRecord[]) {
       artifact.sizeBytes,
     )} sha256=${artifact.sha256} path=${relativePath}`;
   });
+}
+
+function normalizeRuntimeTrace(trace: RuntimeTrace): RuntimeTrace {
+  return {
+    ...trace,
+    plan: normalizePlan(trace.plan),
+    run: {
+      ...trace.run,
+      modelRoles: trace.run.modelRoles ?? [],
+      mcpServers: trace.run.mcpServers ?? [],
+    },
+    steps: Array.isArray(trace.steps) ? trace.steps : [],
+    artifacts: Array.isArray(trace.artifacts) ? trace.artifacts : [],
+    knowledgeWriteBacks: Array.isArray(trace.knowledgeWriteBacks) ? trace.knowledgeWriteBacks : [],
+    notes: Array.isArray(trace.notes) ? trace.notes : [],
+  };
+}
+
+function normalizePlan(plan: unknown): PlanRecord | null {
+  if (!plan || typeof plan !== "object") {
+    return null;
+  }
+  const raw = plan as PlanRecord;
+  return {
+    id: typeof raw.id === "string" && raw.id ? raw.id : `plan-${raw.runId || "unknown"}`,
+    runId: typeof raw.runId === "string" && raw.runId ? raw.runId : "run-unknown",
+    workId: typeof raw.workId === "string" && raw.workId ? raw.workId : "work-unknown",
+    title: typeof raw.title === "string" && raw.title ? raw.title : "Untitled plan",
+    state: ["drafted", "running", "succeeded", "failed", "cancelled"].includes(String(raw.state))
+      ? raw.state
+      : "drafted",
+    steps: Array.isArray(raw.steps)
+      ? raw.steps.map((step) => ({
+          id: typeof step.id === "string" && step.id ? step.id : "step-unknown",
+          title: typeof step.title === "string" && step.title ? step.title : "Untitled step",
+          kind: ["llm", "tool", "skill", "agent_call", "control", "user_checkpoint"].includes(String(step.kind))
+            ? step.kind
+            : "control",
+          state: ["pending", "running", "succeeded", "failed", "skipped"].includes(String(step.state))
+            ? step.state
+            : "pending",
+          dependsOn: Array.isArray(step.dependsOn)
+            ? step.dependsOn.filter((item): item is string => typeof item === "string" && Boolean(item))
+            : [],
+          summary: typeof step.summary === "string" ? step.summary : "",
+        }))
+      : [],
+    createdAt: typeof raw.createdAt === "string" && raw.createdAt ? raw.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof raw.updatedAt === "string" && raw.updatedAt ? raw.updatedAt : new Date(0).toISOString(),
+  };
 }
 
 function formatKnowledgeWriteBackLines(writeBacks: KnowledgeWriteBackRecord[]) {

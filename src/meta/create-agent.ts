@@ -2,6 +2,7 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { stringify } from "yaml";
 import { formatValidationResult, validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
+import { createPlanRecord, formatPlanSummary } from "../runtime/plans.js";
 import { RuntimeStore } from "../runtime/store.js";
 import { createWorkIdFromRunId, recordRunConversation } from "../runtime/work-store.js";
 import { writeAgentDraftRecord } from "./agent-draft.js";
@@ -56,6 +57,50 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
     },
   });
 
+  runtime.setPlan(
+    createPlanRecord({
+      runId,
+      workId,
+      title: "Meta-Agent 创建 Agent 计划",
+      createdAt: runtime.snapshot.run.startedAt,
+      steps: [
+        {
+          id: "intake",
+          title: "接收需求",
+          kind: "llm",
+          summary: "整理用户目标、目标 Agent ID 和创建模式。",
+        },
+        {
+          id: "spec-draft",
+          title: "草拟 Agent 规格",
+          kind: "llm",
+          summary: "生成 manifest、UI、Skill 和基础目录结构的规格。",
+          dependsOn: ["intake"],
+        },
+        {
+          id: "persist",
+          title: "写入 Agent 草案",
+          kind: "tool",
+          summary: "把可审核的 Agent 文件写入草案目录或正式目录。",
+          dependsOn: ["spec-draft"],
+        },
+        {
+          id: "validate",
+          title: "校验 Agent 契约",
+          kind: "tool",
+          summary: "运行 Agent 文件夹校验并写入验证记录。",
+          dependsOn: ["persist"],
+        },
+        {
+          id: "register-artifacts",
+          title: "登记草案产物",
+          kind: "tool",
+          summary: "把生成文件、验证记录和草案索引登记为 Artifact。",
+          dependsOn: ["validate"],
+        },
+      ],
+    }),
+  );
   runtime.setRunState("running");
   finishInstantStep(runtime, "intake", "INTAKE", "llm", {
     prompt_chars: options.prompt.length,
@@ -135,6 +180,7 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
       filePath: file,
     });
   }
+  runtime.updatePlanStep("register-artifacts", "succeeded");
 
   runtime.addNote(
     options.persist
@@ -150,6 +196,7 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
     title: options.prompt,
     state: validation.ok ? "waiting_user" : "completed",
     prompt: options.prompt,
+    planSummary: formatPlanSummary(runtime.snapshot.plan),
     summary: validation.ok
       ? `已生成 Agent 草案 ${spec.agentId}，请审核产物后安装。`
       : `Agent 草案 ${spec.agentId} 校验失败，请查看验证结果。`,

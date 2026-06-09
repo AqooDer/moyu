@@ -4,6 +4,8 @@ import path from "node:path";
 import type {
   ArtifactRecord,
   ArtifactRole,
+  PlanRecord,
+  PlanState,
   RunRecord,
   RunState,
   RuntimeTrace,
@@ -21,6 +23,7 @@ export class RuntimeStore {
     this.trace = {
       schemaVersion: 1,
       run,
+      plan: null,
       steps: [],
       artifacts: [],
       knowledgeWriteBacks: [],
@@ -69,9 +72,33 @@ export class RuntimeStore {
     this.trace.notes.push(note);
   }
 
+  setPlan(plan: PlanRecord) {
+    this.trace.plan = normalizePlan(plan, this.trace.run.id, this.trace.run.workId);
+    return this.trace.plan;
+  }
+
+  updatePlanStep(stepId: string, state: StepState) {
+    if (!this.trace.plan) {
+      return null;
+    }
+
+    const step = this.trace.plan.steps.find((item) => item.id === stepId);
+    if (!step) {
+      return null;
+    }
+
+    step.state = state;
+    this.trace.plan.updatedAt = now();
+    return step;
+  }
+
   setRunState(state: RunState, reason: string | null = null) {
     this.trace.run.state = state;
     this.trace.run.reason = reason;
+    if (this.trace.plan) {
+      this.trace.plan.state = toPlanState(state, this.trace.plan.state);
+      this.trace.plan.updatedAt = now();
+    }
     if (state === "succeeded" || state === "failed" || state === "cancelled") {
       this.trace.run.endedAt = now();
       this.trace.run.durationMs = elapsed(this.trace.run.startedAt, this.trace.run.endedAt);
@@ -98,6 +125,7 @@ export class RuntimeStore {
       error: null,
     };
     this.trace.steps.push(step);
+    this.updatePlanStep(step.id, "running");
     return step;
   }
 
@@ -113,6 +141,7 @@ export class RuntimeStore {
     step.error = error;
     step.endedAt = now();
     step.durationMs = step.startedAt ? elapsed(step.startedAt, step.endedAt) : null;
+    this.updatePlanStep(step.id, state);
   }
 
   async addArtifact(input: {
@@ -163,4 +192,49 @@ function now() {
 
 function elapsed(start: string, end: string) {
   return new Date(end).getTime() - new Date(start).getTime();
+}
+
+function normalizePlan(plan: PlanRecord, runId: string, workId?: string | null): PlanRecord {
+  const updatedAt = typeof plan.updatedAt === "string" && plan.updatedAt ? plan.updatedAt : now();
+  return {
+    id: plan.id || `plan-${runId}`,
+    runId,
+    workId: workId || plan.workId || `work-${runId}`,
+    title: plan.title || "Untitled plan",
+    state: normalizePlanState(plan.state),
+    steps: Array.isArray(plan.steps)
+      ? plan.steps.map((step) => ({
+          id: step.id,
+          title: step.title,
+          kind: step.kind,
+          state: step.state,
+          dependsOn: Array.isArray(step.dependsOn) ? step.dependsOn : [],
+          summary: step.summary,
+        }))
+      : [],
+    createdAt: typeof plan.createdAt === "string" && plan.createdAt ? plan.createdAt : updatedAt,
+    updatedAt,
+  };
+}
+
+function normalizePlanState(value: unknown): PlanState {
+  return ["drafted", "running", "succeeded", "failed", "cancelled"].includes(String(value))
+    ? (value as PlanState)
+    : "drafted";
+}
+
+function toPlanState(runState: RunState, current: PlanState): PlanState {
+  if (runState === "running") {
+    return "running";
+  }
+  if (runState === "succeeded") {
+    return "succeeded";
+  }
+  if (runState === "failed") {
+    return "failed";
+  }
+  if (runState === "cancelled") {
+    return "cancelled";
+  }
+  return current;
 }
