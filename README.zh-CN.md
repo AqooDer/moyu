@@ -69,13 +69,13 @@ npm run dev -- agent run image-gen/prototype-v1 \
 
 ## 文档
 
+- [文档入口](./docs/README.md)
 - [工程运行与状态](./docs/21-工程运行与状态.md)
 - [核心概念定义](./docs/03-核心概念定义.md)
 - [总体架构](./docs/04-总体架构.md)
-- [元智能体设计](./docs/05-元智能体设计.md)
-- [Trace 数据模型](./docs/12-Trace数据模型.md)
-- [Artifact 契约](./docs/13-Artifact契约.md)
-- [任务会话式 Workbench 与多产物架构调整](./docs/20-任务会话式Workbench与多产物架构调整.md)
+- [Agent 与 Meta-Agent 设计](./docs/05-元智能体设计.md)
+- [运行时与数据模型](./docs/06-运行时与沙箱.md)
+- [Workbench 与信息架构](./docs/14-UI原型与信息架构.md)
 - [协作与编码规范](./docs/24-协作与编码规范.md)
 
 ## 协议

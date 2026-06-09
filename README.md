@@ -69,13 +69,13 @@ Real image generation requires local `.env` configuration. See [Engineering Note
 
 ## Documentation
 
+- [Documentation Guide](./docs/README.md)
 - [Engineering Notes](./docs/21-工程运行与状态.md)
 - [Core Concepts](./docs/03-核心概念定义.md)
 - [Overall Architecture](./docs/04-总体架构.md)
-- [Meta-Agent Design](./docs/05-元智能体设计.md)
-- [Trace Data Model](./docs/12-Trace数据模型.md)
-- [Artifact Contract](./docs/13-Artifact契约.md)
-- [Workbench and Multi-Artifact Architecture](./docs/20-任务会话式Workbench与多产物架构调整.md)
+- [Agent and Meta-Agent Design](./docs/05-元智能体设计.md)
+- [Runtime and Data Model](./docs/06-运行时与沙箱.md)
+- [Workbench and Information Architecture](./docs/14-UI原型与信息架构.md)
 - [Collaboration and Coding Standards](./docs/24-协作与编码规范.md)
 
 ## License
