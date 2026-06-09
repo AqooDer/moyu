@@ -38,6 +38,12 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftArtifacts.length, draft.files.length);
     assert.ok(draftArtifacts.some((artifact) => artifact.name === "manifest.yaml"));
     assert.ok(draftArtifacts.some((artifact) => artifact.name === "agent-draft.json"));
+    const draftTrace = JSON.parse(await readFile(path.join("traces", draft.runId, "run.json"), "utf8"));
+    assert.equal(draftTrace.steps.find((step: { id?: string }) => step.id === "register-artifacts")?.state, "succeeded");
+    assert.equal(
+      draftTrace.artifacts.every((artifact: { producerStepId?: string }) => artifact.producerStepId === "persist"),
+      true,
+    );
 
     const draftRecord = await readAgentDraftRecordByRun(draft.runId);
     assert.equal(draftRecord?.state, "drafted");

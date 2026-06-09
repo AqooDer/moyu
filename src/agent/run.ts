@@ -5,6 +5,7 @@ import type { AgentManifestSummary } from "./registry.js";
 import { readImageRelayConfig } from "../lib/env.js";
 import { generateImagesWithRelay } from "../lib/openai-compat-image.js";
 import { createPlanRecord, formatPlanSummary } from "../runtime/plans.js";
+import { runRuntimeStep } from "../runtime/step-runner.js";
 import { RuntimeStore } from "../runtime/store.js";
 import type { McpServerResolution } from "../runtime/types.js";
 import { createWorkIdFromRunId, recordRunConversation } from "../runtime/work-store.js";
@@ -106,7 +107,8 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
   runtime.updatePlanStep("resolve-context", "succeeded");
   runtime.setRunState("running");
 
-  const step = runtime.startStep({
+  const imageStep = await runRuntimeStep<ImageStepResult>({
+    runtime,
     id: "step-image-gen",
     name: "image_gen",
     kind: "skill",
@@ -117,22 +119,77 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       model_role: imageModelRole?.roleId ?? "image-generation",
       mcp_servers: mcpServers.map((server) => server.id),
     },
-  });
+    execute: async ({ step }) => {
+      if (options.dryRun || !imageConfig) {
+        runtime.addNote(
+          options.dryRun
+            ? "Dry-run requested; provider call skipped."
+            : "Missing image relay config; provider call skipped.",
+        );
+        return {
+          state: "skipped",
+          outputSummary: {
+            reason: "provider call skipped",
+            model_role: imageModelRole?.roleId ?? "image-generation",
+            provider: imageModelRole?.provider,
+            model: imageModelRole?.model,
+            fallback_reason: imageModelRole?.fallbackReason,
+            mcp_servers: mcpServers.map((server) => server.id),
+          },
+          value: {
+            files: [],
+            provider: imageModelRole?.provider,
+            model: imageModelRole?.model,
+            status: "dry-run",
+          },
+        };
+      }
 
-  if (options.dryRun || !imageConfig) {
-    runtime.addNote(
-      options.dryRun
-        ? "Dry-run requested; provider call skipped."
-        : "Missing image relay config; provider call skipped.",
-    );
-    runtime.finishStep(step.id, "skipped", {
-      reason: "provider call skipped",
-      model_role: imageModelRole?.roleId ?? "image-generation",
-      provider: imageModelRole?.provider,
-      model: imageModelRole?.model,
-      fallback_reason: imageModelRole?.fallbackReason,
-      mcp_servers: mcpServers.map((server) => server.id),
-    });
+      const result = await generateImagesWithRelay(imageConfig, {
+        prompt,
+        size: options.size,
+        count: options.count,
+        outDir: outputDir,
+      });
+
+      for (const file of result.files) {
+        await runtime.addArtifact({
+          producerStepId: step.id,
+          type: "png",
+          role: "primary",
+          filePath: file,
+        });
+      }
+      runtime.updatePlanStep("register-artifacts", "succeeded");
+      runtime.addNote("Generated via agent runtime prototype.");
+      return {
+        outputSummary: {
+          files: result.files.length,
+          model_role: imageModelRole?.roleId ?? "image-generation",
+          model: result.model,
+          provider: imageModelRole?.provider ?? result.provider,
+          provider_endpoint: result.provider,
+          fallback_reason: imageModelRole?.fallbackReason,
+          duration_ms: result.durationMs,
+          mcp_servers: mcpServers.map((server) => server.id),
+        },
+        value: {
+          files: result.files,
+          provider: imageModelRole?.provider ?? result.provider,
+          model: result.model,
+          status: "succeeded",
+        },
+      };
+    },
+  });
+  const imageResult = imageStep.value ?? {
+    files: [],
+    provider: imageModelRole?.provider,
+    model: imageModelRole?.model,
+    status: "dry-run" as const,
+  };
+
+  if (imageStep.state === "skipped") {
     runtime.updatePlanStep("register-artifacts", "skipped");
     runtime.updatePlanStep("write-trace", "succeeded");
     runtime.setRunState("succeeded");
@@ -143,12 +200,12 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       prompt,
       count: options.count,
       size: options.size,
-      status: "dry-run",
+      status: imageResult.status,
       traceFile,
       outputDir,
-      files: [],
-      provider: imageModelRole?.provider,
-      model: imageModelRole?.model,
+      files: imageResult.files,
+      provider: imageResult.provider,
+      model: imageResult.model,
       fallbackReason: imageModelRole?.fallbackReason,
     });
     await writeFile(path.join(outputDir, "README.txt"), summary, "utf8");
@@ -168,33 +225,6 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     return summary;
   }
 
-  const result = await generateImagesWithRelay(imageConfig, {
-    prompt,
-    size: options.size,
-    count: options.count,
-    outDir: outputDir,
-  });
-
-  for (const file of result.files) {
-    await runtime.addArtifact({
-      producerStepId: step.id,
-      type: "png",
-      role: "primary",
-      filePath: file,
-    });
-  }
-  runtime.updatePlanStep("register-artifacts", "succeeded");
-  runtime.finishStep(step.id, "succeeded", {
-    files: result.files.length,
-    model_role: imageModelRole?.roleId ?? "image-generation",
-    model: result.model,
-    provider: imageModelRole?.provider ?? result.provider,
-    provider_endpoint: result.provider,
-    fallback_reason: imageModelRole?.fallbackReason,
-    duration_ms: result.durationMs,
-    mcp_servers: mcpServers.map((server) => server.id),
-  });
-  runtime.addNote("Generated via agent runtime prototype.");
   runtime.updatePlanStep("write-trace", "succeeded");
   runtime.setRunState("succeeded");
   const traceFile = await runtime.writeTrace();
@@ -204,12 +234,12 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     prompt,
     count: options.count,
     size: options.size,
-    status: "succeeded",
+    status: imageResult.status,
     traceFile,
     outputDir,
-    files: result.files,
-    provider: imageModelRole?.provider ?? result.provider,
-    model: result.model,
+    files: imageResult.files,
+    provider: imageResult.provider,
+    model: imageResult.model,
     fallbackReason: imageModelRole?.fallbackReason,
   });
   await writeFile(path.join(outputDir, "README.txt"), summary, "utf8");
@@ -221,12 +251,19 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     state: "completed",
     prompt,
     planSummary: formatPlanSummary(runtime.snapshot.plan),
-    summary: `Agent ${agent.agentId} 已完成运行，生成 ${result.files.length} 个产物。`,
+    summary: `Agent ${agent.agentId} 已完成运行，生成 ${imageResult.files.length} 个产物。`,
     artifactIds: runtime.snapshot.artifacts.map((artifact) => artifact.id),
     startedAt: runtime.snapshot.run.startedAt,
     updatedAt: runtime.snapshot.run.endedAt,
   });
   return summary;
+}
+
+interface ImageStepResult {
+  files: string[];
+  provider?: string;
+  model?: string;
+  status: "dry-run" | "succeeded";
 }
 
 function createRunId(agent: AgentManifestSummary) {
