@@ -128,6 +128,8 @@ test("Workbench static routes expose the formal frontend and prototype compatibi
     assert.match(workbench, /Moyu Workbench/);
     assert.match(workbench, /\.\/src\/app\.js/);
     assert.match(workbench, /\.\/src\/modules\/settings-module\.js/);
+    assert.match(workbench, /data-install-agent-diff/);
+    assert.match(workbench, /data-discard-install-conflict/);
 
     const compatibility = await getText(apiUrl(server.url, "/ui/workbench-prototype/"));
     assert.match(compatibility, /ui\/workbench\//);

@@ -90,7 +90,7 @@ npm run dev -- meta create-agent \
 npm run dev -- meta install-agent --run <meta_create_run_id>
 ```
 
-如果正式 Agent 已存在，安装会返回冲突信息，并给出“创建新版本”和“查看差异”的下一步入口；默认不会静默覆盖。只有在明确接受覆盖风险时才使用 `--force`。
+如果正式 Agent 已存在，Workbench 会显示冲突信息，并给出“创建新版本”“查看差异”和“放弃安装”的下一步入口；默认不会静默覆盖。只有在明确接受覆盖风险时才使用 `--force`。
 
 生成后可以用现有校验器验证：
 

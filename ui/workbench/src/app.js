@@ -151,6 +151,12 @@ const messages = {
     installConflictAction: "建议：创建新版本，或进入差异合并后再安装。",
     createAgentVersion: "创建新版本",
     creatingAgentVersion: "正在创建新版本...",
+    viewInstallDiff: "查看差异",
+    loadingInstallDiff: "正在读取差异...",
+    installDiffLoaded: "差异已加载到右侧文件预览。",
+    installDiffFailed: "读取差异失败，请查看本地终端后重试。",
+    discardInstallConflict: "放弃安装",
+    installConflictDiscarded: "已关闭本次安装冲突。草案仍保留，可稍后重新安装或创建新版本。",
     installVersionSucceeded: "已安装为新的 Agent 版本，运行时可以加载这个 Agent。",
     installVersionFailed: "创建新版本失败，请查看 Trace 或本地终端后重试。",
     conflictAgentLabel: "冲突 Agent",
@@ -163,6 +169,7 @@ const messages = {
     diffTargetOnly: "目标独有",
     diffChanged: "内容变更",
     diffUnchanged: "相同",
+    diffNoFiles: "无文件",
     installFailed: "安装失败，请查看 Trace 或本地终端后重试。",
     installApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run workbench:serve` 后再安装。",
     actionHintMetaDraft: "当前是元智能体草案，可安装到正式 Agents；安装后可在左侧 Agents 里运行。",
@@ -416,6 +423,12 @@ const messages = {
     installConflictAction: "Suggested action: create a new version, or review a diff before installing.",
     createAgentVersion: "Create Version",
     creatingAgentVersion: "Creating version...",
+    viewInstallDiff: "View diff",
+    loadingInstallDiff: "Loading diff...",
+    installDiffLoaded: "Diff loaded in the right file preview.",
+    installDiffFailed: "Failed to load diff. Check the local terminal, then retry.",
+    discardInstallConflict: "Discard install",
+    installConflictDiscarded: "Closed this install conflict. The draft is still kept for later install or versioning.",
     installVersionSucceeded: "Installed as a new Agent version. The runtime can load this Agent.",
     installVersionFailed: "Failed to create a new version. Check the Trace or local terminal, then retry.",
     conflictAgentLabel: "Conflicting Agent",
@@ -428,6 +441,7 @@ const messages = {
     diffTargetOnly: "target only",
     diffChanged: "changed",
     diffUnchanged: "same",
+    diffNoFiles: "No files",
     installFailed: "Install failed. Check the Trace or local terminal, then retry.",
     installApiUnavailable: "This page is not served by the Workbench API. Start `npm run workbench:serve` before installing.",
     actionHintMetaDraft: "This is a Meta Agent draft. Install it into formal Agents, then run it from the left Agents list.",
@@ -558,6 +572,7 @@ const prototypeState = {
   apiAvailable: false,
   isSubmitting: false,
   isInstalling: false,
+  isLoadingInstallDiff: false,
   isRunningAgent: false,
   lastInstallConflict: null,
   selectedWorkId: "",
@@ -817,6 +832,8 @@ function bindRunActions() {
   document.querySelector("[data-run-action='approve']")?.addEventListener("click", advanceDemoRun);
   document.querySelector("[data-install-agent]")?.addEventListener("click", installAgentDraftFromCurrentRun);
   document.querySelector("[data-install-agent-version]")?.addEventListener("click", installAgentDraftVersionFromConflict);
+  document.querySelector("[data-install-agent-diff]")?.addEventListener("click", viewInstallDiffFromConflict);
+  document.querySelector("[data-discard-install-conflict]")?.addEventListener("click", discardInstallConflict);
   document.querySelector("[data-run-agent]")?.addEventListener("click", runSelectedAgentFromWorkbench);
   document.querySelector("[data-open-artifact]")?.addEventListener("click", openSelectedArtifact);
   document.querySelector("[data-open-trace]")?.addEventListener("click", openCurrentRunTrace);
@@ -1700,6 +1717,7 @@ async function selectWorkbenchWork(work) {
   openConversationView();
   prototypeState.selectedWorkId = work.id;
   prototypeState.lastInstallConflict = null;
+  prototypeState.isLoadingInstallDiff = false;
   if (work.agentId) {
     prototypeState.selectedAgentId = work.agentId;
   }
@@ -2346,6 +2364,7 @@ function updateArtifactDetail(artifact) {
   if (!detail) {
     return;
   }
+  const dict = messages[currentLang] ?? messages.zh;
 
   if (!artifact) {
     renderEmptyArtifactDetail(detail);
@@ -2355,9 +2374,11 @@ function updateArtifactDetail(artifact) {
   detail.classList.remove("empty-artifact-detail");
   detail.querySelector("[data-empty-artifact-note]")?.remove();
   const preview = detail.querySelector(".artifact-detail-preview");
+  const kicker = detail.querySelector(".detail-kicker");
   const title = detail.querySelector(".artifact-detail-body strong");
   const meta = detail.querySelector(".artifact-detail-body small");
   const codePanel = detail.querySelector(".artifact-code-panel");
+  const codeHead = detail.querySelector(".artifact-code-head span");
   const code = detail.querySelector("[data-artifact-code]");
   const previewStatus = detail.querySelector("[data-artifact-preview-status]");
 
@@ -2380,8 +2401,14 @@ function updateArtifactDetail(artifact) {
   if (title) {
     title.textContent = artifact.name;
   }
+  if (kicker) {
+    kicker.textContent = dict.selectedArtifact;
+  }
   if (meta) {
-    meta.textContent = `${artifact.type.toUpperCase()} · ${formatBytes(artifact.sizeBytes)} · ${messages[currentLang].generatedFromRun}`;
+    meta.textContent = `${artifact.type.toUpperCase()} · ${formatBytes(artifact.sizeBytes)} · ${dict.generatedFromRun}`;
+  }
+  if (codeHead) {
+    codeHead.textContent = dict.previewContent;
   }
 
   loadArtifactPreview(artifact, { codePanel, code, previewStatus });
@@ -2393,9 +2420,11 @@ function updateArtifactDetail(artifact) {
 function renderEmptyArtifactDetail(detail) {
   const dict = messages[currentLang] ?? messages.zh;
   const preview = detail.querySelector(".artifact-detail-preview");
+  const kicker = detail.querySelector(".detail-kicker");
   const title = detail.querySelector(".artifact-detail-body strong");
   const meta = detail.querySelector(".artifact-detail-body small");
   const codePanel = detail.querySelector(".artifact-code-panel");
+  const codeHead = detail.querySelector(".artifact-code-head span");
   const code = detail.querySelector("[data-artifact-code]");
   const previewStatus = detail.querySelector("[data-artifact-preview-status]");
 
@@ -2405,8 +2434,14 @@ function renderEmptyArtifactDetail(detail) {
   if (title) {
     title.textContent = dict.noArtifactsTitle;
   }
+  if (kicker) {
+    kicker.textContent = dict.selectedArtifact;
+  }
   if (meta) {
     meta.textContent = dict.noArtifactsDesc;
+  }
+  if (codeHead) {
+    codeHead.textContent = dict.previewContent;
   }
   if (codePanel) {
     codePanel.hidden = true;
@@ -2439,6 +2474,48 @@ function renderEmptyArtifactNote(detail, dict) {
 function setArtifactActionDisabled(disabled) {
   document.querySelector("[data-open-artifact]")?.toggleAttribute("disabled", disabled);
   document.querySelector("[data-use-artifact-context]")?.toggleAttribute("disabled", disabled);
+}
+
+function renderInstallDiffPreview(diff, dict) {
+  const detail = document.querySelector("[data-artifact-detail]");
+  if (!detail) {
+    return;
+  }
+  const preview = detail.querySelector(".artifact-detail-preview");
+  const kicker = detail.querySelector(".detail-kicker");
+  const title = detail.querySelector(".artifact-detail-body strong");
+  const meta = detail.querySelector(".artifact-detail-body small");
+  const codePanel = detail.querySelector(".artifact-code-panel");
+  const codeHead = detail.querySelector(".artifact-code-head span");
+  const code = detail.querySelector("[data-artifact-code]");
+  const previewStatus = detail.querySelector("[data-artifact-preview-status]");
+
+  detail.classList.remove("empty-artifact-detail", "image-artifact");
+  detail.querySelector("[data-empty-artifact-note]")?.remove();
+  preview?.replaceChildren(createText("span", "DIFF"));
+  if (kicker) {
+    kicker.textContent = dict.conflictDiffLabel;
+  }
+  if (title) {
+    title.textContent = diff.agentId || dict.conflictDiffLabel;
+  }
+  if (meta) {
+    meta.textContent = getInstallModule().formatDiffSummary(diff.summary || {}, dict);
+  }
+  if (codePanel) {
+    codePanel.hidden = false;
+  }
+  if (codeHead) {
+    codeHead.textContent = dict.conflictDiffLabel;
+  }
+  if (code) {
+    code.textContent = getInstallModule().formatDiffFileList(diff, dict);
+  }
+  if (previewStatus) {
+    previewStatus.textContent = "";
+  }
+  setArtifactActionDisabled(true);
+  setActiveInspectorTab("artifacts");
 }
 
 async function loadArtifactPreview(artifact, nodes) {
@@ -2497,6 +2574,7 @@ async function installAgentDraftFromCurrentRun() {
 
   prototypeState.isInstalling = true;
   prototypeState.lastInstallConflict = null;
+  prototypeState.isLoadingInstallDiff = false;
   syncInstallButton();
   setInstallStatus(dict.installingAgent, "info");
 
@@ -2547,7 +2625,7 @@ async function installAgentDraftFromCurrentRun() {
 async function installAgentDraftVersionFromConflict() {
   const dict = messages[currentLang] ?? messages.zh;
   const action = getInstallModule().getCreateVersionAction(prototypeState.lastInstallConflict);
-  if (!canUseWorkbenchApi() || !workbenchData?.selectedRun?.id || !action || prototypeState.isInstalling) {
+  if (!canUseWorkbenchApi() || !workbenchData?.selectedRun?.id || !action || prototypeState.isInstalling || prototypeState.isLoadingInstallDiff) {
     setInstallStatus(dict.installApiUnavailable, "warning");
     return;
   }
@@ -2590,9 +2668,54 @@ async function installAgentDraftVersionFromConflict() {
   }
 }
 
+async function viewInstallDiffFromConflict() {
+  const dict = messages[currentLang] ?? messages.zh;
+  const action = getInstallModule().getViewDiffAction(prototypeState.lastInstallConflict);
+  if (!canUseWorkbenchApi() || !action || prototypeState.isInstalling || prototypeState.isLoadingInstallDiff) {
+    setInstallStatus(dict.installApiUnavailable, "warning");
+    return;
+  }
+
+  prototypeState.isLoadingInstallDiff = true;
+  syncInstallButton();
+  setInstallStatus(dict.loadingInstallDiff, "info");
+
+  try {
+    const response = await fetch(action.endpoint, { method: action.method, cache: "no-store" });
+    if (response.status === 404 || response.status === 405) {
+      setInstallStatus(dict.installApiUnavailable, "warning");
+      return;
+    }
+
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok || !data.diff) {
+      setInstallStatus(data?.error || dict.installDiffFailed, "error");
+      return;
+    }
+
+    renderInstallDiffPreview(data.diff, dict);
+    setInstallStatus(dict.installDiffLoaded, "success");
+  } catch {
+    setInstallStatus(dict.installDiffFailed, "error");
+  } finally {
+    prototypeState.isLoadingInstallDiff = false;
+    syncInstallButton();
+  }
+}
+
+function discardInstallConflict() {
+  const dict = messages[currentLang] ?? messages.zh;
+  prototypeState.lastInstallConflict = null;
+  prototypeState.isLoadingInstallDiff = false;
+  updateArtifactDetail(getSelectedArtifact(currentArtifacts));
+  setInstallStatus(dict.installConflictDiscarded, "hint");
+}
+
 function syncInstallButton() {
   const button = document.querySelector("[data-install-agent]");
   const versionButton = document.querySelector("[data-install-agent-version]");
+  const diffButton = document.querySelector("[data-install-agent-diff]");
+  const discardButton = document.querySelector("[data-discard-install-conflict]");
   if (!button) {
     return;
   }
@@ -2617,6 +2740,25 @@ function syncInstallButton() {
     versionButton.disabled = !canCreateVersion;
     versionButton.textContent = prototypeState.isInstalling ? dict.creatingAgentVersion : dict.createAgentVersion;
     versionButton.title = canCreateVersion ? dict.installConflictAction : dict.installApiUnavailable;
+  }
+
+  if (diffButton) {
+    const canViewDiff = getInstallModule().canViewInstallDiff({
+      apiAvailable: canUseWorkbenchApi(),
+      isInstalling: prototypeState.isInstalling || prototypeState.isLoadingInstallDiff,
+      conflict: prototypeState.lastInstallConflict,
+    });
+    diffButton.hidden = !prototypeState.lastInstallConflict;
+    diffButton.disabled = !canViewDiff;
+    diffButton.textContent = prototypeState.isLoadingInstallDiff ? dict.loadingInstallDiff : dict.viewInstallDiff;
+    diffButton.title = canViewDiff ? dict.conflictDiffLabel : dict.installApiUnavailable;
+  }
+
+  if (discardButton) {
+    discardButton.hidden = !prototypeState.lastInstallConflict;
+    discardButton.disabled = prototypeState.isInstalling || prototypeState.isLoadingInstallDiff;
+    discardButton.textContent = dict.discardInstallConflict;
+    discardButton.title = dict.installConflictDiscarded;
   }
 }
 

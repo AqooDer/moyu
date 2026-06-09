@@ -6,13 +6,20 @@ import vm from "node:vm";
 interface InstallModule {
   formatInstallConflict(data: unknown, dict: Record<string, string>): string;
   getCreateVersionAction(conflict: unknown): unknown;
+  getViewDiffAction(conflict: unknown): unknown;
   canCreateInstallVersion(input: {
     apiAvailable?: boolean;
     selectedRunId?: string;
     isInstalling?: boolean;
     conflict?: unknown;
   }): boolean;
+  canViewInstallDiff(input: {
+    apiAvailable?: boolean;
+    isInstalling?: boolean;
+    conflict?: unknown;
+  }): boolean;
   formatDiffSummary(diff: unknown, dict: Record<string, string>): string;
+  formatDiffFileList(diff: unknown, dict: Record<string, string>): string;
 }
 
 const dict = {
@@ -28,6 +35,7 @@ const dict = {
   diffTargetOnly: "目标独有",
   diffChanged: "内容变更",
   diffUnchanged: "相同",
+  diffNoFiles: "无文件",
 };
 
 test("install module formats conflict resolution actions for the Workbench", async () => {
@@ -51,6 +59,17 @@ test("install module formats conflict resolution actions for the Workbench", asy
         proposedAgentId: "custom/image-prototype-v2",
         proposedTargetPath: "/repo/agents/custom__image-prototype-v2",
       },
+      viewDiff: {
+        type: "view_diff",
+        method: "GET",
+        endpoint: "/api/meta/install-agent/diff?runId=meta-create-1",
+        summary: {
+          sourceOnly: 1,
+          targetOnly: 0,
+          changed: 2,
+          unchanged: 5,
+        },
+      },
     },
   };
 
@@ -64,6 +83,7 @@ test("install module formats conflict resolution actions for the Workbench", asy
   assert.match(text, /建议：创建新版本/);
 
   assert.equal(module.getCreateVersionAction(conflict), conflict.nextActions.createVersion);
+  assert.equal(module.getViewDiffAction(conflict), conflict.nextActions.viewDiff);
   assert.equal(
     module.canCreateInstallVersion({
       apiAvailable: true,
@@ -82,6 +102,53 @@ test("install module formats conflict resolution actions for the Workbench", asy
     }),
     false,
   );
+  assert.equal(
+    module.canViewInstallDiff({
+      apiAvailable: true,
+      isInstalling: false,
+      conflict,
+    }),
+    true,
+  );
+  assert.equal(
+    module.canViewInstallDiff({
+      apiAvailable: true,
+      isInstalling: true,
+      conflict,
+    }),
+    false,
+  );
+});
+
+test("install module formats diff file lists for conflict review", async () => {
+  const module = await loadInstallModule();
+  const text = module.formatDiffFileList(
+    {
+      agentId: "custom/image-prototype-v1",
+      sourcePath: "/tmp/draft/custom__image-prototype-v1",
+      targetPath: "/repo/agents/custom__image-prototype-v1",
+      summary: {
+        sourceOnly: 1,
+        targetOnly: 0,
+        changed: 2,
+        unchanged: 1,
+      },
+      files: {
+        sourceOnly: ["new-skill.ts"],
+        targetOnly: [],
+        changed: ["manifest.yaml", "src/handler.ts"],
+        unchanged: ["README.md"],
+      },
+    },
+    dict,
+  );
+
+  assert.match(text, /冲突 Agent: custom\/image-prototype-v1/);
+  assert.match(text, /文件差异: 草案新增 1 · 目标独有 0 · 内容变更 2 · 相同 1/);
+  assert.match(text, /内容变更 \(2\)\n  - manifest.yaml\n  - src\/handler.ts/);
+  assert.match(text, /草案新增 \(1\)\n  - new-skill.ts/);
+  assert.match(text, /目标独有 \(0\)\n  无文件/);
+  assert.match(text, /相同 \(1\)\n  - README.md/);
 });
 
 test("install module rejects incomplete version actions", async () => {
@@ -96,10 +163,19 @@ test("install module rejects incomplete version actions", async () => {
   };
 
   assert.equal(module.getCreateVersionAction(incompleteConflict), null);
+  assert.equal(module.getViewDiffAction(incompleteConflict), null);
   assert.equal(
     module.canCreateInstallVersion({
       apiAvailable: true,
       selectedRunId: "meta-create-1",
+      isInstalling: false,
+      conflict: incompleteConflict,
+    }),
+    false,
+  );
+  assert.equal(
+    module.canViewInstallDiff({
+      apiAvailable: true,
       isInstalling: false,
       conflict: incompleteConflict,
     }),
