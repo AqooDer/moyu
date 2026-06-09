@@ -19,6 +19,7 @@ import { listWorkSummaries, type WorkLifecycleState } from "../runtime/work-mana
 import { listConversationMessages } from "../runtime/work-store.js";
 import { buildWorkbenchData } from "../runtime/workbench-data.js";
 import { buildWorkbenchSettings } from "../settings/workbench.js";
+import { buildPluginRegistrySnapshot } from "../plugins/registry.js";
 
 interface ServeWorkbenchOptions {
   host?: string;
@@ -115,6 +116,25 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       ok: true,
       schemaVersion: 1,
       settings: await buildWorkbenchSettings({ configPath: workspaceConfigPath(rootDir) }),
+    });
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/api/plugins") {
+    writeJson(response, 200, {
+      ok: true,
+      registry: buildPluginRegistrySnapshot(),
+    });
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/api/policies") {
+    const registry = buildPluginRegistrySnapshot();
+    writeJson(response, 200, {
+      ok: true,
+      permissions: registry.permissions,
+      runtimePolicies: registry.runtimePolicies,
+      summary: registry.summary,
     });
     return;
   }

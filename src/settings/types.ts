@@ -6,12 +6,15 @@ export interface LocalizedText {
 export interface WorkbenchSettings {
   nav: WorkbenchSettingsNavItem[];
   overview: WorkbenchSettingsOverview;
+  pluginRegistry: WorkbenchPluginRegistrySummary;
   providers: WorkbenchProvider[];
   modelRoles: WorkbenchModelRole[];
   knowledgeBases: WorkbenchKnowledgeBase[];
   skills: WorkbenchCapability[];
   tools: WorkbenchCapability[];
   mcpServers: WorkbenchCapability[];
+  previewers: WorkbenchCapability[];
+  middlewares: WorkbenchCapability[];
   runtimePolicies: WorkbenchRuntimePolicy[];
   agentDefaults: WorkbenchAgentDefault[];
   agentContexts: WorkbenchAgentRuntimeContext[];
@@ -66,8 +69,18 @@ export interface WorkbenchKnowledgeBase {
   allowedArtifactTypes: string[];
 }
 
+export interface WorkbenchPluginRegistrySummary {
+  total: number;
+  enabled: number;
+  review: number;
+  planned: number;
+  highRisk: number;
+  byKind: Record<string, number>;
+}
+
 export interface WorkbenchCapability {
   id: string;
+  kind?: string;
   title: LocalizedText;
   state: "enabled" | "review" | "planned";
   sourceType: "builtin" | "agent_local" | "controlled_generated" | "mcp_server" | "planned";
@@ -78,6 +91,7 @@ export interface WorkbenchCapability {
   defaultEnabledFor: string[];
   riskLevel: "low" | "medium" | "high";
   note: LocalizedText;
+  permissionIds?: string[];
 }
 
 export interface WorkbenchRuntimePolicy {
@@ -85,6 +99,7 @@ export interface WorkbenchRuntimePolicy {
   title: LocalizedText;
   value: LocalizedText;
   note: LocalizedText;
+  permissionIds?: string[];
 }
 
 export interface WorkbenchAgentDefault {

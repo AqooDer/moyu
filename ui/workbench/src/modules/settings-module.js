@@ -62,6 +62,7 @@
       { kind: "text", labelKey: "sourceTypeLabel", value: item.sourceType },
       { kind: "text", labelKey: "permissionBoundaryLabel", value: item.permissionBoundary },
       { kind: "text", labelKey: "approvalLabel", value: item.approval },
+      { kind: "tags", labelKey: "permissionIdsLabel", value: item.permissionIds },
       { kind: "tags", labelKey: "defaultEnabledForLabel", value: item.defaultEnabledFor },
       { kind: "text", labelKey: "riskLevelLabel", value: item.riskLevel },
     ].filter((row) => hasCapabilityRowValue(row.value));

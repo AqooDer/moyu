@@ -1,30 +1,26 @@
 import type {
   WorkbenchAgentDefault,
   WorkbenchAgentRuntimeContext,
+  WorkbenchCapability,
   WorkbenchRuntimePolicy,
 } from "../types.js";
+import {
+  listPluginCapabilities,
+  listPluginRuntimePolicies,
+  toWorkbenchCapability,
+  toWorkbenchRuntimePolicy,
+} from "../../plugins/registry.js";
 
 export function getWorkbenchRuntimePolicies(): WorkbenchRuntimePolicy[] {
-  return [
-    {
-      id: "inheritance",
-      title: { zh: "继承顺序", en: "Inheritance order" },
-      value: { zh: "Workspace 默认 → Agent 覆盖 → Run 临时参数", en: "Workspace defaults -> Agent override -> Run parameters" },
-      note: { zh: "把稳定配置和即时输入拆开，避免污染 Agent 定义。", en: "Separate stable config from per-run inputs." },
-    },
-    {
-      id: "runtime-capture",
-      title: { zh: "运行时收集", en: "Runtime capture" },
-      value: { zh: "记录实际模型角色、Provider、知识来源与产物去向", en: "Capture actual model roles, providers, KB sources, and artifact destinations" },
-      note: { zh: "没有默认值时，先收集证据再决定沉淀成默认配置。", en: "When defaults are unclear, collect evidence first." },
-    },
-    {
-      id: "artifact-writeback",
-      title: { zh: "产物回流知识库", en: "Artifact write-back" },
-      value: { zh: "默认关闭，按集合与 Agent 显式开启", en: "Off by default; enable per collection and agent" },
-      note: { zh: "避免未经审核的垃圾产物污染知识库。", en: "Prevent noisy artifacts from polluting knowledge bases." },
-    },
-  ];
+  return listPluginRuntimePolicies().map(toWorkbenchRuntimePolicy);
+}
+
+export function getWorkbenchPreviewers(): WorkbenchCapability[] {
+  return listPluginCapabilities({ kind: "previewer" }).map(toWorkbenchCapability);
+}
+
+export function getWorkbenchMiddlewares(): WorkbenchCapability[] {
+  return listPluginCapabilities({ kind: "middleware" }).map(toWorkbenchCapability);
 }
 
 export function getWorkbenchAgentDefaults(): WorkbenchAgentDefault[] {

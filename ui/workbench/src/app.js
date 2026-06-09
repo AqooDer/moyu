@@ -246,8 +246,17 @@ const messages = {
     sourceTypeLabel: "来源类型",
     permissionBoundaryLabel: "权限边界",
     approvalLabel: "审核要求",
+    permissionIdsLabel: "权限声明",
     defaultEnabledForLabel: "默认启用",
     riskLevelLabel: "风险等级",
+    pluginRegistryHeading: "插件 Registry",
+    pluginRegistryTotal: "能力总数",
+    pluginRegistryEnabled: "已启用",
+    pluginRegistryReview: "审核中",
+    pluginRegistryPlanned: "规划中",
+    pluginRegistryHighRisk: "高风险",
+    previewersHeading: "Previewer 插件",
+    middlewaresHeading: "Middleware 管线",
     sourceTypeBuiltin: "内置",
     sourceTypeAgentLocal: "Agent 本地",
     sourceTypeControlledGenerated: "受控生成",
@@ -521,8 +530,17 @@ const messages = {
     sourceTypeLabel: "Source type",
     permissionBoundaryLabel: "Permission boundary",
     approvalLabel: "Approval",
+    permissionIdsLabel: "Permissions",
     defaultEnabledForLabel: "Enabled by default",
     riskLevelLabel: "Risk",
+    pluginRegistryHeading: "Plugin Registry",
+    pluginRegistryTotal: "Capabilities",
+    pluginRegistryEnabled: "Enabled",
+    pluginRegistryReview: "In review",
+    pluginRegistryPlanned: "Planned",
+    pluginRegistryHighRisk: "High risk",
+    previewersHeading: "Previewer plugins",
+    middlewaresHeading: "Middleware pipeline",
     sourceTypeBuiltin: "Builtin",
     sourceTypeAgentLocal: "Agent local",
     sourceTypeControlledGenerated: "Controlled generated",
@@ -1900,6 +1918,10 @@ function renderSettingsContent(settings) {
       return createSettingsSection([
         createSettingsSectionHeader("runtimeHeading"),
         createSettingsCardGrid(settings.runtimePolicies.map(createRuntimePolicyCard)),
+        createSettingsSectionHeader("previewersHeading"),
+        createSettingsCardGrid((settings.previewers || []).map(createCapabilityCard)),
+        createSettingsSectionHeader("middlewaresHeading"),
+        createSettingsCardGrid((settings.middlewares || []).map(createCapabilityCard)),
         createSettingsSectionHeader("agentDefaultsHeading"),
         createSettingsCardGrid(settings.agentDefaults.map(createAgentDefaultCard)),
       ]);
@@ -1907,10 +1929,31 @@ function renderSettingsContent(settings) {
     default:
       return createSettingsSection([
         createSettingsOverviewHero(settings.overview),
+        createSettingsSectionHeader("pluginRegistryHeading"),
+        createSettingsCardGrid(createPluginRegistryCards(settings.pluginRegistry)),
         createSettingsSectionHeader("settingsHighlights"),
         createSettingsCardGrid(settings.overview.highlights.map(createOverviewHighlightCard)),
       ]);
   }
+}
+
+function createPluginRegistryCards(summary) {
+  const safeSummary = summary || {};
+  return [
+    createMetricCard("pluginRegistryTotal", safeSummary.total),
+    createMetricCard("pluginRegistryEnabled", safeSummary.enabled),
+    createMetricCard("pluginRegistryReview", safeSummary.review),
+    createMetricCard("pluginRegistryPlanned", safeSummary.planned),
+    createMetricCard("pluginRegistryHighRisk", safeSummary.highRisk),
+  ];
+}
+
+function createMetricCard(labelKey, value) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const card = document.createElement("article");
+  card.className = "settings-card compact metric";
+  card.append(createText("span", dict[labelKey] || labelKey), createText("strong", String(value ?? 0)));
+  return card;
 }
 
 function createSettingsSection(children) {

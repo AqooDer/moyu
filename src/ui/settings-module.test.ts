@@ -48,6 +48,7 @@ test("settings module exposes capability detail rows for rendering permission bo
     sourceType: "builtin",
     permissionBoundary: { zh: "只能写入 Artifact 路径", en: "Write only artifact paths" },
     approval: { zh: "默认启用", en: "Enabled by default" },
+    permissionIds: ["artifact.write.scoped"],
     defaultEnabledFor: ["meta/create-agent"],
     riskLevel: "low",
   });
@@ -60,12 +61,14 @@ test("settings module exposes capability detail rows for rendering permission bo
       ["text", "sourceTypeLabel"],
       ["text", "permissionBoundaryLabel"],
       ["text", "approvalLabel"],
+      ["tags", "permissionIdsLabel"],
       ["tags", "defaultEnabledForLabel"],
       ["text", "riskLevelLabel"],
     ]),
   );
   assert.equal(rows[3].value && typeof rows[3].value === "object" && "zh" in rows[3].value, true);
-  assert.deepEqual(rows[5].value, ["meta/create-agent"]);
+  assert.deepEqual(rows[5].value, ["artifact.write.scoped"]);
+  assert.deepEqual(rows[6].value, ["meta/create-agent"]);
 
   const sparseRows = module.getCapabilityDetailRows({
     scope: { zh: "仅保留 scope", en: "Scope only" },

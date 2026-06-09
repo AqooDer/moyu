@@ -8,11 +8,14 @@ import { getWorkbenchModelRoles, getWorkbenchProviders } from "./models/settings
 import {
   getWorkbenchAgentContexts,
   getWorkbenchAgentDefaults,
+  getWorkbenchMiddlewares,
+  getWorkbenchPreviewers,
   getWorkbenchRuntimePolicies,
 } from "./runtime/settings.js";
 import { getWorkbenchSkills } from "./skills/settings.js";
 import { getWorkbenchTools } from "./tools/settings.js";
 import type { WorkbenchSettings } from "./types.js";
+import { buildPluginRegistrySnapshot } from "../plugins/registry.js";
 
 export type { WorkbenchSettings } from "./types.js";
 
@@ -24,6 +27,7 @@ export async function buildWorkbenchSettings(
 ): Promise<WorkbenchSettings> {
   const knowledgeBaseConfig =
     input.knowledgeBaseConfig ?? (await readWorkspaceKnowledgeBaseConfig(input.configPath));
+  const pluginRegistry = buildPluginRegistrySnapshot();
 
   return {
     nav: [
@@ -92,12 +96,15 @@ export async function buildWorkbenchSettings(
         },
       ],
     },
+    pluginRegistry: pluginRegistry.summary,
     providers: getWorkbenchProviders(),
     modelRoles: getWorkbenchModelRoles(),
     knowledgeBases: getWorkbenchKnowledgeBases(knowledgeBaseConfig),
     skills: getWorkbenchSkills(),
     tools: getWorkbenchTools(),
     mcpServers: getWorkbenchMcpServers(),
+    previewers: getWorkbenchPreviewers(),
+    middlewares: getWorkbenchMiddlewares(),
     runtimePolicies: getWorkbenchRuntimePolicies(),
     agentDefaults: getWorkbenchAgentDefaults(),
     agentContexts: getWorkbenchAgentContexts(),

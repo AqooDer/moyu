@@ -29,11 +29,16 @@ test("Settings API exposes the Workbench settings center independently", async (
     assert.equal(response.settings.modelRoles.some((item: { id?: string }) => item.id === "knowledge-embedding"), true);
     assert.equal(response.settings.modelRoles.some((item: { id?: string }) => item.id === "image-generation"), true);
     assert.equal(response.settings.knowledgeBases.some((item: { id?: string }) => item.id === "workspace-product"), true);
+    assert.equal(response.settings.pluginRegistry.byKind.previewer, 1);
+    assert.equal(response.settings.pluginRegistry.byKind.middleware, 1);
+    assert.equal(response.settings.previewers.some((item: { id?: string }) => item.id === "artifact-preview-v1"), true);
+    assert.equal(response.settings.middlewares.some((item: { id?: string }) => item.id === "context-pack-middleware"), true);
     const relaySkill = response.settings.skills.find(
       (item: { id?: string }) => item.id === "image_gen_via_relay",
     );
     assert.equal(relaySkill.sourceType, "agent_local");
     assert.equal(relaySkill.riskLevel, "medium");
+    assert.deepEqual(relaySkill.permissionIds, ["provider.image.call", "artifact.write.scoped"]);
     assert.deepEqual(relaySkill.defaultEnabledFor, ["image-gen/prototype-v1"]);
     assert.match(relaySkill.permissionBoundary.zh, /Artifact/);
 
@@ -58,6 +63,13 @@ test("Settings API exposes the Workbench settings center independently", async (
     assert.equal(filesystemMcp.riskLevel, "high");
     assert.match(filesystemMcp.permissionBoundary.zh, /路径/);
     assert.equal(response.settings.runtimePolicies.length > 0, true);
+    assert.equal(
+      response.settings.runtimePolicies.some(
+        (item: { id?: string; permissionIds?: string[] }) =>
+          item.id === "plugin-permission-first" && item.permissionIds?.includes("artifact.preview.read"),
+      ),
+      true,
+    );
   } finally {
     await server.close();
     await rm(workspace, { recursive: true, force: true });
@@ -148,6 +160,22 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
   try {
     const health = await getJson(apiUrl(server.url, "/api/health"));
     assert.equal(health.ok, true);
+
+    const plugins = await getJson(apiUrl(server.url, "/api/plugins"));
+    assert.equal(plugins.ok, true);
+    assert.equal(plugins.registry.summary.byKind.previewer, 1);
+    assert.equal(
+      plugins.registry.capabilities.some(
+        (item: { id?: string; permissionIds?: string[] }) =>
+          item.id === "filesystem-mcp" && item.permissionIds?.includes("filesystem.scoped"),
+      ),
+      true,
+    );
+
+    const policies = await getJson(apiUrl(server.url, "/api/policies"));
+    assert.equal(policies.ok, true);
+    assert.equal(policies.permissions.some((item: { id?: string }) => item.id === "artifact.preview.read"), true);
+    assert.equal(policies.runtimePolicies.some((item: { id?: string }) => item.id === "plugin-permission-first"), true);
 
     const created = await postJson(apiUrl(server.url, "/api/meta/create-agent"), {
       prompt: "Create an image prototype Agent that stores traceable UI concept artifacts",
@@ -396,6 +424,7 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedRun.artifacts.length, 0);
     assert.equal(selectedRun.messages.length, 3);
     assert.equal(selectedRun.settings.agentDefaults.some((item: { agentId?: string }) => item.agentId === "image-gen/prototype-v1"), true);
+    assert.equal(selectedRun.settings.pluginRegistry.enabled >= 4, true);
     assert.equal(
       selectedRun.settings.agentContexts.some(
         (item: { agentId?: string; modelRoles?: string[] }) =>

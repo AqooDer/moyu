@@ -1521,6 +1521,16 @@ h1 {
   font-size: 15px;
 }
 
+.settings-card.metric {
+  align-content: center;
+  min-height: 78px;
+}
+
+.settings-card.metric strong {
+  color: var(--accent-ink);
+  font-size: 24px;
+}
+
 .settings-card-head {
   display: flex;
   justify-content: space-between;
