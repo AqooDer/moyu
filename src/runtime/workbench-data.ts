@@ -3,7 +3,7 @@ import path from "node:path";
 import { listAgents, type AgentMcpServerSummary } from "../agent/registry.js";
 import { buildWorkbenchSettings, type WorkbenchSettings } from "../settings/workbench.js";
 import { listArtifacts, type ArtifactHistoryItem } from "./artifacts.js";
-import { getRunHistoryDetail, listRunHistory, type RunHistoryItem } from "./history.js";
+import { getRunHistoryDetail, listRunHistory } from "./history.js";
 import type {
   ConversationMessage,
   McpServerResolution,
@@ -11,9 +11,13 @@ import type {
   PlanRecord,
   RuntimeTrace,
   StepRecord,
-  WorkRecord,
-  WorkState,
 } from "./types.js";
+import {
+  buildWorkSummaries,
+  type WorkLifecycle,
+  type WorkProgress,
+  type WorkSummary,
+} from "./work-manager.js";
 import { createWorkIdFromRunId, listConversationMessages, listWorkRecords } from "./work-store.js";
 
 export interface WorkbenchData {
@@ -71,10 +75,17 @@ export interface WorkbenchWork {
   title: { zh: string; en: string };
   description: { zh: string; en: string };
   state: string;
+  storedState: string | null;
   agentId: string;
   runId: string;
+  runIds: string[];
+  currentRunId: string | null;
   updatedAt: string | null;
   active: boolean;
+  artifactCount: number;
+  dryRun: boolean;
+  lifecycle: WorkLifecycle;
+  progress: WorkProgress;
 }
 
 export interface WorkbenchMessage {
@@ -108,13 +119,15 @@ export async function buildWorkbenchData(
   const tracesRoot = input.tracesRoot ?? "traces";
   const prototypeRoot = path.resolve(input.prototypeRoot ?? "ui/workbench");
   const artifactLimit = input.artifactLimit ?? 12;
-  const runs = await listRunHistory({ tracesRoot, limit: 8 });
+  const allRuns = await listRunHistory({ tracesRoot });
+  const runs = allRuns.slice(0, 8);
   const selectedRunId = input.selectedRunId || runs[0]?.id;
   const selectedRun = selectedRunId ? await getWorkbenchRun(selectedRunId, tracesRoot) : null;
   const workStorePath = input.workStorePath;
   const storedWorks = await listWorkRecords({ limit: 40, storePath: workStorePath });
-  const works = getWorkbenchWorks(runs, selectedRun, storedWorks);
-  const selectedWork = findSelectedWorkRecord(storedWorks, selectedRun, works);
+  const workSummaries = await buildWorkSummaries({ runs: allRuns, storedWorks, tracesRoot });
+  const works = getWorkbenchWorks(workSummaries, selectedRun);
+  const selectedWork = findSelectedWorkSummary(workSummaries, selectedRun, works);
   const messages = await getWorkbenchMessages(selectedWork, selectedRun, workStorePath);
   const artifacts = await listArtifacts({
     tracesRoot,
@@ -244,11 +257,10 @@ function getPrompt(input: Record<string, unknown>) {
 }
 
 function getWorkbenchWorks(
-  runs: RunHistoryItem[],
+  summaries: WorkSummary[],
   selectedRun: WorkbenchRun | null,
-  storedWorks: WorkRecord[],
 ): WorkbenchWork[] {
-  if (runs.length === 0 && storedWorks.length === 0) {
+  if (summaries.length === 0) {
     return [
       {
         id: "meta-create-agent",
@@ -258,94 +270,86 @@ function getWorkbenchWorks(
           en: "Waiting for the first Meta Agent creation session",
         },
         state: "waiting",
+        storedState: null,
         agentId: "meta/create-agent",
         runId: "",
+        runIds: [],
+        currentRunId: null,
         updatedAt: null,
         active: true,
+        artifactCount: 0,
+        dryRun: false,
+        lifecycle: {
+          state: "unknown",
+          source: "work_store",
+          currentRunId: null,
+          runState: null,
+          planState: null,
+          progress: emptyProgress(),
+          updatedAt: null,
+        },
+        progress: emptyProgress(),
       },
     ];
   }
 
-  const selectedRunId = selectedRun?.id || runs[0]?.id;
-  const referencedRuns = new Set(storedWorks.flatMap((work) => work.runIds));
-  const storedWorkbenchWorks = storedWorks.map((work) => {
-    const run = findLatestRunForWork(work, runs);
-    const runId = run?.id || work.runIds[0] || "";
+  const selectedRunId = selectedRun?.id || summaries[0]?.currentRunId || summaries[0]?.runIds[0];
+  const works = summaries.map((work) => {
+    const runId = work.currentRunId || work.runIds[0] || "";
     return {
       id: work.id,
       title: {
         zh: compactText(work.title, 22),
         en: compactText(work.title, 34),
       },
-      description: getStoredWorkDescription(work, run),
+      description: getWorkbenchWorkDescription(work),
       state: work.state,
-      agentId: work.agentId || run?.agentId || "meta/create-agent",
+      storedState: work.storedState,
+      agentId: work.agentId || "meta/create-agent",
       runId,
+      runIds: work.runIds,
+      currentRunId: work.currentRunId,
       updatedAt: work.updatedAt,
+      artifactCount: work.artifactCount,
+      dryRun: work.dryRun,
+      lifecycle: work.lifecycle,
+      progress: work.progress,
       active: Boolean(selectedRunId && work.runIds.includes(selectedRunId)),
     };
   });
-  const fallbackWorks = runs
-    .filter((run) => !referencedRuns.has(run.id))
-    .map((run) => ({
-      id: createWorkIdFromRunId(run.id),
-      title: getWorkbenchWorkTitle(run, selectedRun),
-      description: getWorkbenchWorkDescription(run),
-      state: run.state,
-      agentId: run.agentId,
-      runId: run.id,
-      updatedAt: run.startedAt,
-      active: run.id === selectedRunId,
-    }));
-  const works = [...storedWorkbenchWorks, ...fallbackWorks].sort((a, b) =>
-    (b.updatedAt || "").localeCompare(a.updatedAt || ""),
-  );
   if (!works.some((work) => work.active) && works[0]) {
     works[0].active = true;
   }
   return works;
 }
 
-function findLatestRunForWork(work: WorkRecord, runs: RunHistoryItem[]) {
-  return runs
-    .filter((run) => work.runIds.includes(run.id))
-    .sort((left, right) => (right.startedAt || "").localeCompare(left.startedAt || ""))[0] ?? null;
-}
-
-function getStoredWorkDescription(work: WorkRecord, run: RunHistoryItem | null) {
-  if (run) {
-    return getWorkbenchWorkDescription(run);
-  }
-  return {
-    zh: `${formatWorkRecordState(work.state, "zh")} · ${formatWorkTime(work.updatedAt, "zh")}`,
-    en: `${formatWorkRecordState(work.state, "en")} · ${formatWorkTime(work.updatedAt, "en")}`,
-  };
-}
-
-function formatWorkRecordState(state: WorkState, lang: "zh" | "en") {
+function formatWorkLifecycleState(state: string, lang: "zh" | "en") {
   const stateMap = {
     active: { zh: "进行中", en: "Active" },
     waiting_user: { zh: "等待确认", en: "Waiting for user" },
     running: { zh: "运行中", en: "Running" },
     completed: { zh: "已完成", en: "Completed" },
     archived: { zh: "已归档", en: "Archived" },
+    failed: { zh: "失败", en: "Failed" },
+    cancelled: { zh: "已取消", en: "Cancelled" },
+    unknown: { zh: "未知", en: "Unknown" },
   } as const;
-  return stateMap[state]?.[lang] || state;
+  return stateMap[state as keyof typeof stateMap]?.[lang] || state;
 }
 
-function findSelectedWorkRecord(
-  storedWorks: WorkRecord[],
+function findSelectedWorkSummary(
+  summaries: WorkSummary[],
   selectedRun: WorkbenchRun | null,
   works: WorkbenchWork[],
 ) {
   if (!selectedRun?.id) {
-    return storedWorks.find((work) => work.id === works.find((item) => item.active)?.id) ?? null;
+    return summaries.find((work) => work.id === works.find((item) => item.active)?.id) ?? null;
   }
-  return storedWorks.find((work) => work.runIds.includes(selectedRun.id)) ?? null;
+  return summaries.find((work) => work.runIds.includes(selectedRun.id)) ?? null;
 }
 
 async function getWorkbenchMessages(
-  work: WorkRecord | null,
+  work: WorkSummary | null,
   selectedRun: WorkbenchRun | null,
   workStorePath?: string,
 ) {
@@ -410,7 +414,7 @@ function getFallbackMessagesFromRun(run: WorkbenchRun): WorkbenchMessage[] {
     runId: run.id,
     role: "agent",
     kind: "summary",
-    content: `${run.agentId} ${formatRunState(run.state, "zh")}，产物数 ${run.artifactCount}。`,
+    content: `${run.agentId} ${formatWorkLifecycleState(run.state, "zh")}，产物数 ${run.artifactCount}。`,
     artifactIds: [],
     createdAt,
   });
@@ -425,33 +429,24 @@ function formatFallbackPlan(plan: PlanRecord) {
   return lines.join("\n");
 }
 
-function getWorkbenchWorkTitle(run: RunHistoryItem, selectedRun: WorkbenchRun | null) {
-  const prompt = run.prompt || (run.id === selectedRun?.id ? selectedRun.prompt : null);
-  if (prompt) {
-    const promptTitle = compactText(prompt, 22);
-    return {
-      zh: promptTitle,
-      en: compactText(prompt, 34),
-    };
-  }
+function getWorkbenchWorkDescription(work: WorkSummary) {
+  const zhParts = [
+    formatWorkLifecycleState(work.state, "zh"),
+    `${work.progress.percent}%`,
+    `${work.artifactCount} 个产物`,
+  ];
+  const enParts = [
+    formatWorkLifecycleState(work.state, "en"),
+    `${work.progress.percent}%`,
+    `${work.artifactCount} artifacts`,
+  ];
 
-  const agentName = getAgentDisplayName(run.agentId);
-  return {
-    zh: `${agentName.zh} 运行`,
-    en: `${agentName.en} run`,
-  };
-}
-
-function getWorkbenchWorkDescription(run: RunHistoryItem) {
-  const zhParts = [formatRunState(run.state, "zh"), `${run.artifactCount} 个产物`];
-  const enParts = [formatRunState(run.state, "en"), `${run.artifactCount} artifacts`];
-
-  if (run.dryRun) {
+  if (work.dryRun) {
     zhParts.push("dry-run");
     enParts.push("dry-run");
   }
-  const zhTime = formatWorkTime(run.startedAt, "zh");
-  const enTime = formatWorkTime(run.startedAt, "en");
+  const zhTime = formatWorkTime(work.updatedAt, "zh");
+  const enTime = formatWorkTime(work.updatedAt, "en");
   if (zhTime) {
     zhParts.push(zhTime);
   }
@@ -463,28 +458,6 @@ function getWorkbenchWorkDescription(run: RunHistoryItem) {
     zh: zhParts.join(" · "),
     en: enParts.join(" · "),
   };
-}
-
-function getAgentDisplayName(agentId: string) {
-  if (agentId === "meta/create-agent") {
-    return { zh: "元智能体", en: "Meta Agent" };
-  }
-  if (agentId.includes("image") || agentId.includes("image-gen")) {
-    return { zh: "生图 Agent", en: "Image Agent" };
-  }
-  return { zh: agentId, en: agentId };
-}
-
-function formatRunState(state: string, lang: "zh" | "en") {
-  const stateMap = {
-    succeeded: { zh: "已完成", en: "Completed" },
-    failed: { zh: "失败", en: "Failed" },
-    running: { zh: "运行中", en: "Running" },
-    created: { zh: "已创建", en: "Created" },
-    waiting: { zh: "等待中", en: "Waiting" },
-    "dry-run": { zh: "Dry run", en: "Dry run" },
-  } as const;
-  return stateMap[state as keyof typeof stateMap]?.[lang] || state;
 }
 
 function formatWorkTime(value: string | null, lang: "zh" | "en") {
@@ -517,6 +490,18 @@ function addMilliseconds(value: string, milliseconds: number) {
     return value;
   }
   return new Date(date.getTime() + milliseconds).toISOString();
+}
+
+function emptyProgress(): WorkProgress {
+  return {
+    totalSteps: 0,
+    completedSteps: 0,
+    runningSteps: 0,
+    failedSteps: 0,
+    skippedSteps: 0,
+    pendingSteps: 0,
+    percent: 0,
+  };
 }
 
 async function fallbackWorkbenchArtifacts(prototypeRoot: string): Promise<WorkbenchArtifact[]> {

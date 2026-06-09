@@ -205,10 +205,18 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
 
     const completedWorks = await getJson(apiUrl(server.url, "/api/works?state=completed"));
     assert.equal(completedWorks.ok, true);
-    assert.equal(
-      completedWorks.works.some((work: { runIds?: string[] }) => work.runIds?.includes(created.body.result.runId)),
-      true,
+    const completedDraftWork = completedWorks.works.find((work: { runIds?: string[] }) =>
+      work.runIds?.includes(created.body.result.runId),
     );
+    assert.ok(completedDraftWork);
+    assert.equal(completedDraftWork.state, "completed");
+    assert.equal(completedDraftWork.storedState, "completed");
+    assert.equal(completedDraftWork.currentRunId, created.body.result.runId);
+    assert.equal(completedDraftWork.lifecycle.source, "run_trace");
+    assert.equal(completedDraftWork.lifecycle.runState, "succeeded");
+    assert.equal(completedDraftWork.lifecycle.planState, "succeeded");
+    assert.equal(completedDraftWork.progress.percent, 100);
+    assert.equal(completedDraftWork.progress.totalSteps, 5);
 
     const draftMessages = await getJson(
       apiUrl(server.url, `/api/messages?runId=${encodeURIComponent(created.body.result.runId)}`),
@@ -326,6 +334,18 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(runDetail.ok, true);
     assert.equal(runDetail.trace.plan.title, "生图 Agent 运行计划");
     assert.equal(runDetail.trace.plan.steps.find((step: { id?: string }) => step.id === "step-image-gen")?.state, "skipped");
+
+    const completedWorksAfterRun = await getJson(apiUrl(server.url, "/api/works?state=completed"));
+    const completedImageWork = completedWorksAfterRun.works.find((work: { runIds?: string[] }) =>
+      work.runIds?.includes(run.body.result.run_id),
+    );
+    assert.ok(completedImageWork);
+    assert.equal(completedImageWork.currentRunId, run.body.result.run_id);
+    assert.equal(completedImageWork.dryRun, true);
+    assert.equal(completedImageWork.lifecycle.source, "run_trace");
+    assert.equal(completedImageWork.lifecycle.runState, "succeeded");
+    assert.equal(completedImageWork.progress.skippedSteps, 2);
+    assert.equal(completedImageWork.progress.percent, 100);
 
     const runMessages = await getJson(
       apiUrl(server.url, `/api/messages?runId=${encodeURIComponent(run.body.result.run_id)}`),

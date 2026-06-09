@@ -15,7 +15,8 @@ import {
 } from "../meta/install-agent.js";
 import { getArtifactDetail, openArtifact, readArtifactText } from "../runtime/artifacts.js";
 import { getRunHistoryDetail, openRunTrace } from "../runtime/history.js";
-import { listConversationMessages, listWorkRecords } from "../runtime/work-store.js";
+import { listWorkSummaries, type WorkLifecycleState } from "../runtime/work-manager.js";
+import { listConversationMessages } from "../runtime/work-store.js";
 import { buildWorkbenchData } from "../runtime/workbench-data.js";
 import { buildWorkbenchSettings } from "../settings/workbench.js";
 
@@ -121,8 +122,9 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
   if (method === "GET" && url.pathname === "/api/works") {
     writeJson(response, 200, {
       ok: true,
-      works: await listWorkRecords({
-        state: readWorkState(url.searchParams.get("state")),
+      works: await listWorkSummaries({
+        state: readWorkLifecycleState(url.searchParams.get("state")),
+        tracesRoot: tracesRoot(rootDir),
         storePath: workStorePath(rootDir),
       }),
     });
@@ -160,7 +162,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
   const runMatch = url.pathname.match(/^\/api\/runs\/([^/]+)$/);
   if (method === "GET" && runMatch) {
     const runId = decodeURIComponent(runMatch[1]);
-    const detail = await getRunHistoryDetail(runId);
+    const detail = await getRunHistoryDetail(runId, { tracesRoot: tracesRoot(rootDir) });
     if (!detail) {
       writeJson(response, 404, { ok: false, error: "run not found" });
       return;
@@ -222,7 +224,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       return;
     }
 
-    const run = await openRunTrace(runId);
+    const run = await openRunTrace(runId, { tracesRoot: tracesRoot(rootDir) });
     if (!run) {
       writeJson(response, 404, { ok: false, error: "run not found" });
       return;
@@ -373,6 +375,7 @@ function buildServerWorkbenchData(
 ) {
   return buildWorkbenchData({
     ...input,
+    tracesRoot: tracesRoot(rootDir),
     configPath: workspaceConfigPath(rootDir),
     workStorePath: workStorePath(rootDir),
   });
@@ -380,6 +383,10 @@ function buildServerWorkbenchData(
 
 function workspaceConfigPath(rootDir: string) {
   return path.join(rootDir, "moyu.config.json");
+}
+
+function tracesRoot(rootDir: string) {
+  return path.join(rootDir, "traces");
 }
 
 function workStorePath(rootDir: string) {
@@ -537,13 +544,16 @@ function readDraftState(value: string | null): AgentDraftState | undefined {
   return undefined;
 }
 
-function readWorkState(value: string | null) {
+function readWorkLifecycleState(value: string | null): WorkLifecycleState | undefined {
   if (
     value === "active" ||
     value === "waiting_user" ||
     value === "running" ||
     value === "completed" ||
-    value === "archived"
+    value === "archived" ||
+    value === "failed" ||
+    value === "cancelled" ||
+    value === "unknown"
   ) {
     return value;
   }
