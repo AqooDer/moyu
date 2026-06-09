@@ -62,8 +62,12 @@ npm run workbench:export-data
 
 - `GET /api/workbench`：读取最新 Run、Trace 和产物
 - `GET /api/settings`：读取设置中心数据，覆盖模型角色、知识库、Skill、Tool、MCP、运行策略与 Agent 默认继承关系
+- `GET /api/plugins`：读取 Plugin Registry 能力、权限和运行策略声明
+- `GET /api/policies`：读取权限声明与 runtime policy 子集
 - `GET /api/works`：读取本地持久化 Work 会话，可按 `state` 筛选
 - `GET /api/messages?workId=<work_id>|runId=<run_id>`：读取持久化 Conversation Message
+- `GET /api/runs/:id`：读取原始 Run Trace，包含 plan、middleware 和 policy 快照
+- `GET /api/artifact-preview?id=<artifact_id>`：读取统一产物预览响应
 - `GET /api/artifact-content?id=<artifact_id>`：读取文本产物内容，用于右侧检查器审核草案文件
 - `POST /api/artifact/open`：用系统默认应用打开某个本地产物文件
 - `POST /api/meta/create-agent`：通过元智能体创建 Agent 草案，并返回最新 Workbench 数据
@@ -109,7 +113,7 @@ npm run dev -- agent validate /private/tmp/moyu-meta-create-agent/custom__meta-i
 - 前端使用集中式 `prototypeState` 驱动阶段、产物、Trace 和选中产物渲染
 - 当前 Agent 产物列表
 - 当前 Agent 创建 Trace
-- Agent 上下文与运行详情
+- Agent 上下文、Policy Evaluation 与运行详情
 - 设置中心：通过独立 `/api/settings` 读取模型角色、知识库、Skill、Tool、MCP 与运行策略
 - 设置中心支持 `#settings/<section>` 直达分组，例如 `#settings/models`、`#settings/knowledge`、`#settings/mcp`
 - 设置中心具备独立加载态、空态、失败态与重试，不依赖 Workbench 会话状态

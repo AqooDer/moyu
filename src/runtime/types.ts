@@ -10,6 +10,9 @@ export type MiddlewareStageKind =
   | "history-summary"
   | "knowledge-context"
   | "capability-injection";
+export type PolicyDecisionState = "allowed" | "review_required" | "blocked" | "unknown";
+export type PolicyRiskLevel = "low" | "medium" | "high" | "unknown";
+export type PolicyCheckKind = "capability" | "permission" | "mcp" | "runtime" | "model" | "artifact";
 export type ArtifactRole = "primary" | "intermediate" | "report" | "log";
 export type ConversationRole = "user" | "agent" | "system";
 export type ModelRoleResolutionSource =
@@ -128,6 +131,41 @@ export interface MiddlewarePipelineRecord {
   updatedAt: string;
 }
 
+export interface PolicyEvaluationSummary {
+  allowed: number;
+  reviewRequired: number;
+  blocked: number;
+  unknown: number;
+  lowRisk: number;
+  mediumRisk: number;
+  highRisk: number;
+}
+
+export interface PolicyCheckRecord {
+  id: string;
+  title: string;
+  kind: PolicyCheckKind;
+  state: PolicyDecisionState;
+  riskLevel: PolicyRiskLevel;
+  capabilityIds: string[];
+  permissionIds: string[];
+  subjects: string[];
+  summary: string;
+  sources: string[];
+}
+
+export interface PolicyEvaluationRecord {
+  id: string;
+  runId: string;
+  workId: string;
+  title: string;
+  state: PolicyDecisionState;
+  summary: PolicyEvaluationSummary;
+  checks: PolicyCheckRecord[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StepRecord {
   id: string;
   runId: string;
@@ -187,6 +225,7 @@ export interface RuntimeTrace {
   run: RunRecord;
   plan: PlanRecord | null;
   middleware: MiddlewarePipelineRecord | null;
+  policy: PolicyEvaluationRecord | null;
   steps: StepRecord[];
   artifacts: ArtifactRecord[];
   knowledgeWriteBacks: KnowledgeWriteBackRecord[];

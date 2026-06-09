@@ -6,6 +6,10 @@ import type {
   ArtifactRecord,
   KnowledgeWriteBackRecord,
   MiddlewarePipelineRecord,
+  PolicyCheckKind,
+  PolicyDecisionState,
+  PolicyEvaluationRecord,
+  PolicyRiskLevel,
   RuntimeTrace,
   PlanRecord,
 } from "./types.js";
@@ -133,6 +137,8 @@ export function formatRunHistoryDetail(detail: RunHistoryDetail) {
     lines.push(...formatPlanLines(trace.plan));
     lines.push("", "middleware:");
     lines.push(...formatMiddlewareLines(trace.middleware));
+    lines.push("", "policy:");
+    lines.push(...formatPolicyLines(trace.policy));
     lines.push("", "steps:");
     lines.push(...formatStepLines(trace));
     lines.push("", "artifacts:");
@@ -272,6 +278,7 @@ function normalizeRuntimeTrace(trace: RuntimeTrace): RuntimeTrace {
     ...trace,
     plan: normalizePlan(trace.plan),
     middleware: normalizeMiddlewarePipeline(trace.middleware),
+    policy: normalizePolicyEvaluation(trace.policy),
     run: {
       ...trace.run,
       modelRoles: trace.run.modelRoles ?? [],
@@ -362,6 +369,38 @@ function normalizeMiddlewarePipeline(pipeline: unknown): MiddlewarePipelineRecor
   };
 }
 
+function normalizePolicyEvaluation(policy: unknown): PolicyEvaluationRecord | null {
+  if (!policy || typeof policy !== "object") {
+    return null;
+  }
+  const raw = policy as PolicyEvaluationRecord;
+  const checks = Array.isArray(raw.checks)
+    ? raw.checks.map((check) => ({
+        id: typeof check.id === "string" && check.id ? check.id : "policy-check-unknown",
+        title: typeof check.title === "string" && check.title ? check.title : "Untitled policy check",
+        kind: normalizePolicyCheckKind(check.kind),
+        state: normalizePolicyDecisionState(check.state),
+        riskLevel: normalizePolicyRiskLevel(check.riskLevel),
+        capabilityIds: normalizeStringList(check.capabilityIds),
+        permissionIds: normalizeStringList(check.permissionIds),
+        subjects: normalizeStringList(check.subjects),
+        summary: typeof check.summary === "string" ? check.summary : "",
+        sources: normalizeStringList(check.sources),
+      }))
+    : [];
+  return {
+    id: typeof raw.id === "string" && raw.id ? raw.id : `policy-${raw.runId || "unknown"}`,
+    runId: typeof raw.runId === "string" && raw.runId ? raw.runId : "run-unknown",
+    workId: typeof raw.workId === "string" && raw.workId ? raw.workId : "work-unknown",
+    title: typeof raw.title === "string" && raw.title ? raw.title : "Runtime policy evaluation",
+    state: normalizePolicyDecisionState(raw.state),
+    summary: normalizePolicySummary(raw.summary, checks),
+    checks,
+    createdAt: typeof raw.createdAt === "string" && raw.createdAt ? raw.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof raw.updatedAt === "string" && raw.updatedAt ? raw.updatedAt : new Date(0).toISOString(),
+  };
+}
+
 function formatMiddlewareLines(pipeline: MiddlewarePipelineRecord | null) {
   if (!pipeline) {
     return ["- none"];
@@ -372,6 +411,24 @@ function formatMiddlewareLines(pipeline: MiddlewarePipelineRecord | null) {
     const capabilities = stage.capabilityIds.length > 0 ? ` capabilities=${stage.capabilityIds.join(",")}` : "";
     const policies = stage.policyIds.length > 0 ? ` policies=${stage.policyIds.join(",")}` : "";
     lines.push(`  - ${stage.id} [${stage.kind}] ${stage.state}${capabilities}${policies}: ${stage.title}`);
+  }
+  return lines;
+}
+
+function formatPolicyLines(policy: PolicyEvaluationRecord | null) {
+  if (!policy) {
+    return ["- none"];
+  }
+
+  const lines = [
+    `- ${policy.id} ${policy.title} ${policy.state} allowed=${policy.summary.allowed} review=${policy.summary.reviewRequired} blocked=${policy.summary.blocked} unknown=${policy.summary.unknown}`,
+  ];
+  for (const check of policy.checks) {
+    const capabilities = check.capabilityIds.length > 0 ? ` capabilities=${check.capabilityIds.join(",")}` : "";
+    const permissions = check.permissionIds.length > 0 ? ` permissions=${check.permissionIds.join(",")}` : "";
+    lines.push(
+      `  - ${check.id} [${check.kind}] ${check.state}/${check.riskLevel}${capabilities}${permissions}: ${check.title}`,
+    );
   }
   return lines;
 }
@@ -405,6 +462,53 @@ function formatScalar(value: unknown) {
     return "-";
   }
   return JSON.stringify(value);
+}
+
+function normalizePolicySummary(
+  summary: unknown,
+  checks: PolicyEvaluationRecord["checks"],
+): PolicyEvaluationRecord["summary"] {
+  const raw = summary && typeof summary === "object" ? (summary as Record<string, unknown>) : {};
+  return {
+    allowed: normalizeCount(raw.allowed, checks.filter((check) => check.state === "allowed").length),
+    reviewRequired: normalizeCount(
+      raw.reviewRequired,
+      checks.filter((check) => check.state === "review_required").length,
+    ),
+    blocked: normalizeCount(raw.blocked, checks.filter((check) => check.state === "blocked").length),
+    unknown: normalizeCount(raw.unknown, checks.filter((check) => check.state === "unknown").length),
+    lowRisk: normalizeCount(raw.lowRisk, checks.filter((check) => check.riskLevel === "low").length),
+    mediumRisk: normalizeCount(raw.mediumRisk, checks.filter((check) => check.riskLevel === "medium").length),
+    highRisk: normalizeCount(raw.highRisk, checks.filter((check) => check.riskLevel === "high").length),
+  };
+}
+
+function normalizePolicyCheckKind(value: unknown): PolicyCheckKind {
+  return ["capability", "permission", "mcp", "runtime", "model", "artifact"].includes(String(value))
+    ? (value as PolicyCheckKind)
+    : "runtime";
+}
+
+function normalizePolicyDecisionState(value: unknown): PolicyDecisionState {
+  return ["allowed", "review_required", "blocked", "unknown"].includes(String(value))
+    ? (value as PolicyDecisionState)
+    : "unknown";
+}
+
+function normalizePolicyRiskLevel(value: unknown): PolicyRiskLevel {
+  return ["low", "medium", "high", "unknown"].includes(String(value))
+    ? (value as PolicyRiskLevel)
+    : "unknown";
+}
+
+function normalizeStringList(values: unknown) {
+  return Array.isArray(values)
+    ? values.filter((item): item is string => typeof item === "string" && Boolean(item))
+    : [];
+}
+
+function normalizeCount(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
 function formatTable(headers: string[], rows: string[][]) {

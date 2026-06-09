@@ -10,6 +10,7 @@ import { listAgentDraftRecords, readAgentDraftRecordByRun } from "../meta/agent-
 import { createAgentWithMeta } from "../meta/create-agent.js";
 import { installAgentDraft } from "../meta/install-agent.js";
 import { listArtifacts } from "./artifacts.js";
+import { formatRunHistoryDetail, getRunHistoryDetail } from "./history.js";
 import { readWorkStore } from "./work-store.js";
 import { buildWorkbenchData } from "./workbench-data.js";
 
@@ -43,6 +44,18 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftTrace.steps.find((step: { id?: string }) => step.id === "register-artifacts")?.state, "succeeded");
     assert.equal(draftTrace.middleware.title, "Meta-Agent 上下文装配管线");
     assert.equal(draftTrace.middleware.state, "partial");
+    assert.equal(draftTrace.policy.title, "Meta-Agent 创建策略评估");
+    assert.equal(draftTrace.policy.state, "review_required");
+    assert.equal(draftTrace.policy.summary.reviewRequired > 0, true);
+    assert.equal(
+      draftTrace.policy.checks.some(
+        (check: { permissionIds?: string[]; state?: string; riskLevel?: string }) =>
+          check.permissionIds?.includes("filesystem.scoped") &&
+          check.state === "review_required" &&
+          check.riskLevel === "high",
+      ),
+      true,
+    );
     assert.deepEqual(
       draftTrace.middleware.stages.map((stage: { id: string; state: string }) => [stage.id, stage.state]),
       [
@@ -147,6 +160,18 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runTrace.plan.state, "succeeded");
     assert.equal(runTrace.middleware.title, "Agent 运行上下文装配管线");
     assert.equal(runTrace.middleware.state, "partial");
+    assert.equal(runTrace.policy.title, "Agent 运行策略评估");
+    assert.equal(runTrace.policy.state, "unknown");
+    assert.equal(runTrace.policy.summary.unknown > 0, true);
+    assert.equal(
+      runTrace.policy.checks.some(
+        (check: { id?: string; permissionIds?: string[]; state?: string }) =>
+          check.id === "permission-database.query.read" &&
+          check.permissionIds?.includes("database.query.read") &&
+          check.state === "unknown",
+      ),
+      true,
+    );
     assert.deepEqual(
       runTrace.middleware.stages.find((stage: { id: string }) => stage.id === "capability-injection")?.capabilityIds,
       [
@@ -209,6 +234,8 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftWorkbench.selectedRun?.plan?.state, "succeeded");
     assert.equal(draftWorkbench.selectedRun?.middleware?.title, "Meta-Agent 上下文装配管线");
     assert.equal(draftWorkbench.selectedRun?.middleware?.stages[2]?.state, "planned");
+    assert.equal(draftWorkbench.selectedRun?.policy?.title, "Meta-Agent 创建策略评估");
+    assert.equal(draftWorkbench.selectedRun?.policy?.state, "review_required");
     assert.equal(draftWorkbench.artifacts.length, draft.files.length);
     const draftWork = draftWorkbench.works.find((work) => work.active);
     assert.equal(draftWork?.runId, draft.runId);
@@ -249,10 +276,22 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runWorkbench.selectedRun?.plan?.title, "生图 Agent 运行计划");
     assert.equal(runWorkbench.selectedRun?.plan?.steps.find((step) => step.id === "step-image-gen")?.state, "skipped");
     assert.equal(runWorkbench.selectedRun?.middleware?.title, "Agent 运行上下文装配管线");
+    assert.equal(runWorkbench.selectedRun?.policy?.title, "Agent 运行策略评估");
+    assert.equal(runWorkbench.selectedRun?.policy?.state, "unknown");
+    assert.equal(
+      runWorkbench.selectedRun?.policy?.checks.some((check) => check.id === "mcp-analytics-db-mcp"),
+      true,
+    );
     assert.deepEqual(
       runWorkbench.selectedRun?.middleware?.stages.find((stage) => stage.id === "capability-injection")?.sources,
       ["agent-manifest", "plugin-registry"],
     );
+    const runDetail = await getRunHistoryDetail(runId);
+    assert.ok(runDetail);
+    const formattedRun = formatRunHistoryDetail(runDetail);
+    assert.match(formattedRun, /policy:/);
+    assert.match(formattedRun, /Agent 运行策略评估/);
+    assert.match(formattedRun, /permission-database\.query\.read/);
     assert.deepEqual(
       runWorkbench.agents.find((agent) => agent.id === "custom/image-prototype-v1")?.mcpServers.map((server) => server.id),
       ["analytics-db-mcp"],
@@ -330,6 +369,8 @@ test("failed image Agent runs still persist trace, plan, and Workbench conversat
     assert.equal(trace.plan.state, "failed");
     assert.equal(trace.middleware.title, "Agent 运行上下文装配管线");
     assert.equal(trace.middleware.state, "partial");
+    assert.equal(trace.policy.title, "Agent 运行策略评估");
+    assert.equal(trace.policy.state, "unknown");
     assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "step-image-gen")?.state, "failed");
     assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "register-artifacts")?.state, "pending");
     assert.equal(trace.steps.find((step: { id: string }) => step.id === "step-image-gen")?.state, "failed");
@@ -348,6 +389,7 @@ test("failed image Agent runs still persist trace, plan, and Workbench conversat
     assert.equal(workbench.selectedRun?.state, "failed");
     assert.equal(workbench.selectedRun?.plan?.state, "failed");
     assert.equal(workbench.selectedRun?.middleware?.title, "Agent 运行上下文装配管线");
+    assert.equal(workbench.selectedRun?.policy?.title, "Agent 运行策略评估");
     const activeWork = workbench.works.find((work) => work.active);
     assert.equal(activeWork?.state, "failed");
     assert.equal(activeWork?.storedState, "completed");
@@ -396,6 +438,8 @@ test("failed Meta-Agent persist step still persists trace, plan, and Workbench c
     assert.equal(trace.plan.title, "Meta-Agent 创建 Agent 计划");
     assert.equal(trace.plan.state, "failed");
     assert.equal(trace.middleware.title, "Meta-Agent 上下文装配管线");
+    assert.equal(trace.policy.title, "Meta-Agent 创建策略评估");
+    assert.equal(trace.policy.state, "review_required");
     assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "intake")?.state, "succeeded");
     assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "spec-draft")?.state, "succeeded");
     assert.equal(trace.plan.steps.find((step: { id: string }) => step.id === "persist")?.state, "failed");
@@ -411,6 +455,7 @@ test("failed Meta-Agent persist step still persists trace, plan, and Workbench c
     assert.equal(workbench.selectedRun?.state, "failed");
     assert.equal(workbench.selectedRun?.plan?.state, "failed");
     assert.equal(workbench.selectedRun?.middleware?.title, "Meta-Agent 上下文装配管线");
+    assert.equal(workbench.selectedRun?.policy?.title, "Meta-Agent 创建策略评估");
     const activeWork = workbench.works.find((work) => work.active);
     assert.equal(activeWork?.state, "failed");
     assert.equal(activeWork?.storedState, "completed");

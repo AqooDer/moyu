@@ -108,6 +108,21 @@ const messages = {
     contextPipelineSkipped: "跳过",
     contextPipelinePlanned: "规划中",
     contextPipelineFailed: "失败",
+    policyGateTitle: "策略评估",
+    policyGateEmpty: "暂无策略评估",
+    policyGateFallback: "等待真实运行写入 policy trace",
+    policyGateChecks: "检查项",
+    policyGateSummary: "结论",
+    policyGateSubjects: "对象",
+    policyGateRisk: "风险",
+    policyAllowed: "允许",
+    policyReviewRequired: "需审核",
+    policyBlocked: "已阻断",
+    policyUnknown: "未知",
+    policyRiskLow: "低风险",
+    policyRiskMedium: "中风险",
+    policyRiskHigh: "高风险",
+    policyRiskUnknown: "未知风险",
     draftContent: "能力契约",
     traceStarted: "创建会话启动",
     traceAgentCall: "解析 Agent 需求",
@@ -405,6 +420,21 @@ const messages = {
     contextPipelineSkipped: "Skipped",
     contextPipelinePlanned: "Planned",
     contextPipelineFailed: "Failed",
+    policyGateTitle: "Policy evaluation",
+    policyGateEmpty: "No policy evaluation",
+    policyGateFallback: "Waiting for a real run to write policy trace",
+    policyGateChecks: "Checks",
+    policyGateSummary: "Decision",
+    policyGateSubjects: "Subjects",
+    policyGateRisk: "Risk",
+    policyAllowed: "Allowed",
+    policyReviewRequired: "Review required",
+    policyBlocked: "Blocked",
+    policyUnknown: "Unknown",
+    policyRiskLow: "Low risk",
+    policyRiskMedium: "Medium risk",
+    policyRiskHigh: "High risk",
+    policyRiskUnknown: "Unknown risk",
     draftContent: "Capability contract",
     traceStarted: "Creation session started",
     traceAgentCall: "Parsed Agent requirement",
@@ -1165,7 +1195,7 @@ function renderWorkbenchData() {
   updateArtifactDetail(getSelectedArtifact(currentArtifacts));
   renderTimelineSteps(getVisibleTimelineSteps());
   renderRunDetails(run, currentArtifacts);
-  renderContextPipeline(run?.middleware || null);
+  renderContextPipeline(run?.middleware || null, run?.policy || null);
   renderRunState();
   renderStateMessages();
   renderActionHint();
@@ -1469,18 +1499,27 @@ function createTimelineItem(step) {
   return item;
 }
 
-function renderContextPipeline(pipeline) {
+function renderContextPipeline(pipeline, policy) {
   const root = document.querySelector("[data-context-pipeline]");
   if (!root) {
     return;
   }
 
   const dict = messages[currentLang] ?? messages.zh;
+  const nodes = [];
   if (!pipeline || !Array.isArray(pipeline.stages) || pipeline.stages.length === 0) {
-    root.replaceChildren(createContextEmptyState(dict));
-    return;
+    nodes.push(createContextEmptyState(dict.contextPipelineEmpty, dict.contextPipelineFallback));
+  } else {
+    nodes.push(createMiddlewarePipelineSection(pipeline, dict));
   }
 
+  nodes.push(createPolicyEvaluationSection(policy, dict));
+  root.replaceChildren(...nodes);
+}
+
+function createMiddlewarePipelineSection(pipeline, dict) {
+  const section = document.createElement("section");
+  section.className = "context-section";
   const header = document.createElement("div");
   header.className = "context-pipeline-head";
   header.append(
@@ -1492,13 +1531,69 @@ function renderContextPipeline(pipeline) {
   const list = document.createElement("ol");
   list.className = "context-stage-list";
   list.append(...pipeline.stages.map((stage, index) => createContextStageItem(stage, index, dict)));
-  root.replaceChildren(header, list);
+  section.append(header, list);
+  return section;
 }
 
-function createContextEmptyState(dict) {
+function createPolicyEvaluationSection(policy, dict) {
+  if (!policy || !Array.isArray(policy.checks) || policy.checks.length === 0) {
+    return createContextEmptyState(dict.policyGateEmpty, dict.policyGateFallback);
+  }
+
+  const section = document.createElement("section");
+  section.className = "context-section policy-evaluation";
+  const summary = policy.summary || {};
+  const header = document.createElement("div");
+  header.className = "context-pipeline-head";
+  header.append(
+    createText("strong", policy.title || dict.policyGateTitle),
+    createStatusPill(resolvePolicyState(policy.state), policy.state || "unknown"),
+    createText(
+      "small",
+      `${dict.policyGateChecks}: ${policy.checks.length} · ${dict.policyAllowed}: ${summary.allowed || 0} · ${dict.policyReviewRequired}: ${summary.reviewRequired || 0} · ${dict.policyUnknown}: ${summary.unknown || 0}`,
+    ),
+  );
+
+  const list = document.createElement("ol");
+  list.className = "context-stage-list";
+  list.append(...policy.checks.map((check, index) => createPolicyCheckItem(check, index, dict)));
+  section.append(header, list);
+  return section;
+}
+
+function createPolicyCheckItem(check, index, dict) {
+  const item = document.createElement("li");
+  item.className = `context-stage ${check.state || "unknown"}`;
+  const marker = document.createElement("span");
+  marker.className = "context-stage-index";
+  marker.textContent = String(index + 1);
+
+  const body = document.createElement("div");
+  body.className = "context-stage-body";
+  const head = document.createElement("div");
+  head.className = "context-stage-head";
+  head.append(
+    createText("strong", check.title || check.id || "-"),
+    createStatusPill(resolvePolicyState(check.state), check.state || "unknown"),
+  );
+
+  body.append(
+    head,
+    createText("small", `${check.kind || "-"} · ${dict.policyGateRisk}: ${resolvePolicyRisk(check.riskLevel)}`),
+    createContextSummaryRow(dict.policyGateSummary, check.summary),
+    createContextTagRow(dict.contextPipelineCapabilities, check.capabilityIds),
+    createContextTagRow(dict.contextPipelinePolicies, check.permissionIds),
+    createContextTagRow(dict.policyGateSubjects, check.subjects),
+    createContextTagRow(dict.contextPipelineSources, check.sources),
+  );
+  item.append(marker, body);
+  return item;
+}
+
+function createContextEmptyState(title, fallback) {
   const state = document.createElement("article");
   state.className = "context-empty-state";
-  state.append(createText("strong", dict.contextPipelineEmpty), createText("small", dict.contextPipelineFallback));
+  state.append(createText("strong", title), createText("small", fallback));
   return state;
 }
 
@@ -1571,6 +1666,28 @@ function resolveContextPipelineState(state) {
     failed: "contextPipelineFailed",
   };
   return dict[keyMap[state] || "contextPipelinePlanned"] || state || "-";
+}
+
+function resolvePolicyState(state) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    allowed: "policyAllowed",
+    review_required: "policyReviewRequired",
+    blocked: "policyBlocked",
+    unknown: "policyUnknown",
+  };
+  return dict[keyMap[state] || "policyUnknown"] || state || "-";
+}
+
+function resolvePolicyRisk(riskLevel) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    low: "policyRiskLow",
+    medium: "policyRiskMedium",
+    high: "policyRiskHigh",
+    unknown: "policyRiskUnknown",
+  };
+  return dict[keyMap[riskLevel] || "policyRiskUnknown"] || riskLevel || "-";
 }
 
 function renderRunDetails(run, artifacts) {

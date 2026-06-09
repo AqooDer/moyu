@@ -3,6 +3,7 @@ import path from "node:path";
 import { stringify } from "yaml";
 import { formatValidationResult, validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
 import { createMetaAgentMiddlewarePipeline } from "../runtime/middleware-pipeline.js";
+import { createPolicyEvaluationRecord } from "../runtime/policy-gate.js";
 import { createPlanRecord, formatPlanSummary } from "../runtime/plans.js";
 import { finalizeFailedRun } from "../runtime/run-finalizer.js";
 import { runRuntimeStep } from "../runtime/step-runner.js";
@@ -104,13 +105,21 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
       ],
     }),
   );
-  runtime.setMiddlewarePipeline(
+  const middleware = runtime.setMiddlewarePipeline(
     createMetaAgentMiddlewarePipeline({
       runId,
       workId,
       prompt: options.prompt,
       targetAgentId: spec.agentId,
       persist: Boolean(options.persist),
+      createdAt: runtime.snapshot.run.startedAt,
+    }),
+  );
+  runtime.setPolicyEvaluation(
+    createPolicyEvaluationRecord({
+      run: runtime.snapshot.run,
+      middleware,
+      title: "Meta-Agent 创建策略评估",
       createdAt: runtime.snapshot.run.startedAt,
     }),
   );

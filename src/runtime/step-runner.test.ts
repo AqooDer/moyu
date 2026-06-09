@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createMiddlewarePipelineRecord } from "./middleware-pipeline.js";
+import { createPolicyEvaluationRecord } from "./policy-gate.js";
 import { createPlanRecord } from "./plans.js";
 import { runRuntimeStep } from "./step-runner.js";
 import { RuntimeStore } from "./store.js";
@@ -139,6 +140,47 @@ test("runtime store records middleware pipeline snapshots", () => {
   assert.deepEqual(pipeline.stages[0].capabilityIds, ["artifact-write"]);
   assert.deepEqual(pipeline.stages[0].policyIds, ["artifact.write.scoped"]);
   assert.deepEqual(pipeline.stages[0].sources, ["plugin-registry"]);
+});
+
+test("runtime store records policy evaluation snapshots", () => {
+  const runtime = createRuntimeWithPlan("run-policy");
+  const middleware = runtime.setMiddlewarePipeline(
+    createMiddlewarePipelineRecord({
+      runId: runtime.runId,
+      workId: `work-${runtime.runId}`,
+      title: "Test middleware pipeline",
+      createdAt: runtime.snapshot.run.startedAt,
+      stages: [
+        {
+          id: "capability-injection",
+          title: "Capability injection",
+          kind: "capability-injection",
+          state: "ready",
+          capabilityIds: ["artifact-write", "artifact-preview-v1"],
+          policyIds: ["artifact.write.scoped", "artifact.preview.read"],
+          inputSummary: "Read registry.",
+          outputSummary: "Injected artifact services.",
+          sources: ["plugin-registry"],
+        },
+      ],
+    }),
+  );
+
+  const policy = runtime.setPolicyEvaluation(
+    createPolicyEvaluationRecord({
+      run: runtime.snapshot.run,
+      middleware,
+      title: "Test policy evaluation",
+      createdAt: runtime.snapshot.run.startedAt,
+    }),
+  );
+
+  assert.equal(runtime.snapshot.policy?.id, `policy-${runtime.runId}`);
+  assert.equal(runtime.snapshot.policy?.title, "Test policy evaluation");
+  assert.equal(policy.state, "allowed");
+  assert.equal(policy.summary.allowed > 0, true);
+  assert.equal(policy.checks.some((check) => check.id === "permission-artifact.write.scoped"), true);
+  assert.equal(policy.checks.some((check) => check.id === "artifact-write-scope"), true);
 });
 
 function createRuntimeWithPlan(runId: string) {

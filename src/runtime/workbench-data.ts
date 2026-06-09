@@ -15,6 +15,7 @@ import type {
   McpServerResolution,
   ModelRoleResolution,
   PlanRecord,
+  PolicyEvaluationRecord,
   RuntimeTrace,
   StepRecord,
 } from "./types.js";
@@ -54,6 +55,7 @@ export interface WorkbenchRun {
   mcpServers: McpServerResolution[];
   plan: PlanRecord | null;
   middleware: MiddlewarePipelineRecord | null;
+  policy: PolicyEvaluationRecord | null;
   steps: WorkbenchStep[];
 }
 
@@ -204,6 +206,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
       mcpServers: detail.trace.run.mcpServers ?? [],
       plan: detail.trace.plan ?? null,
       middleware: detail.trace.middleware ?? null,
+      policy: detail.trace.policy ?? null,
       steps: detail.trace.steps.map(toWorkbenchStep),
     };
   }
@@ -226,6 +229,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
     mcpServers: [],
     plan: null,
     middleware: null,
+    policy: null,
     steps: [],
   };
 }

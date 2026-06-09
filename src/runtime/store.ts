@@ -10,6 +10,10 @@ import type {
   MiddlewareStageState,
   PlanRecord,
   PlanState,
+  PolicyCheckKind,
+  PolicyDecisionState,
+  PolicyEvaluationRecord,
+  PolicyRiskLevel,
   RunRecord,
   RunState,
   RuntimeTrace,
@@ -29,6 +33,7 @@ export class RuntimeStore {
       run,
       plan: null,
       middleware: null,
+      policy: null,
       steps: [],
       artifacts: [],
       knowledgeWriteBacks: [],
@@ -85,6 +90,11 @@ export class RuntimeStore {
   setMiddlewarePipeline(pipeline: MiddlewarePipelineRecord) {
     this.trace.middleware = normalizeMiddlewarePipeline(pipeline, this.trace.run.id, this.trace.run.workId);
     return this.trace.middleware;
+  }
+
+  setPolicyEvaluation(policy: PolicyEvaluationRecord) {
+    this.trace.policy = normalizePolicyEvaluation(policy, this.trace.run.id, this.trace.run.workId);
+    return this.trace.policy;
   }
 
   updatePlanStep(stepId: string, state: StepState) {
@@ -286,6 +296,88 @@ function normalizeMiddlewareStageKind(value: unknown): MiddlewareStageKind {
   ].includes(String(value))
     ? (value as MiddlewareStageKind)
     : "capability-injection";
+}
+
+function normalizePolicyEvaluation(
+  policy: PolicyEvaluationRecord,
+  runId: string,
+  workId?: string | null,
+): PolicyEvaluationRecord {
+  const updatedAt = typeof policy.updatedAt === "string" && policy.updatedAt ? policy.updatedAt : now();
+  const checks = Array.isArray(policy.checks)
+    ? policy.checks.map((check) => ({
+        id: check.id,
+        title: check.title,
+        kind: normalizePolicyCheckKind(check.kind),
+        state: normalizePolicyDecisionState(check.state),
+        riskLevel: normalizePolicyRiskLevel(check.riskLevel),
+        capabilityIds: normalizeStringList(check.capabilityIds),
+        permissionIds: normalizeStringList(check.permissionIds),
+        subjects: normalizeStringList(check.subjects),
+        summary: typeof check.summary === "string" ? check.summary : "",
+        sources: normalizeStringList(check.sources),
+      }))
+    : [];
+  return {
+    id: policy.id || `policy-${runId}`,
+    runId,
+    workId: workId || policy.workId || `work-${runId}`,
+    title: policy.title || "Runtime policy evaluation",
+    state: normalizePolicyDecisionState(policy.state),
+    summary: normalizePolicySummary(policy.summary, checks),
+    checks,
+    createdAt: typeof policy.createdAt === "string" && policy.createdAt ? policy.createdAt : updatedAt,
+    updatedAt,
+  };
+}
+
+function normalizePolicySummary(
+  summary: PolicyEvaluationRecord["summary"] | undefined,
+  checks: PolicyEvaluationRecord["checks"],
+): PolicyEvaluationRecord["summary"] {
+  if (summary && typeof summary === "object") {
+    return {
+      allowed: normalizeCount(summary.allowed),
+      reviewRequired: normalizeCount(summary.reviewRequired),
+      blocked: normalizeCount(summary.blocked),
+      unknown: normalizeCount(summary.unknown),
+      lowRisk: normalizeCount(summary.lowRisk),
+      mediumRisk: normalizeCount(summary.mediumRisk),
+      highRisk: normalizeCount(summary.highRisk),
+    };
+  }
+
+  return {
+    allowed: checks.filter((check) => check.state === "allowed").length,
+    reviewRequired: checks.filter((check) => check.state === "review_required").length,
+    blocked: checks.filter((check) => check.state === "blocked").length,
+    unknown: checks.filter((check) => check.state === "unknown").length,
+    lowRisk: checks.filter((check) => check.riskLevel === "low").length,
+    mediumRisk: checks.filter((check) => check.riskLevel === "medium").length,
+    highRisk: checks.filter((check) => check.riskLevel === "high").length,
+  };
+}
+
+function normalizePolicyCheckKind(value: unknown): PolicyCheckKind {
+  return ["capability", "permission", "mcp", "runtime", "model", "artifact"].includes(String(value))
+    ? (value as PolicyCheckKind)
+    : "runtime";
+}
+
+function normalizePolicyDecisionState(value: unknown): PolicyDecisionState {
+  return ["allowed", "review_required", "blocked", "unknown"].includes(String(value))
+    ? (value as PolicyDecisionState)
+    : "unknown";
+}
+
+function normalizePolicyRiskLevel(value: unknown): PolicyRiskLevel {
+  return ["low", "medium", "high", "unknown"].includes(String(value))
+    ? (value as PolicyRiskLevel)
+    : "unknown";
+}
+
+function normalizeCount(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
 function normalizeStringList(values: unknown) {

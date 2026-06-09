@@ -189,6 +189,8 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(created.body.workbench.selectedRun.plan.title, "Meta-Agent 创建 Agent 计划");
     assert.equal(created.body.workbench.selectedRun.middleware.title, "Meta-Agent 上下文装配管线");
     assert.equal(created.body.workbench.selectedRun.middleware.stages.length, 4);
+    assert.equal(created.body.workbench.selectedRun.policy.title, "Meta-Agent 创建策略评估");
+    assert.equal(created.body.workbench.selectedRun.policy.state, "review_required");
     assert.equal(created.body.workbench.messages.length, 3);
     assert.equal(created.body.workbench.messages[0].role, "user");
     assert.equal(created.body.workbench.messages[1].kind, "plan");
@@ -225,6 +227,8 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(draftRun.trace.run.agentId, "meta/create-agent");
     assert.equal(draftRun.trace.plan.title, "Meta-Agent 创建 Agent 计划");
     assert.equal(draftRun.trace.middleware.title, "Meta-Agent 上下文装配管线");
+    assert.equal(draftRun.trace.policy.title, "Meta-Agent 创建策略评估");
+    assert.equal(draftRun.trace.policy.state, "review_required");
     assert.equal(
       draftRun.trace.middleware.stages.find((stage: { id?: string }) => stage.id === "capability-injection")?.capabilityIds.includes("filesystem-mcp"),
       true,
@@ -370,6 +374,8 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.match(run.body.result.run_id, /^run-custom__image-prototype-v1-/);
     assert.equal(run.body.workbench.selectedRun.plan.title, "生图 Agent 运行计划");
     assert.equal(run.body.workbench.selectedRun.middleware.title, "Agent 运行上下文装配管线");
+    assert.equal(run.body.workbench.selectedRun.policy.title, "Agent 运行策略评估");
+    assert.equal(run.body.workbench.selectedRun.policy.state, "review_required");
     assert.equal(run.body.workbench.messages.length, 3);
     assert.equal(run.body.workbench.messages[0].content, "a clean app dashboard");
     assert.equal(run.body.workbench.messages[1].kind, "plan");
@@ -380,6 +386,8 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(runDetail.ok, true);
     assert.equal(runDetail.trace.plan.title, "生图 Agent 运行计划");
     assert.equal(runDetail.trace.middleware.title, "Agent 运行上下文装配管线");
+    assert.equal(runDetail.trace.policy.title, "Agent 运行策略评估");
+    assert.equal(runDetail.trace.policy.state, "review_required");
     assert.equal(runDetail.trace.middleware.stages.find((stage: { id?: string }) => stage.id === "knowledge-context")?.state, "planned");
     assert.equal(runDetail.trace.plan.steps.find((step: { id?: string }) => step.id === "step-image-gen")?.state, "skipped");
 
@@ -410,6 +418,7 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(typeof selectedDraft.selectedRun.workId, "string");
     assert.equal(selectedDraft.selectedRun.plan.title, "Meta-Agent 创建 Agent 计划");
     assert.equal(selectedDraft.selectedRun.middleware.title, "Meta-Agent 上下文装配管线");
+    assert.equal(selectedDraft.selectedRun.policy.title, "Meta-Agent 创建策略评估");
     assert.equal(selectedDraft.artifacts.length, created.body.result.files.length);
     assert.equal(selectedDraft.artifacts.find((item: { id?: string }) => item.id === artifactId)?.preview.kind, "text");
     assert.equal(selectedDraft.messages.length, 4);
@@ -434,6 +443,8 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedRun.selectedRun.plan.title, "生图 Agent 运行计划");
     assert.equal(selectedRun.selectedRun.middleware.title, "Agent 运行上下文装配管线");
     assert.equal(selectedRun.selectedRun.middleware.stages.length, 4);
+    assert.equal(selectedRun.selectedRun.policy.title, "Agent 运行策略评估");
+    assert.equal(selectedRun.selectedRun.policy.state, "review_required");
     assert.equal(selectedRun.artifacts.length, 0);
     assert.equal(selectedRun.messages.length, 3);
     assert.equal(selectedRun.settings.agentDefaults.some((item: { agentId?: string }) => item.agentId === "image-gen/prototype-v1"), true);
@@ -524,10 +535,12 @@ test("Artifact preview API returns metadata-only responses for Office-like binar
     assert.equal(workbench.artifacts[0].preview.kind, "office");
     assert.equal(workbench.artifacts[0].preview.sandbox.scope, "artifacts");
     assert.equal(workbench.selectedRun.middleware, null);
+    assert.equal(workbench.selectedRun.policy, null);
 
     const run = await getJson(apiUrl(server.url, "/api/runs/run-preview-office"));
     assert.equal(run.ok, true);
     assert.equal(run.trace.middleware, null);
+    assert.equal(run.trace.policy, null);
   } finally {
     await server.close();
     process.chdir(previousCwd);
