@@ -69,6 +69,8 @@ routing:
       provider: openai-compat
       model: gpt-image-2
 
+mcp_servers: []
+
 permissions:
   host.network.fetch:
     - "${agent.config.provider.base_url}"

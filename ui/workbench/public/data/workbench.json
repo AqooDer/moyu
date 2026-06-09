@@ -20,7 +20,8 @@
         "state": "skipped",
         "durationMs": 0
       }
-    ]
+    ],
+    "mcpServers": []
   },
   "works": [
     {
@@ -164,7 +165,8 @@
       "description": {
         "zh": "阅读代码并给出风险建议",
         "en": "Inspect code and surface risks"
-      }
+      },
+      "mcpServers": []
     },
     {
       "id": "custom/image-prototype-v1",
@@ -175,7 +177,8 @@
       "description": {
         "zh": "Create an image prototype Agent that supports raw prompts and saves traceable artifacts",
         "en": "Create an image prototype Agent that supports raw prompts and saves traceable artifacts"
-      }
+      },
+      "mcpServers": []
     },
     {
       "id": "custom/image-prototype-v2",
@@ -186,7 +189,8 @@
       "description": {
         "zh": "通过 OpenAI-compatible 图片中转接口生成 UI 概念图，并保存可追踪产物。",
         "en": "通过 OpenAI-compatible 图片中转接口生成 UI 概念图，并保存可追踪产物。"
-      }
+      },
+      "mcpServers": []
     },
     {
       "id": "custom/image-prototype-v3",
@@ -197,7 +201,8 @@
       "description": {
         "zh": "通过 OpenAI-compatible 图片中转接口生成 UI 概念图，并保存可追踪产物。",
         "en": "通过 OpenAI-compatible 图片中转接口生成 UI 概念图，并保存可追踪产物。"
-      }
+      },
+      "mcpServers": []
     },
     {
       "id": "docs-organizer/draft",
@@ -208,7 +213,8 @@
       "description": {
         "zh": "整理需求、Trace 与产物说明",
         "en": "Organize requirements, traces, and artifacts"
-      }
+      },
+      "mcpServers": []
     },
     {
       "id": "image-gen/prototype-v1",
@@ -219,7 +225,8 @@
       "description": {
         "zh": "通过自然语言描述快速生成候选原型图,支持批量生成与后续项目库扩展。",
         "en": "通过自然语言描述快速生成候选原型图,支持批量生成与后续项目库扩展。"
-      }
+      },
+      "mcpServers": []
     },
     {
       "id": "research/draft",
@@ -230,7 +237,8 @@
       "description": {
         "zh": "检索、归纳并输出结构化结论",
         "en": "Search, summarize, and structure findings"
-      }
+      },
+      "mcpServers": []
     }
   ],
   "settings": {

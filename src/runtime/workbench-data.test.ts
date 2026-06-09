@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -78,11 +78,38 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(installedStore.messages.length, 3);
     assert.match(installedStore.messages[2].content, /已安装到正式目录/);
 
+    const installedManifestPath = path.join(installed.targetPath, "manifest.yaml");
+    const installedManifest = await readFile(installedManifestPath, "utf8");
+    await writeFile(
+      installedManifestPath,
+      installedManifest.replace(
+        "mcp_servers: []",
+        [
+          "mcp_servers:",
+          "  - id: analytics-db-mcp",
+          "    transport: stdio",
+          "    state: review",
+          "    description: Read-only analytics query gateway",
+          "    permissions: [database.query.read]",
+        ].join("\n"),
+      ),
+      "utf8",
+    );
+
     const agents = await listAgents();
     assert.deepEqual(
       agents.map((agent) => agent.agentId),
       ["custom/image-prototype-v1"],
     );
+    assert.deepEqual(agents[0].mcpServers, [
+      {
+        id: "analytics-db-mcp",
+        transport: "stdio",
+        state: "review",
+        description: "Read-only analytics query gateway",
+        permissions: ["database.query.read"],
+      },
+    ]);
 
     const summary = await runImageAgent(agents[0], {
       prompt: "a clean app dashboard",
@@ -113,7 +140,19 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
         providerEndpoint: null,
       },
     ]);
+    assert.deepEqual(runTrace.run.mcpServers, [
+      {
+        id: "analytics-db-mcp",
+        transport: "stdio",
+        state: "review",
+        description: "Read-only analytics query gateway",
+        permissions: ["database.query.read"],
+        source: "agent_manifest",
+      },
+    ]);
     assert.equal(runTrace.steps[0].outputSummary.model_role, "image-generation");
+    assert.deepEqual(runTrace.steps[0].inputSummary.mcp_servers, ["analytics-db-mcp"]);
+    assert.deepEqual(runTrace.steps[0].outputSummary.mcp_servers, ["analytics-db-mcp"]);
     assert.equal(runTrace.steps[0].outputSummary.provider, "openai-compat");
     assert.equal(runTrace.steps[0].outputSummary.model, "gpt-image-2");
     assert.equal(runTrace.steps[0].outputSummary.fallback_reason, "missing_image_provider_config");
@@ -146,6 +185,11 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.match(runWorkbench.selectedRun?.workId || "", /^work-run-custom__image-prototype-v1-/);
     assert.equal(runWorkbench.selectedRun?.modelRoles[1]?.roleId, "image-generation");
     assert.equal(runWorkbench.selectedRun?.modelRoles[1]?.source, "agent_manifest");
+    assert.deepEqual(runWorkbench.selectedRun?.mcpServers.map((server) => server.id), ["analytics-db-mcp"]);
+    assert.deepEqual(
+      runWorkbench.agents.find((agent) => agent.id === "custom/image-prototype-v1")?.mcpServers.map((server) => server.id),
+      ["analytics-db-mcp"],
+    );
     assert.equal(runWorkbench.artifacts.length, 0);
     assert.equal(runWorkbench.works.find((work) => work.active)?.runId, runId);
     assert.equal(runWorkbench.works.find((work) => work.active)?.title.zh, "a clean app dashboard");

@@ -1,5 +1,6 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
+import { parse } from "yaml";
 
 export interface AgentValidationResult {
   ok: boolean;
@@ -30,6 +31,7 @@ export async function validateAgentFolder(agentPath: string): Promise<AgentValid
     requireText(result, manifest, "manifest.yaml", "workflow:");
     requireText(result, manifest, "manifest.yaml", "inputs_schema:");
     requireText(result, manifest, "manifest.yaml", "outputs_schema:");
+    validateManifestMcpServers(result, manifest);
   }
 
   const ui = await readTextIfExists(path.join(resolved, "ui.yaml"));
@@ -99,3 +101,51 @@ function requireText(
   }
 }
 
+function validateManifestMcpServers(result: AgentValidationResult, content: string) {
+  let manifest: unknown;
+  try {
+    manifest = parse(content);
+  } catch (error) {
+    result.errors.push(`manifest.yaml parse failed: ${error instanceof Error ? error.message : String(error)}`);
+    return;
+  }
+
+  if (!manifest || typeof manifest !== "object" || !("mcp_servers" in manifest)) {
+    return;
+  }
+
+  const mcpServers = (manifest as { mcp_servers?: unknown }).mcp_servers;
+  if (typeof mcpServers === "undefined") {
+    return;
+  }
+  if (!Array.isArray(mcpServers)) {
+    result.errors.push("manifest.yaml mcp_servers must be an array");
+    return;
+  }
+
+  for (const [index, server] of mcpServers.entries()) {
+    if (typeof server === "string") {
+      if (!server.trim()) {
+        result.errors.push(`manifest.yaml mcp_servers[${index}] must not be empty`);
+      }
+      continue;
+    }
+
+    if (!server || typeof server !== "object") {
+      result.errors.push(`manifest.yaml mcp_servers[${index}] must be a string or object`);
+      continue;
+    }
+
+    const item = server as Record<string, unknown>;
+    if (typeof item.id !== "string" || !item.id.trim()) {
+      result.errors.push(`manifest.yaml mcp_servers[${index}].id is required`);
+    }
+    if ("permissions" in item && !isStringArray(item.permissions)) {
+      result.errors.push(`manifest.yaml mcp_servers[${index}].permissions must be a string array`);
+    }
+  }
+}
+
+function isStringArray(value: unknown) {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}

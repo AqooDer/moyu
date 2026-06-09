@@ -29,6 +29,15 @@ export interface ModelRoleResolution {
   providerEndpoint?: string | null;
 }
 
+export interface McpServerResolution {
+  id: string;
+  transport: string | null;
+  state: string | null;
+  description: string | null;
+  permissions: string[];
+  source: "agent_manifest";
+}
+
 export interface WorkRecord {
   id: string;
   projectId: string | null;
@@ -65,6 +74,7 @@ export interface RunRecord {
   input: Record<string, unknown>;
   reason: string | null;
   modelRoles: ModelRoleResolution[];
+  mcpServers: McpServerResolution[];
 }
 
 export interface StepRecord {

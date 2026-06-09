@@ -12,6 +12,15 @@ export interface AgentManifestSummary {
   folderName: string;
   path: string;
   tags: string[];
+  mcpServers: AgentMcpServerSummary[];
+}
+
+export interface AgentMcpServerSummary {
+  id: string;
+  transport: string | null;
+  state: string | null;
+  description: string | null;
+  permissions: string[];
 }
 
 interface RawAgentManifest {
@@ -22,6 +31,7 @@ interface RawAgentManifest {
   recipe_ref?: unknown;
   ui_ref?: unknown;
   tags?: unknown;
+  mcp_servers?: unknown;
 }
 
 export async function listAgents(rootDir = "agents"): Promise<AgentManifestSummary[]> {
@@ -73,6 +83,7 @@ export async function readAgentSummary(agentPath: string): Promise<AgentManifest
     folderName: path.basename(resolved),
     path: resolved,
     tags: readStringArray(manifest.tags),
+    mcpServers: readMcpServers(manifest.mcp_servers),
   };
 }
 
@@ -98,6 +109,7 @@ export function formatAgentDetails(agent: AgentManifestSummary) {
     `recipe_ref: ${agent.recipeRef ?? "-"}`,
     `ui_ref: ${agent.uiRef ?? "-"}`,
     `tags: ${agent.tags.length > 0 ? agent.tags.join(", ") : "-"}`,
+    `mcp_servers: ${agent.mcpServers.length > 0 ? agent.mcpServers.map((server) => server.id).join(", ") : "-"}`,
     `folder: ${agent.folderName}`,
     `path: ${agent.path}`,
   ];
@@ -126,3 +138,35 @@ function readStringArray(value: unknown) {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
+function readMcpServers(value: unknown): AgentMcpServerSummary[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    if (typeof item === "string") {
+      const id = item.trim();
+      return id ? [{ id, transport: null, state: null, description: null, permissions: [] }] : [];
+    }
+
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+
+    const raw = item as Record<string, unknown>;
+    const id = readString(raw.id ?? raw.server_id ?? raw.name, "");
+    if (!id) {
+      return [];
+    }
+
+    return [
+      {
+        id,
+        transport: readNullableString(raw.transport),
+        state: readNullableString(raw.state),
+        description: readNullableString(raw.description),
+        permissions: readStringArray(raw.permissions),
+      },
+    ];
+  });
+}

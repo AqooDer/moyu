@@ -5,6 +5,7 @@ import type { AgentManifestSummary } from "./registry.js";
 import { readImageRelayConfig } from "../lib/env.js";
 import { generateImagesWithRelay } from "../lib/openai-compat-image.js";
 import { RuntimeStore } from "../runtime/store.js";
+import type { McpServerResolution } from "../runtime/types.js";
 import { createWorkIdFromRunId, recordRunConversation } from "../runtime/work-store.js";
 import { resolveAgentModelRoles } from "../settings/models/model-roles.js";
 
@@ -38,6 +39,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
   });
   const imageModelRole = modelRoles.find((role) => role.roleId === "image-generation");
   const imageConfig = config && imageModelRole ? { ...config, model: imageModelRole.model } : config;
+  const mcpServers = resolveAgentMcpServers(agent);
   const runtime = RuntimeStore.createRun({
     id: runId,
     workId,
@@ -53,6 +55,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       raw_prompt: options.rawPrompt,
     },
     modelRoles,
+    mcpServers,
   });
   runtime.setRunState("running");
 
@@ -65,6 +68,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       count: options.count,
       size: options.size,
       model_role: imageModelRole?.roleId ?? "image-generation",
+      mcp_servers: mcpServers.map((server) => server.id),
     },
   });
 
@@ -80,6 +84,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       provider: imageModelRole?.provider,
       model: imageModelRole?.model,
       fallback_reason: imageModelRole?.fallbackReason,
+      mcp_servers: mcpServers.map((server) => server.id),
     });
     runtime.setRunState("succeeded");
     const traceFile = await runtime.writeTrace();
@@ -136,6 +141,7 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
     provider_endpoint: result.provider,
     fallback_reason: imageModelRole?.fallbackReason,
     duration_ms: result.durationMs,
+    mcp_servers: mcpServers.map((server) => server.id),
   });
   runtime.addNote("Generated via agent runtime prototype.");
   runtime.setRunState("succeeded");
@@ -185,6 +191,17 @@ function normalizePrompt(prompt: string, style: string) {
 
   const hint = styleHints[style] ?? "clean polished composition";
   return `${prompt}. Style hint: ${hint}.`;
+}
+
+function resolveAgentMcpServers(agent: AgentManifestSummary): McpServerResolution[] {
+  return agent.mcpServers.map((server) => ({
+    id: server.id,
+    transport: server.transport,
+    state: server.state,
+    description: server.description,
+    permissions: server.permissions,
+    source: "agent_manifest",
+  }));
 }
 
 function formatRunSummary(input: {

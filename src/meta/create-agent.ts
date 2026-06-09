@@ -356,6 +356,7 @@ function buildManifest(spec: AgentSpec, now: string) {
         },
       },
     },
+    mcp_servers: [],
     permissions: {
       "host.network.fetch": ["${agent.config.provider.base_url}"],
       "host.artifact.write": { scope: "run" },

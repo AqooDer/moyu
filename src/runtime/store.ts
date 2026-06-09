@@ -11,6 +11,7 @@ import type {
   StepRecord,
   StepState,
   ModelRoleResolution,
+  McpServerResolution,
 } from "./types.js";
 
 export class RuntimeStore {
@@ -36,6 +37,7 @@ export class RuntimeStore {
     dryRun: boolean;
     input: Record<string, unknown>;
     modelRoles?: ModelRoleResolution[];
+    mcpServers?: McpServerResolution[];
   }) {
     return new RuntimeStore({
       id: input.id,
@@ -51,6 +53,7 @@ export class RuntimeStore {
       input: input.input,
       reason: null,
       modelRoles: input.modelRoles ?? [],
+      mcpServers: input.mcpServers ?? [],
     });
   }
 

@@ -73,6 +73,7 @@ test("Agent manifest overrides workspace model roles and records missing image f
       folderName: "image-agent",
       path: agentPath,
       tags: [],
+      mcpServers: [],
     };
 
     const roles = await resolveAgentModelRoles({

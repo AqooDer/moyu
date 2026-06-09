@@ -1,10 +1,18 @@
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { listAgents } from "../agent/registry.js";
+import { listAgents, type AgentMcpServerSummary } from "../agent/registry.js";
 import { buildWorkbenchSettings, type WorkbenchSettings } from "../settings/workbench.js";
 import { listArtifacts, type ArtifactHistoryItem } from "./artifacts.js";
 import { getRunHistoryDetail, listRunHistory, type RunHistoryItem } from "./history.js";
-import type { ConversationMessage, ModelRoleResolution, RuntimeTrace, StepRecord, WorkRecord, WorkState } from "./types.js";
+import type {
+  ConversationMessage,
+  McpServerResolution,
+  ModelRoleResolution,
+  RuntimeTrace,
+  StepRecord,
+  WorkRecord,
+  WorkState,
+} from "./types.js";
 import { createWorkIdFromRunId, listConversationMessages, listWorkRecords } from "./work-store.js";
 
 export interface WorkbenchData {
@@ -32,6 +40,7 @@ export interface WorkbenchRun {
   workId: string | null;
   artifactCount: number;
   modelRoles: ModelRoleResolution[];
+  mcpServers: McpServerResolution[];
   steps: WorkbenchStep[];
 }
 
@@ -81,6 +90,7 @@ export interface WorkbenchAgent {
   id: string;
   title: { zh: string; en: string };
   description: { zh: string; en: string };
+  mcpServers: AgentMcpServerSummary[];
 }
 
 export async function buildWorkbenchData(
@@ -167,6 +177,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
       workId: detail.trace.run.workId ?? null,
       artifactCount: detail.trace.artifacts.length,
       modelRoles: detail.trace.run.modelRoles ?? [],
+      mcpServers: detail.trace.run.mcpServers ?? [],
       steps: detail.trace.steps.map(toWorkbenchStep),
     };
   }
@@ -186,6 +197,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
     workId: null,
     artifactCount: detail.item.artifactCount,
     modelRoles: [],
+    mcpServers: [],
     steps: [],
   };
 }
@@ -546,6 +558,7 @@ const defaultAgents: WorkbenchAgent[] = [
       zh: "根据提示词生成界面概念图",
       en: "Generate UI concepts from prompts",
     },
+    mcpServers: [],
   },
   {
     id: "code-review/draft",
@@ -554,6 +567,7 @@ const defaultAgents: WorkbenchAgent[] = [
       zh: "阅读代码并给出风险建议",
       en: "Inspect code and surface risks",
     },
+    mcpServers: [],
   },
   {
     id: "docs-organizer/draft",
@@ -562,6 +576,7 @@ const defaultAgents: WorkbenchAgent[] = [
       zh: "整理需求、Trace 与产物说明",
       en: "Organize requirements, traces, and artifacts",
     },
+    mcpServers: [],
   },
   {
     id: "research/draft",
@@ -570,6 +585,7 @@ const defaultAgents: WorkbenchAgent[] = [
       zh: "检索、归纳并输出结构化结论",
       en: "Search, summarize, and structure findings",
     },
+    mcpServers: [],
   },
 ];
 
@@ -582,6 +598,7 @@ async function getWorkbenchAgents() {
       id: agent.agentId,
       title: { zh: title, en: title },
       description: { zh: description, en: description },
+      mcpServers: agent.mcpServers,
     };
   });
 
