@@ -212,6 +212,16 @@ const messages = {
     noArtifactsTitle: "本次运行没有产物",
     noArtifactsDesc: "这是一次 dry-run 或无输出运行。Trace 已记录执行过程，但没有写入文件产物。",
     noArtifactsTraceHint: "切到 Trace 标签查看这次运行的步骤、耗时和输入参数。",
+    artifactDeliveryTitle: "交付清单",
+    artifactDeliveryStateReady: "可交付",
+    artifactDeliveryStateEmpty: "暂无交付",
+    artifactDeliveryStatePartial: "部分交付",
+    artifactDeliveryStateFailed: "交付失败",
+    artifactDeliveryArtifacts: "产物",
+    artifactDeliveryPrimary: "主产物",
+    artifactDeliveryTotalSize: "总大小",
+    artifactDeliveryOpenable: "可打开",
+    artifactDeliveryConstraints: "限制",
     unknownSize: "未知大小",
     currentTask: "当前 Agent",
     generatedFromRun: "来自元智能体运行",
@@ -580,6 +590,16 @@ const messages = {
     noArtifactsTitle: "No artifacts for this run",
     noArtifactsDesc: "This was a dry-run or no-output run. The Trace recorded execution, but no files were written.",
     noArtifactsTraceHint: "Open the Trace tab to inspect steps, timing, and input parameters.",
+    artifactDeliveryTitle: "Delivery manifest",
+    artifactDeliveryStateReady: "Ready",
+    artifactDeliveryStateEmpty: "Empty",
+    artifactDeliveryStatePartial: "Partial",
+    artifactDeliveryStateFailed: "Failed",
+    artifactDeliveryArtifacts: "Artifacts",
+    artifactDeliveryPrimary: "Primary",
+    artifactDeliveryTotalSize: "Total size",
+    artifactDeliveryOpenable: "Openable",
+    artifactDeliveryConstraints: "Constraints",
     unknownSize: "unknown size",
     currentTask: "Current Agent",
     generatedFromRun: "From Meta Agent run",
@@ -1302,7 +1322,7 @@ function renderWorkbenchData() {
   renderWorks(workbenchData.works || []);
   renderAgents(workbenchData.agents || []);
   renderPersistentMessages(workbenchData.messages || []);
-  renderArtifacts(currentArtifacts);
+  renderArtifacts(currentArtifacts, run?.delivery || null);
   renderConversationArtifacts(currentArtifacts);
   updateArtifactDetail(getSelectedArtifact(currentArtifacts));
   renderTimelineSteps(getVisibleTimelineSteps());
@@ -1364,7 +1384,7 @@ async function advanceDemoRun() {
   prototypeState.phase = "outline";
 
   currentArtifacts = getVisibleArtifacts();
-  renderArtifacts(currentArtifacts);
+  renderArtifacts(currentArtifacts, workbenchData?.selectedRun?.delivery || null);
   renderConversationArtifacts(currentArtifacts);
   updateArtifactDetail(getSelectedArtifact(currentArtifacts));
   renderTimelineSteps(getVisibleTimelineSteps());
@@ -2955,21 +2975,76 @@ function renderAgents(agents) {
   syncRunAgentButton();
 }
 
-function renderArtifacts(artifacts) {
+function renderArtifacts(artifacts, delivery = null) {
   const list = document.querySelector("[data-artifact-list]");
   if (!list) {
     return;
   }
 
   if (artifacts.length === 0) {
-    list.replaceChildren(createEmptyArtifactState());
+    list.replaceChildren(...[createDeliverySummary(delivery), createEmptyArtifactState()].filter(Boolean));
     return;
   }
 
   const selectedArtifact = getSelectedArtifact(artifacts);
   const tree = buildArtifactTree(artifacts.slice(0, 24));
   const root = createArtifactFolderRow(tree.rootName, 0, artifacts.length);
-  list.replaceChildren(root, ...tree.children.flatMap((node) => renderArtifactTreeNode(node, selectedArtifact, 1)));
+  list.replaceChildren(
+    ...[createDeliverySummary(delivery), root].filter(Boolean),
+    ...tree.children.flatMap((node) => renderArtifactTreeNode(node, selectedArtifact, 1)),
+  );
+}
+
+function createDeliverySummary(delivery) {
+  if (!delivery) {
+    return null;
+  }
+
+  const dict = messages[currentLang] ?? messages.zh;
+  const card = document.createElement("article");
+  card.className = `artifact-delivery-card artifact-delivery-${delivery.state || "empty"}`;
+  const header = document.createElement("div");
+  header.className = "artifact-delivery-head";
+  header.append(
+    createText("strong", dict.artifactDeliveryTitle),
+    createText("small", getDeliveryStateLabel(delivery.state, dict)),
+  );
+
+  const stats = document.createElement("div");
+  stats.className = "artifact-delivery-stats";
+  stats.append(
+    createDeliveryMetric(dict.artifactDeliveryArtifacts, String(delivery.totalArtifacts ?? 0)),
+    createDeliveryMetric(dict.artifactDeliveryPrimary, delivery.primaryArtifactId || dict.notAvailable),
+    createDeliveryMetric(dict.artifactDeliveryTotalSize, formatBytes(delivery.totalSizeBytes)),
+    createDeliveryMetric(dict.artifactDeliveryOpenable, String(delivery.openableArtifactIds?.length ?? 0)),
+  );
+  card.append(header, stats);
+
+  const constraints = Array.isArray(delivery.constraints) ? delivery.constraints.filter(Boolean) : [];
+  if (constraints.length > 0) {
+    const note = document.createElement("small");
+    note.className = "artifact-delivery-constraints";
+    note.textContent = `${dict.artifactDeliveryConstraints}: ${constraints[0]}`;
+    card.append(note);
+  }
+  return card;
+}
+
+function createDeliveryMetric(label, value) {
+  const item = document.createElement("span");
+  item.className = "artifact-delivery-metric";
+  item.append(createText("small", label), createText("strong", value));
+  return item;
+}
+
+function getDeliveryStateLabel(state, dict) {
+  const labels = {
+    ready: dict.artifactDeliveryStateReady,
+    empty: dict.artifactDeliveryStateEmpty,
+    partial: dict.artifactDeliveryStatePartial,
+    failed: dict.artifactDeliveryStateFailed,
+  };
+  return labels[state] || labels.empty;
 }
 
 function createEmptyArtifactState() {

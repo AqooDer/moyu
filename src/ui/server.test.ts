@@ -199,6 +199,9 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(created.body.workbench.selectedRun.execution.title, "Meta-Agent 创建执行模式");
     assert.equal(created.body.workbench.selectedRun.execution.mode, "dry_run");
     assert.equal(created.body.workbench.selectedRun.execution.queue, "meta.create-agent.inline");
+    assert.equal(created.body.workbench.selectedRun.delivery.title, "Meta-Agent 草案交付清单");
+    assert.equal(created.body.workbench.selectedRun.delivery.state, "ready");
+    assert.equal(created.body.workbench.selectedRun.delivery.totalArtifacts, created.body.result.files.length);
     assert.equal(created.body.workbench.selectedRun.worker.queue, "meta.create-agent.inline");
     assert.equal(created.body.workbench.selectedRun.worker.state, "succeeded");
     assert.equal(
@@ -254,6 +257,9 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(draftRun.trace.execution.title, "Meta-Agent 创建执行模式");
     assert.equal(draftRun.trace.execution.mode, "dry_run");
     assert.equal(draftRun.trace.execution.queue, "meta.create-agent.inline");
+    assert.equal(draftRun.trace.delivery.title, "Meta-Agent 草案交付清单");
+    assert.equal(draftRun.trace.delivery.state, "ready");
+    assert.equal(draftRun.trace.delivery.totalArtifacts, created.body.result.files.length);
     assert.equal(draftRun.trace.worker.queue, "meta.create-agent.inline");
     assert.equal(draftRun.trace.worker.state, "succeeded");
     assert.equal(
@@ -416,6 +422,9 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(run.body.workbench.selectedRun.execution.mode, "dry_run");
     assert.equal(run.body.workbench.selectedRun.execution.queue, "agent.run.inline");
     assert.equal(run.body.workbench.selectedRun.execution.dryRunEffective, true);
+    assert.equal(run.body.workbench.selectedRun.delivery.title, "Agent 产物交付清单");
+    assert.equal(run.body.workbench.selectedRun.delivery.state, "empty");
+    assert.equal(run.body.workbench.selectedRun.delivery.totalArtifacts, 0);
     assert.equal(run.body.workbench.selectedRun.worker.queue, "agent.run.inline");
     assert.equal(run.body.workbench.selectedRun.worker.state, "succeeded");
     assert.equal(
@@ -446,6 +455,9 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(runDetail.trace.execution.mode, "dry_run");
     assert.equal(runDetail.trace.execution.queue, "agent.run.inline");
     assert.equal(runDetail.trace.execution.dryRunEffective, true);
+    assert.equal(runDetail.trace.delivery.title, "Agent 产物交付清单");
+    assert.equal(runDetail.trace.delivery.state, "empty");
+    assert.equal(runDetail.trace.delivery.totalArtifacts, 0);
     assert.equal(runDetail.trace.worker.queue, "agent.run.inline");
     assert.equal(runDetail.trace.worker.state, "succeeded");
     assert.equal(
@@ -491,6 +503,8 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedDraft.selectedRun.execution.title, "Meta-Agent 创建执行模式");
     assert.equal(selectedDraft.selectedRun.execution.mode, "dry_run");
     assert.equal(selectedDraft.selectedRun.execution.queue, "meta.create-agent.inline");
+    assert.equal(selectedDraft.selectedRun.delivery.state, "ready");
+    assert.equal(selectedDraft.selectedRun.delivery.totalArtifacts, created.body.result.files.length);
     assert.equal(selectedDraft.selectedRun.worker.queue, "meta.create-agent.inline");
     assert.equal(selectedDraft.selectedRun.worker.state, "succeeded");
     assert.equal(
@@ -532,6 +546,8 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedRun.selectedRun.execution.mode, "dry_run");
     assert.equal(selectedRun.selectedRun.execution.queue, "agent.run.inline");
     assert.equal(selectedRun.selectedRun.execution.dryRunEffective, true);
+    assert.equal(selectedRun.selectedRun.delivery.state, "empty");
+    assert.equal(selectedRun.selectedRun.delivery.totalArtifacts, 0);
     assert.equal(selectedRun.selectedRun.worker.queue, "agent.run.inline");
     assert.equal(selectedRun.selectedRun.worker.state, "succeeded");
     assert.equal(
@@ -632,6 +648,7 @@ test("Artifact preview API returns metadata-only responses for Office-like binar
     assert.equal(workbench.selectedRun.sandbox, null);
     assert.equal(workbench.selectedRun.policy, null);
     assert.equal(workbench.selectedRun.execution, null);
+    assert.equal(workbench.selectedRun.delivery, null);
     assert.equal(workbench.selectedRun.worker, null);
     assert.deepEqual(workbench.selectedRun.events, []);
 
@@ -641,6 +658,7 @@ test("Artifact preview API returns metadata-only responses for Office-like binar
     assert.equal(run.trace.sandbox, null);
     assert.equal(run.trace.policy, null);
     assert.equal(run.trace.execution, null);
+    assert.equal(run.trace.delivery, null);
     assert.equal(run.trace.worker, null);
     assert.deepEqual(run.trace.events, []);
   } finally {

@@ -2,6 +2,7 @@ import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import type {
+  ArtifactDeliveryRecord,
   ArtifactRecord,
   ArtifactRole,
   ExecutionCapabilityState,
@@ -48,6 +49,7 @@ export class RuntimeStore {
       policy: null,
       execution: null,
       sandbox: null,
+      delivery: null,
       worker: null,
       events: [],
       steps: [],
@@ -187,6 +189,25 @@ export class RuntimeStore {
       },
     });
     return this.trace.sandbox;
+  }
+
+  setArtifactDelivery(delivery: ArtifactDeliveryRecord) {
+    this.trace.delivery = normalizeArtifactDelivery(delivery, this.trace.run.id, this.trace.run.workId);
+    this.recordEvent({
+      kind: "artifact_delivery_prepared",
+      title: this.trace.delivery.title,
+      summary: `${this.trace.delivery.totalArtifacts} artifact(s), ${this.trace.delivery.totalSizeBytes} byte(s) prepared for delivery.`,
+      state: this.trace.delivery.state,
+      data: {
+        deliveryId: this.trace.delivery.id,
+        totalArtifacts: this.trace.delivery.totalArtifacts,
+        totalSizeBytes: this.trace.delivery.totalSizeBytes,
+        primaryArtifactId: this.trace.delivery.primaryArtifactId,
+        downloadableArtifactIds: this.trace.delivery.downloadableArtifactIds,
+        openableArtifactIds: this.trace.delivery.openableArtifactIds,
+      },
+    });
+    return this.trace.delivery;
   }
 
   createWorkerJob(input: {
@@ -764,6 +785,102 @@ function normalizeSandboxCleanupPolicy(value: unknown): SandboxCleanupPolicy {
   return ["keep", "ephemeral", "manual"].includes(String(value))
     ? (value as SandboxCleanupPolicy)
     : "keep";
+}
+
+function normalizeArtifactDelivery(
+  delivery: ArtifactDeliveryRecord,
+  runId: string,
+  workId?: string | null,
+): ArtifactDeliveryRecord {
+  const updatedAt =
+    typeof delivery.updatedAt === "string" && delivery.updatedAt ? delivery.updatedAt : now();
+  const items = Array.isArray(delivery.items)
+    ? delivery.items.map((item) => ({
+        artifactId: typeof item.artifactId === "string" ? item.artifactId : "",
+        name: typeof item.name === "string" ? item.name : "",
+        type: typeof item.type === "string" ? item.type : "file",
+        role: ["primary", "intermediate", "report", "log"].includes(String(item.role))
+          ? item.role
+          : "primary",
+        path: typeof item.path === "string" ? item.path : "",
+        relativePath:
+          typeof item.relativePath === "string" && item.relativePath ? item.relativePath : null,
+        sizeBytes: normalizeCount(item.sizeBytes),
+        sha256: typeof item.sha256 === "string" ? item.sha256 : "",
+        previewKind: normalizeArtifactDeliveryPreviewKind(item.previewKind),
+        canInline: Boolean(item.canInline),
+        canOpenExternal: Boolean(item.canOpenExternal),
+        state: normalizeArtifactDeliveryItemState(item.state),
+        summary: typeof item.summary === "string" ? item.summary : "",
+      }))
+    : [];
+  return {
+    id: delivery.id || `delivery-${runId}`,
+    runId,
+    workId: workId || delivery.workId || `work-${runId}`,
+    title: delivery.title || "Artifact delivery manifest",
+    state: normalizeArtifactDeliveryState(delivery.state, items.length),
+    summary: normalizeArtifactDeliverySummary(delivery.summary, items),
+    items,
+    totalArtifacts: normalizeCount(delivery.totalArtifacts || items.length),
+    totalSizeBytes: normalizeCount(
+      delivery.totalSizeBytes || items.reduce((total, item) => total + item.sizeBytes, 0),
+    ),
+    primaryArtifactId:
+      typeof delivery.primaryArtifactId === "string" && delivery.primaryArtifactId
+        ? delivery.primaryArtifactId
+        : null,
+    downloadableArtifactIds: normalizeStringList(delivery.downloadableArtifactIds),
+    openableArtifactIds: normalizeStringList(delivery.openableArtifactIds),
+    constraints: normalizeStringList(delivery.constraints),
+    createdAt:
+      typeof delivery.createdAt === "string" && delivery.createdAt ? delivery.createdAt : updatedAt,
+    updatedAt,
+  };
+}
+
+function normalizeArtifactDeliverySummary(
+  summary: ArtifactDeliveryRecord["summary"] | undefined,
+  items: ArtifactDeliveryRecord["items"],
+): ArtifactDeliveryRecord["summary"] {
+  if (summary && typeof summary === "object") {
+    return {
+      primary: normalizeCount(summary.primary),
+      intermediate: normalizeCount(summary.intermediate),
+      report: normalizeCount(summary.report),
+      log: normalizeCount(summary.log),
+      inlinePreviewable: normalizeCount(summary.inlinePreviewable),
+      externalOpenable: normalizeCount(summary.externalOpenable),
+    };
+  }
+
+  return {
+    primary: items.filter((item) => item.role === "primary").length,
+    intermediate: items.filter((item) => item.role === "intermediate").length,
+    report: items.filter((item) => item.role === "report").length,
+    log: items.filter((item) => item.role === "log").length,
+    inlinePreviewable: items.filter((item) => item.canInline).length,
+    externalOpenable: items.filter((item) => item.canOpenExternal).length,
+  };
+}
+
+function normalizeArtifactDeliveryState(value: unknown, itemCount: number) {
+  if (["ready", "empty", "partial", "failed"].includes(String(value))) {
+    return value as ArtifactDeliveryRecord["state"];
+  }
+  return itemCount > 0 ? "ready" : "empty";
+}
+
+function normalizeArtifactDeliveryItemState(value: unknown) {
+  return ["ready", "missing", "blocked"].includes(String(value))
+    ? (value as ArtifactDeliveryRecord["items"][number]["state"])
+    : "ready";
+}
+
+function normalizeArtifactDeliveryPreviewKind(value: unknown) {
+  return ["text", "image", "pdf", "office", "binary", "unsupported"].includes(String(value))
+    ? (value as ArtifactDeliveryRecord["items"][number]["previewKind"])
+    : "unsupported";
 }
 
 function normalizePolicyDecisionState(value: unknown): PolicyDecisionState {

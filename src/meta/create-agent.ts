@@ -2,6 +2,7 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { stringify } from "yaml";
 import { formatValidationResult, validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
+import { createArtifactDeliveryRecord } from "../runtime/artifact-delivery.js";
 import { startInlineWorkerJob } from "../runtime/async-worker.js";
 import { createMetaAgentExecutionMode } from "../runtime/execution-mode.js";
 import { createMetaAgentMiddlewarePipeline } from "../runtime/middleware-pipeline.js";
@@ -282,6 +283,15 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
         : "Meta-Agent scaffold generated as a reviewable draft; pass --persist to install it.",
     );
     runtime.setRunState(validation.ok ? "succeeded" : "failed", validation.ok ? null : "agent validation failed");
+    runtime.setArtifactDelivery(
+      createArtifactDeliveryRecord({
+        run: runtime.snapshot.run,
+        artifacts: runtime.snapshot.artifacts,
+        title: "Meta-Agent 草案交付清单",
+        state: validation.ok ? "ready" : "partial",
+        createdAt: runtime.snapshot.run.endedAt ?? runtime.snapshot.run.startedAt,
+      }),
+    );
     const traceFile = await runtime.writeTrace();
     await recordRunConversation({
       runId,

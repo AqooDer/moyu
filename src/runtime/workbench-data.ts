@@ -10,6 +10,7 @@ import {
 } from "./artifacts.js";
 import { getRunHistoryDetail, listRunHistory } from "./history.js";
 import type {
+  ArtifactDeliveryRecord,
   ConversationMessage,
   ExecutionModeRecord,
   MiddlewarePipelineRecord,
@@ -62,6 +63,7 @@ export interface WorkbenchRun {
   policy: PolicyEvaluationRecord | null;
   execution: ExecutionModeRecord | null;
   sandbox: SandboxFilesystemRecord | null;
+  delivery: ArtifactDeliveryRecord | null;
   worker: WorkerJobRecord | null;
   events: TraceEventRecord[];
   steps: WorkbenchStep[];
@@ -217,6 +219,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
       policy: detail.trace.policy ?? null,
       execution: detail.trace.execution ?? null,
       sandbox: detail.trace.sandbox ?? null,
+      delivery: detail.trace.delivery ?? null,
       worker: detail.trace.worker ?? null,
       events: detail.trace.events ?? [],
       steps: detail.trace.steps.map(toWorkbenchStep),
@@ -244,6 +247,7 @@ async function getWorkbenchRun(runId: string, tracesRoot: string): Promise<Workb
     policy: null,
     execution: null,
     sandbox: null,
+    delivery: null,
     worker: null,
     events: [],
     steps: [],

@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AgentManifestSummary } from "./registry.js";
 import { readImageRelayConfig } from "../lib/env.js";
 import { generateImagesWithRelay } from "../lib/openai-compat-image.js";
+import { createArtifactDeliveryRecord } from "../runtime/artifact-delivery.js";
 import { startInlineWorkerJob } from "../runtime/async-worker.js";
 import { createImageAgentExecutionMode } from "../runtime/execution-mode.js";
 import { createImageAgentMiddlewarePipeline } from "../runtime/middleware-pipeline.js";
@@ -238,6 +239,14 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
       runtime.updatePlanStep("register-artifacts", "skipped");
       runtime.updatePlanStep("write-trace", "succeeded");
       runtime.setRunState("succeeded");
+      runtime.setArtifactDelivery(
+        createArtifactDeliveryRecord({
+          run: runtime.snapshot.run,
+          artifacts: runtime.snapshot.artifacts,
+          title: "Agent 产物交付清单",
+          createdAt: runtime.snapshot.run.endedAt ?? runtime.snapshot.run.startedAt,
+        }),
+      );
       const traceFile = await runtime.writeTrace();
       const summary = formatRunSummary({
         agent,
@@ -272,6 +281,14 @@ export async function runImageAgent(agent: AgentManifestSummary, input: AgentRun
 
     runtime.updatePlanStep("write-trace", "succeeded");
     runtime.setRunState("succeeded");
+    runtime.setArtifactDelivery(
+      createArtifactDeliveryRecord({
+        run: runtime.snapshot.run,
+        artifacts: runtime.snapshot.artifacts,
+        title: "Agent 产物交付清单",
+        createdAt: runtime.snapshot.run.endedAt ?? runtime.snapshot.run.startedAt,
+      }),
+    );
     const traceFile = await runtime.writeTrace();
     const summary = formatRunSummary({
       agent,

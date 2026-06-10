@@ -1790,6 +1790,92 @@ kbd {
   line-height: 1.15;
 }
 
+.artifact-delivery-card {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(7, 140, 132, 0.14);
+  border-radius: 7px;
+  background: rgba(239, 248, 246, 0.72);
+  padding: 9px;
+}
+
+.artifact-delivery-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.artifact-delivery-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-delivery-head small {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(7, 140, 132, 0.1);
+  color: #087b72;
+  font-size: 10px;
+  font-weight: 680;
+  padding: 2px 7px;
+}
+
+.artifact-delivery-failed .artifact-delivery-head small {
+  background: rgba(164, 58, 38, 0.1);
+  color: #9b3826;
+}
+
+.artifact-delivery-partial .artifact-delivery-head small {
+  background: rgba(161, 112, 35, 0.12);
+  color: #8a5f21;
+}
+
+.artifact-delivery-empty .artifact-delivery-head small {
+  background: rgba(77, 86, 83, 0.1);
+  color: #616866;
+}
+
+.artifact-delivery-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.artifact-delivery-metric {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.62);
+  padding: 5px 6px;
+}
+
+.artifact-delivery-metric small,
+.artifact-delivery-constraints {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-delivery-metric strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 640;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .artifact-folder-row {
   display: grid;
   grid-template-columns: 14px minmax(0, 1fr) auto;

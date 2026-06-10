@@ -20,9 +20,13 @@ export type ExecutionCapabilityState = "enabled" | "planned" | "skipped" | "bloc
 export type SandboxDirectoryKind = "workspace" | "uploads" | "outputs" | "temp" | "traces";
 export type SandboxFilesystemState = "ready" | "partial" | "skipped" | "failed";
 export type SandboxCleanupPolicy = "keep" | "ephemeral" | "manual";
+export type ArtifactDeliveryState = "ready" | "empty" | "partial" | "failed";
+export type ArtifactDeliveryItemState = "ready" | "missing" | "blocked";
+export type ArtifactDeliveryPreviewKind = "text" | "image" | "pdf" | "office" | "binary" | "unsupported";
 export type TraceEventKind =
   | "execution_mode_selected"
   | "sandbox_created"
+  | "artifact_delivery_prepared"
   | "worker_queued"
   | "worker_started"
   | "worker_finished"
@@ -303,6 +307,49 @@ export interface ArtifactRecord {
   createdAt: string;
 }
 
+export interface ArtifactDeliverySummary {
+  primary: number;
+  intermediate: number;
+  report: number;
+  log: number;
+  inlinePreviewable: number;
+  externalOpenable: number;
+}
+
+export interface ArtifactDeliveryItemRecord {
+  artifactId: string;
+  name: string;
+  type: string;
+  role: ArtifactRole;
+  path: string;
+  relativePath: string | null;
+  sizeBytes: number;
+  sha256: string;
+  previewKind: ArtifactDeliveryPreviewKind;
+  canInline: boolean;
+  canOpenExternal: boolean;
+  state: ArtifactDeliveryItemState;
+  summary: string;
+}
+
+export interface ArtifactDeliveryRecord {
+  id: string;
+  runId: string;
+  workId: string;
+  title: string;
+  state: ArtifactDeliveryState;
+  summary: ArtifactDeliverySummary;
+  items: ArtifactDeliveryItemRecord[];
+  totalArtifacts: number;
+  totalSizeBytes: number;
+  primaryArtifactId: string | null;
+  downloadableArtifactIds: string[];
+  openableArtifactIds: string[];
+  constraints: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type KnowledgeWriteBackDecision = "approved";
 
 export interface KnowledgeWriteBackRecord {
@@ -338,6 +385,7 @@ export interface RuntimeTrace {
   policy: PolicyEvaluationRecord | null;
   execution: ExecutionModeRecord | null;
   sandbox: SandboxFilesystemRecord | null;
+  delivery: ArtifactDeliveryRecord | null;
   worker: WorkerJobRecord | null;
   events: TraceEventRecord[];
   steps: StepRecord[];

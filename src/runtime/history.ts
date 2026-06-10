@@ -3,6 +3,7 @@ import { platform } from "node:os";
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import type {
+  ArtifactDeliveryRecord,
   ArtifactRecord,
   ExecutionCapabilityState,
   ExecutionMode,
@@ -161,6 +162,8 @@ export function formatRunHistoryDetail(detail: RunHistoryDetail) {
     lines.push(...formatEventLines(trace.events));
     lines.push("", "steps:");
     lines.push(...formatStepLines(trace));
+    lines.push("", "delivery:");
+    lines.push(...formatDeliveryLines(trace.delivery));
     lines.push("", "artifacts:");
     lines.push(...formatArtifactLines(trace.artifacts));
     lines.push("", "knowledge_write_backs:");
@@ -293,6 +296,30 @@ function formatArtifactLines(artifacts: ArtifactRecord[]) {
   });
 }
 
+function formatDeliveryLines(delivery: ArtifactDeliveryRecord | null) {
+  if (!delivery) {
+    return ["- none"];
+  }
+
+  const lines = [
+    `- ${delivery.id} ${delivery.title} ${delivery.state} artifacts=${delivery.totalArtifacts} total=${formatBytes(
+      delivery.totalSizeBytes,
+    )} primary=${delivery.primaryArtifactId ?? "-"}`,
+  ];
+  for (const item of delivery.items) {
+    const relativePath = item.relativePath ?? path.relative(process.cwd(), item.path);
+    lines.push(
+      `  - ${item.artifactId} ${item.name} ${item.type}/${item.role} ${formatBytes(
+        item.sizeBytes,
+      )} preview=${item.previewKind} inline=${item.canInline ? "yes" : "no"} open=${item.canOpenExternal ? "yes" : "no"} path=${relativePath}`,
+    );
+  }
+  if (delivery.constraints.length > 0) {
+    lines.push(`  constraints: ${delivery.constraints.join(" / ")}`);
+  }
+  return lines;
+}
+
 function normalizeRuntimeTrace(trace: RuntimeTrace): RuntimeTrace {
   return {
     ...trace,
@@ -301,6 +328,7 @@ function normalizeRuntimeTrace(trace: RuntimeTrace): RuntimeTrace {
     policy: normalizePolicyEvaluation(trace.policy),
     execution: normalizeExecutionMode(trace.execution),
     sandbox: normalizeSandboxFilesystem(trace.sandbox),
+    delivery: normalizeArtifactDelivery(trace.delivery),
     worker: normalizeWorkerJob(trace.worker),
     events: normalizeTraceEvents(trace.events),
     run: {
@@ -344,6 +372,53 @@ function normalizePlan(plan: unknown): PlanRecord | null {
           summary: typeof step.summary === "string" ? step.summary : "",
         }))
       : [],
+    createdAt: typeof raw.createdAt === "string" && raw.createdAt ? raw.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof raw.updatedAt === "string" && raw.updatedAt ? raw.updatedAt : new Date(0).toISOString(),
+  };
+}
+
+function normalizeArtifactDelivery(delivery: unknown): ArtifactDeliveryRecord | null {
+  if (!delivery || typeof delivery !== "object") {
+    return null;
+  }
+  const raw = delivery as ArtifactDeliveryRecord;
+  const items = Array.isArray(raw.items)
+    ? raw.items.map((item) => ({
+        artifactId: typeof item.artifactId === "string" && item.artifactId ? item.artifactId : "artifact-unknown",
+        name: typeof item.name === "string" && item.name ? item.name : "untitled",
+        type: typeof item.type === "string" && item.type ? item.type : "file",
+        role: ["primary", "intermediate", "report", "log"].includes(String(item.role))
+          ? item.role
+          : "primary",
+        path: typeof item.path === "string" ? item.path : "",
+        relativePath: typeof item.relativePath === "string" && item.relativePath ? item.relativePath : null,
+        sizeBytes: normalizeCount(item.sizeBytes, 0),
+        sha256: typeof item.sha256 === "string" ? item.sha256 : "",
+        previewKind: normalizeArtifactDeliveryPreviewKind(item.previewKind),
+        canInline: Boolean(item.canInline),
+        canOpenExternal: Boolean(item.canOpenExternal),
+        state: normalizeArtifactDeliveryItemState(item.state),
+        summary: typeof item.summary === "string" ? item.summary : "",
+      }))
+    : [];
+  return {
+    id: typeof raw.id === "string" && raw.id ? raw.id : `delivery-${raw.runId || "unknown"}`,
+    runId: typeof raw.runId === "string" && raw.runId ? raw.runId : "run-unknown",
+    workId: typeof raw.workId === "string" && raw.workId ? raw.workId : "work-unknown",
+    title: typeof raw.title === "string" && raw.title ? raw.title : "Artifact delivery manifest",
+    state: normalizeArtifactDeliveryState(raw.state, items.length),
+    summary: normalizeArtifactDeliverySummary(raw.summary, items),
+    items,
+    totalArtifacts: normalizeCount(raw.totalArtifacts, items.length),
+    totalSizeBytes: normalizeCount(
+      raw.totalSizeBytes,
+      items.reduce((total, item) => total + item.sizeBytes, 0),
+    ),
+    primaryArtifactId:
+      typeof raw.primaryArtifactId === "string" && raw.primaryArtifactId ? raw.primaryArtifactId : null,
+    downloadableArtifactIds: normalizeStringList(raw.downloadableArtifactIds),
+    openableArtifactIds: normalizeStringList(raw.openableArtifactIds),
+    constraints: normalizeStringList(raw.constraints),
     createdAt: typeof raw.createdAt === "string" && raw.createdAt ? raw.createdAt : new Date(0).toISOString(),
     updatedAt: typeof raw.updatedAt === "string" && raw.updatedAt ? raw.updatedAt : new Date(0).toISOString(),
   };
@@ -663,6 +738,44 @@ function normalizePolicySummary(
   };
 }
 
+function normalizeArtifactDeliverySummary(
+  summary: unknown,
+  items: ArtifactDeliveryRecord["items"],
+): ArtifactDeliveryRecord["summary"] {
+  const raw = summary && typeof summary === "object" ? (summary as Record<string, unknown>) : {};
+  return {
+    primary: normalizeCount(raw.primary, items.filter((item) => item.role === "primary").length),
+    intermediate: normalizeCount(raw.intermediate, items.filter((item) => item.role === "intermediate").length),
+    report: normalizeCount(raw.report, items.filter((item) => item.role === "report").length),
+    log: normalizeCount(raw.log, items.filter((item) => item.role === "log").length),
+    inlinePreviewable: normalizeCount(raw.inlinePreviewable, items.filter((item) => item.canInline).length),
+    externalOpenable: normalizeCount(raw.externalOpenable, items.filter((item) => item.canOpenExternal).length),
+  };
+}
+
+function normalizeArtifactDeliveryState(value: unknown, itemCount: number): ArtifactDeliveryRecord["state"] {
+  if (["ready", "empty", "partial", "failed"].includes(String(value))) {
+    return value as ArtifactDeliveryRecord["state"];
+  }
+  return itemCount > 0 ? "ready" : "empty";
+}
+
+function normalizeArtifactDeliveryPreviewKind(
+  value: unknown,
+): ArtifactDeliveryRecord["items"][number]["previewKind"] {
+  return ["text", "image", "pdf", "office", "binary", "unsupported"].includes(String(value))
+    ? (value as ArtifactDeliveryRecord["items"][number]["previewKind"])
+    : "unsupported";
+}
+
+function normalizeArtifactDeliveryItemState(
+  value: unknown,
+): ArtifactDeliveryRecord["items"][number]["state"] {
+  return ["ready", "missing", "blocked"].includes(String(value))
+    ? (value as ArtifactDeliveryRecord["items"][number]["state"])
+    : "ready";
+}
+
 function normalizePolicyCheckKind(value: unknown): PolicyCheckKind {
   return ["capability", "permission", "mcp", "runtime", "model", "artifact"].includes(String(value))
     ? (value as PolicyCheckKind)
@@ -783,6 +896,7 @@ function normalizeTraceEventKind(value: unknown): TraceEventKind {
   return [
     "execution_mode_selected",
     "sandbox_created",
+    "artifact_delivery_prepared",
     "worker_queued",
     "worker_started",
     "worker_finished",

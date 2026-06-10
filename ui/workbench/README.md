@@ -60,13 +60,13 @@ npm run workbench:export-data
 
 `prototype:workbench` 会额外提供本地 API：
 
-- `GET /api/workbench`：读取最新 Run、Trace、Plan、Execution Mode、Sandbox Filesystem、Worker、TraceEvent 和产物
+- `GET /api/workbench`：读取最新 Run、Trace、Plan、Execution Mode、Sandbox Filesystem、Artifact Delivery Manifest、Worker、TraceEvent 和产物
 - `GET /api/settings`：读取设置中心数据，覆盖模型角色、知识库、Skill、Tool、MCP、运行策略与 Agent 默认继承关系
 - `GET /api/plugins`：读取 Plugin Registry 能力、权限和运行策略声明
 - `GET /api/policies`：读取权限声明与 runtime policy 子集
 - `GET /api/works`：读取本地持久化 Work 会话，可按 `state` 筛选
 - `GET /api/messages?workId=<work_id>|runId=<run_id>`：读取持久化 Conversation Message
-- `GET /api/runs/:id`：读取原始 Run Trace，包含 plan、execution、sandbox、middleware、policy、worker 和 events 快照
+- `GET /api/runs/:id`：读取原始 Run Trace，包含 plan、execution、sandbox、delivery、middleware、policy、worker 和 events 快照
 - `GET /api/artifact-preview?id=<artifact_id>`：读取统一产物预览响应
 - `GET /api/artifact-content?id=<artifact_id>`：读取文本产物内容，用于右侧检查器审核草案文件
 - `POST /api/artifact/open`：用系统默认应用打开某个本地产物文件
@@ -112,6 +112,7 @@ npm run dev -- agent validate /private/tmp/moyu-meta-create-agent/custom__meta-i
 - 点击确认后推进创建状态：更新队列、Trace、会话消息和当前 Agent 产物
 - 前端使用集中式 `prototypeState` 驱动阶段、产物、Trace 和选中产物渲染
 - 当前 Agent 产物列表
+- 当前 Run 的 Artifact Delivery Manifest 交付摘要
 - 当前 Agent 创建 Trace
 - Agent 上下文、Policy Evaluation 与运行详情
 - 设置中心：通过独立 `/api/settings` 读取模型角色、知识库、Skill、Tool、MCP 与运行策略

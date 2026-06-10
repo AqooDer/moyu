@@ -58,6 +58,11 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
       runId: draft.runId,
       outputsPath: `artifacts/meta-agent-runs/${draft.runId}`,
     });
+    assert.equal(draftTrace.delivery.title, "Meta-Agent 草案交付清单");
+    assert.equal(draftTrace.delivery.state, "ready");
+    assert.equal(draftTrace.delivery.totalArtifacts, draft.files.length);
+    assert.equal(draftTrace.delivery.primaryArtifactId, "art-" + draft.runId + "-1");
+    assert.equal(draftTrace.delivery.items.some((item: { name?: string }) => item.name === "manifest.yaml"), true);
     assert.equal(
       draftTrace.execution.capabilities.some(
         (capability: { id?: string; state?: string }) =>
@@ -95,6 +100,13 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     );
     assert.equal(
       draftTrace.events.some((event: { kind?: string; state?: string }) => event.kind === "sandbox_created" && event.state === "ready"),
+      true,
+    );
+    assert.equal(
+      draftTrace.events.some(
+        (event: { kind?: string; state?: string }) =>
+          event.kind === "artifact_delivery_prepared" && event.state === "ready",
+      ),
       true,
     );
     assert.equal(
@@ -214,6 +226,10 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
       runId,
       outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${runId}`,
     });
+    assert.equal(runTrace.delivery.title, "Agent 产物交付清单");
+    assert.equal(runTrace.delivery.state, "empty");
+    assert.equal(runTrace.delivery.totalArtifacts, 0);
+    assert.equal(runTrace.delivery.primaryArtifactId, null);
     assert.equal(
       runTrace.execution.capabilities.some(
         (capability: { id?: string; state?: string }) =>
@@ -294,6 +310,13 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
       true,
     );
     assert.equal(
+      runTrace.events.some(
+        (event: { kind?: string; state?: string }) =>
+          event.kind === "artifact_delivery_prepared" && event.state === "empty",
+      ),
+      true,
+    );
+    assert.equal(
       runTrace.events.some((event: { kind?: string; state?: string }) => event.kind === "worker_finished" && event.state === "succeeded"),
       true,
     );
@@ -321,6 +344,12 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
       runId: draft.runId,
       outputsPath: `artifacts/meta-agent-runs/${draft.runId}`,
     });
+    assert.equal(draftWorkbench.selectedRun?.delivery?.state, "ready");
+    assert.equal(draftWorkbench.selectedRun?.delivery?.totalArtifacts, draft.files.length);
+    assert.equal(
+      draftWorkbench.selectedRun?.delivery?.items.some((item) => item.name === "agent-draft.json"),
+      true,
+    );
     assert.equal(draftWorkbench.selectedRun?.worker?.queue, "meta.create-agent.inline");
     assert.equal(draftWorkbench.selectedRun?.worker?.state, "succeeded");
     assert.equal(
@@ -377,6 +406,8 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
       runId,
       outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${runId}`,
     });
+    assert.equal(runWorkbench.selectedRun?.delivery?.state, "empty");
+    assert.equal(runWorkbench.selectedRun?.delivery?.totalArtifacts, 0);
     assert.equal(runWorkbench.selectedRun?.worker?.queue, "agent.run.inline");
     assert.equal(runWorkbench.selectedRun?.worker?.state, "succeeded");
     assert.equal(
@@ -403,6 +434,8 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.match(formattedRun, /sandbox:/);
     assert.match(formattedRun, /outputs writable=yes cleanup=keep/);
     assert.match(formattedRun, /traces writable=yes cleanup=keep/);
+    assert.match(formattedRun, /delivery:/);
+    assert.match(formattedRun, /Agent 产物交付清单 empty artifacts=0/);
     assert.match(formattedRun, /worker:/);
     assert.match(formattedRun, /agent\.run\.inline/);
     assert.match(formattedRun, /events:/);
@@ -495,6 +528,8 @@ test("failed image Agent runs still persist trace, plan, and Workbench conversat
       runId,
       outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${runId}`,
     });
+    assert.equal(trace.delivery.state, "failed");
+    assert.equal(trace.delivery.totalArtifacts, 0);
     assert.equal(
       trace.execution.capabilities.some(
         (capability: { id?: string; state?: string }) =>
@@ -535,6 +570,7 @@ test("failed image Agent runs still persist trace, plan, and Workbench conversat
       runId,
       outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${runId}`,
     });
+    assert.equal(workbench.selectedRun?.delivery?.state, "failed");
     assert.equal(workbench.selectedRun?.worker?.state, "failed");
     assert.equal(
       workbench.selectedRun?.events.some((event) => event.kind === "worker_finished" && event.state === "failed"),
@@ -599,6 +635,8 @@ test("failed Meta-Agent persist step still persists trace, plan, and Workbench c
       runId,
       outputsPath: "agents",
     });
+    assert.equal(trace.delivery.state, "failed");
+    assert.equal(trace.delivery.totalArtifacts, 0);
     assert.equal(trace.worker.queue, "meta.create-agent.inline");
     assert.equal(trace.worker.state, "failed");
     assert.equal(trace.worker.error.code, "run_failed");
@@ -629,6 +667,7 @@ test("failed Meta-Agent persist step still persists trace, plan, and Workbench c
       runId,
       outputsPath: "agents",
     });
+    assert.equal(workbench.selectedRun?.delivery?.state, "failed");
     assert.equal(workbench.selectedRun?.worker?.state, "failed");
     assert.equal(
       workbench.selectedRun?.events.some((event) => event.kind === "worker_finished" && event.state === "failed"),

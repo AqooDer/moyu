@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { RuntimeStore } from "./store.js";
+import { createArtifactDeliveryRecord } from "./artifact-delivery.js";
 import {
   buildArtifactPreviewMetadata,
   readArtifactPreview,
@@ -98,6 +99,40 @@ test("artifact preview reads text content and keeps binary artifacts metadata-on
     assert.equal(binaryPreview?.binary, true);
     assert.equal(binaryPreview?.text, null);
     assert.equal(binaryPreview?.preview.canOpenExternal, true);
+
+    const delivery = runtime.setArtifactDelivery(
+      createArtifactDeliveryRecord({
+        run: runtime.snapshot.run,
+        artifacts: runtime.snapshot.artifacts,
+        title: "Test delivery manifest",
+        createdAt: runtime.snapshot.run.endedAt ?? runtime.snapshot.run.startedAt,
+      }),
+    );
+    assert.equal(delivery.state, "ready");
+    assert.equal(delivery.totalArtifacts, 2);
+    assert.equal(delivery.totalSizeBytes, textArtifact.sizeBytes + binaryArtifact.sizeBytes);
+    assert.equal(delivery.primaryArtifactId, textArtifact.id);
+    assert.deepEqual(delivery.summary, {
+      primary: 1,
+      intermediate: 0,
+      report: 1,
+      log: 0,
+      inlinePreviewable: 1,
+      externalOpenable: 2,
+    });
+    assert.deepEqual(
+      delivery.items.map((item) => [item.artifactId, item.previewKind, item.canInline]),
+      [
+        [textArtifact.id, "text", true],
+        [binaryArtifact.id, "office", false],
+      ],
+    );
+    assert.equal(
+      runtime.snapshot.events.some(
+        (event) => event.kind === "artifact_delivery_prepared" && event.state === "ready",
+      ),
+      true,
+    );
   } finally {
     process.chdir(previousCwd);
     await rm(workspace, { recursive: true, force: true });
