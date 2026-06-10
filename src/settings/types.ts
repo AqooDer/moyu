@@ -55,6 +55,10 @@ export interface WorkbenchModelRole {
   defaultModel: string;
   fallback: LocalizedText;
   runtimeSignals: string[];
+  providerId?: string;
+  model?: string;
+  fallbackModel?: string | null;
+  configured?: boolean;
 }
 
 export interface WorkbenchKnowledgeBase {

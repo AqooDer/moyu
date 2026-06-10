@@ -284,6 +284,22 @@ const messages = {
     settingsSectionRuntime: "运行策略",
     settingsHighlights: "关键原则",
     providersHeading: "Provider 与健康状态",
+    llmProviderConfigHeading: "对话模型配置",
+    llmProviderConfigNote: "配置 OpenAI-compatible chat provider 后，Meta-Agent 才能通过真实对话创建 Agent。",
+    llmProviderNameLabel: "Provider 名称",
+    llmProviderBaseUrlLabel: "Base URL",
+    llmProviderApiKeyLabel: "API Key",
+    llmProviderApiKeyPlaceholder: "留空则保留已加密保存的 key",
+    llmProviderApiKeyHint: "首次保存必须填写；保存后只进入本地加密 SQLite，不会回显。",
+    llmProviderModelLabel: "Chat 模型",
+    llmProviderFallbackModelLabel: "Fallback 模型",
+    saveLlmProvider: "保存模型配置",
+    savingLlmProvider: "正在保存...",
+    llmProviderSaveSucceeded: "模型配置已保存，Meta-Agent 对话会使用这个真实 Provider。",
+    llmProviderSaveFailed: "模型配置保存失败",
+    llmProviderApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run workbench:serve` 后再保存。",
+    llmProviderExistingSecret: "已保存加密 key",
+    llmProviderMissingSecret: "尚未保存 key",
     endpointLabel: "端点",
     providerDefaultFor: "默认用途",
     providerModels: "可用模型",
@@ -634,6 +650,22 @@ const messages = {
     settingsSectionRuntime: "Runtime",
     settingsHighlights: "Key principles",
     providersHeading: "Providers and health",
+    llmProviderConfigHeading: "Conversation model config",
+    llmProviderConfigNote: "Configure an OpenAI-compatible chat provider before the Meta Agent can create Agents through real conversation.",
+    llmProviderNameLabel: "Provider name",
+    llmProviderBaseUrlLabel: "Base URL",
+    llmProviderApiKeyLabel: "API key",
+    llmProviderApiKeyPlaceholder: "Leave blank to keep the encrypted key",
+    llmProviderApiKeyHint: "Required on first save; stored only in local encrypted SQLite and never echoed back.",
+    llmProviderModelLabel: "Chat model",
+    llmProviderFallbackModelLabel: "Fallback model",
+    saveLlmProvider: "Save model config",
+    savingLlmProvider: "Saving...",
+    llmProviderSaveSucceeded: "Model config saved. Meta Agent conversation will use this real provider.",
+    llmProviderSaveFailed: "Failed to save model config",
+    llmProviderApiUnavailable: "This page is not served by the Workbench API. Start `npm run workbench:serve` before saving.",
+    llmProviderExistingSecret: "Encrypted key saved",
+    llmProviderMissingSecret: "No key saved yet",
     endpointLabel: "Endpoint",
     providerDefaultFor: "Default for",
     providerModels: "Models",
@@ -731,6 +763,9 @@ const prototypeState = {
   isLoadingInstallDiff: false,
   isRunningAgent: false,
   isSendingConversation: false,
+  isSavingLlmProvider: false,
+  settingsSaveMessage: "",
+  settingsSaveVariant: "",
   lastInstallConflict: null,
   metaConversationWorkId: "",
   selectedWorkId: "",
@@ -2285,6 +2320,8 @@ function renderSettingsContent(settings) {
   switch (section) {
     case "models":
       return createSettingsSection([
+        createSettingsSectionHeader("llmProviderConfigHeading", "llmProviderConfigNote"),
+        createLlmProviderSettingsForm(settings),
         createSettingsSectionHeader("providersHeading", "settingsOpenHint"),
         createSettingsCardGrid(settings.providers.map(createProviderCard)),
         createSettingsSectionHeader("modelRolesHeading"),
@@ -2373,6 +2410,168 @@ function createSettingsSectionHeader(titleKey, noteKey) {
     block.append(createText("small", dict[noteKey] || noteKey));
   }
   return block;
+}
+
+function createLlmProviderSettingsForm(settings) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const role =
+    settings.modelRoles.find((item) => item.id === "conversation-primary") ||
+    settings.modelRoles.find((item) => item.providerId) ||
+    {};
+  const provider =
+    settings.providers.find((item) => item.id === role.providerId) ||
+    settings.providers.find((item) => item.defaultFor?.includes("conversation-primary")) ||
+    settings.providers[0] ||
+    {};
+  const providerId = role.providerId || provider.id || "openai-compat";
+  const hasSecret = Boolean(provider.secretConfigured);
+  const form = document.createElement("form");
+  form.className = "settings-config-form";
+  form.setAttribute("data-settings-llm-provider-form", "");
+  const providerIdInput = document.createElement("input");
+  providerIdInput.type = "hidden";
+  providerIdInput.name = "providerId";
+  providerIdInput.value = providerId;
+  form.append(
+    providerIdInput,
+    createSettingsField("llmProviderNameLabel", "name", provider.name || "OpenAI-compatible chat provider", {
+      autocomplete: "off",
+    }),
+    createSettingsField("llmProviderBaseUrlLabel", "baseUrl", provider.endpoint || "", {
+      type: "url",
+      placeholder: "https://api.example.com/v1",
+      required: true,
+    }),
+    createSettingsField("llmProviderApiKeyLabel", "apiKey", "", {
+      type: "password",
+      autocomplete: "new-password",
+      placeholder: dict.llmProviderApiKeyPlaceholder,
+      helpText: `${hasSecret ? dict.llmProviderExistingSecret : dict.llmProviderMissingSecret} · ${dict.llmProviderApiKeyHint}`,
+    }),
+    createSettingsField("llmProviderModelLabel", "model", role.model || "", {
+      placeholder: "gpt-4.1-mini",
+      required: true,
+    }),
+    createSettingsField("llmProviderFallbackModelLabel", "fallbackModel", role.fallbackModel || "", {
+      placeholder: "gpt-4.1-mini",
+    }),
+  );
+
+  const actions = document.createElement("div");
+  actions.className = "settings-form-actions";
+  const status = document.createElement("span");
+  status.className = "settings-form-status";
+  status.setAttribute("data-settings-llm-provider-status", "");
+  status.setAttribute("aria-live", "polite");
+  setSettingsFormStatus(status, prototypeState.settingsSaveMessage, prototypeState.settingsSaveVariant);
+  const button = document.createElement("button");
+  button.type = "submit";
+  button.className = "primary-action";
+  button.textContent = prototypeState.isSavingLlmProvider ? dict.savingLlmProvider : dict.saveLlmProvider;
+  button.disabled = prototypeState.isSavingLlmProvider;
+  actions.append(button, status);
+  form.append(actions);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveLlmProviderSettings(form, status);
+  });
+  return form;
+}
+
+function createSettingsField(labelKey, name, value, options = {}) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const label = document.createElement("label");
+  label.className = "settings-field";
+  const text = document.createElement("span");
+  text.textContent = dict[labelKey] || labelKey;
+  const input = document.createElement("input");
+  input.name = name;
+  input.value = value || "";
+  input.type = options.type || "text";
+  input.placeholder = options.placeholder || "";
+  input.autocomplete = options.autocomplete || "off";
+  input.toggleAttribute("required", Boolean(options.required));
+  label.append(text, input);
+  if (options.helpText) {
+    label.append(createText("small", options.helpText));
+  }
+  return label;
+}
+
+async function saveLlmProviderSettings(form, status) {
+  const dict = messages[currentLang] ?? messages.zh;
+  if (!canUseWorkbenchApi()) {
+    setSettingsFormStatus(status, dict.llmProviderApiUnavailable, "warning");
+    return;
+  }
+  if (prototypeState.isSavingLlmProvider) {
+    return;
+  }
+
+  const formData = new FormData(form);
+  const payload = {
+    providerId: String(formData.get("providerId") || "").trim(),
+    name: String(formData.get("name") || "").trim(),
+    baseUrl: String(formData.get("baseUrl") || "").trim(),
+    apiKey: String(formData.get("apiKey") || "").trim(),
+    model: String(formData.get("model") || "").trim(),
+    fallbackModel: String(formData.get("fallbackModel") || "").trim(),
+  };
+  const button = form.querySelector("button[type='submit']");
+  prototypeState.isSavingLlmProvider = true;
+  prototypeState.settingsSaveMessage = "";
+  prototypeState.settingsSaveVariant = "";
+  if (button) {
+    button.disabled = true;
+    button.textContent = dict.savingLlmProvider;
+  }
+  setSettingsFormStatus(status, "", "");
+
+  try {
+    const response = await fetch("/api/settings/llm-provider", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok || !data.settings) {
+      const message = data?.error || dict.llmProviderSaveFailed;
+      prototypeState.settingsSaveMessage = message;
+      prototypeState.settingsSaveVariant = "error";
+      setSettingsFormStatus(status, message, "error");
+      return;
+    }
+
+    settingsState = {
+      ...settingsState,
+      status: "ready",
+      settings: data.settings,
+      error: "",
+    };
+    prototypeState.settingsSaveMessage = dict.llmProviderSaveSucceeded;
+    prototypeState.settingsSaveVariant = "success";
+    prototypeState.apiAvailable = true;
+    prototypeState.isSavingLlmProvider = false;
+    renderSettingsCenter();
+  } catch {
+    prototypeState.settingsSaveMessage = dict.llmProviderSaveFailed;
+    prototypeState.settingsSaveVariant = "error";
+    setSettingsFormStatus(status, dict.llmProviderSaveFailed, "error");
+  } finally {
+    prototypeState.isSavingLlmProvider = false;
+    if (button) {
+      button.disabled = false;
+      button.textContent = dict.saveLlmProvider;
+    }
+  }
+}
+
+function setSettingsFormStatus(status, text, variant) {
+  if (!status) {
+    return;
+  }
+  status.textContent = text || "";
+  status.dataset.variant = variant || "";
 }
 
 function createSettingsOverviewHero(overview) {

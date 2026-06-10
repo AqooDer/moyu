@@ -33,6 +33,10 @@ export async function getWorkbenchModelRoles(paths: SqliteSettingsPaths = {}): P
       id: roleId,
       ...getRoleCopy(roleId),
       defaultModel: provider && model ? `${provider} / ${model}` : "未配置 / Not configured",
+      providerId: provider,
+      model,
+      fallbackModel: fallbackModel || null,
+      configured: Boolean(configured),
       fallback: fallbackModel && configured
         ? {
             zh: `可降级到 ${fallbackModel}，并在 Trace 记录原因`,

@@ -20,7 +20,13 @@ import { getRunHistoryDetail, openRunTrace } from "../runtime/history.js";
 import { listWorkSummaries, type WorkLifecycleState } from "../runtime/work-manager.js";
 import { listConversationMessages } from "../runtime/work-store.js";
 import { buildWorkbenchData } from "../runtime/workbench-data.js";
-import { defaultSettingsDbPath, defaultSettingsKeyPath } from "../settings/store/sqlite.js";
+import {
+  defaultSettingsDbPath,
+  defaultSettingsKeyPath,
+  getProvider,
+  upsertModelRole,
+  upsertProvider,
+} from "../settings/store/sqlite.js";
 import { buildWorkbenchSettings } from "../settings/workbench.js";
 import { buildPluginRegistrySnapshot } from "../plugins/registry.js";
 
@@ -69,6 +75,15 @@ interface AgentRunRequest {
   style?: string;
   rawPrompt?: boolean;
   dryRun?: boolean;
+}
+
+interface SettingsLlmProviderRequest {
+  providerId?: string;
+  name?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  model?: string;
+  fallbackModel?: string;
 }
 
 export async function serveWorkbench(input: ServeWorkbenchOptions = {}) {
@@ -128,6 +143,64 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       settings: await buildWorkbenchSettings({
         configPath: workspaceConfigPath(rootDir),
         settingsStore: settingsStorePaths(rootDir),
+      }),
+    });
+    return;
+  }
+
+  if (method === "POST" && url.pathname === "/api/settings/llm-provider") {
+    const payload = await readJsonBody<SettingsLlmProviderRequest>(request);
+    const providerId = readSettingsString(payload.providerId) || "openai-compat";
+    const name = readSettingsString(payload.name) || "OpenAI-compatible chat provider";
+    const baseUrl = readSettingsString(payload.baseUrl);
+    const apiKey = readSettingsString(payload.apiKey);
+    const model = readSettingsString(payload.model) || "gpt-4.1-mini";
+    const fallbackModel = readSettingsString(payload.fallbackModel);
+    const settingsStore = settingsStorePaths(rootDir);
+    const existingProvider = await getProvider(providerId, settingsStore);
+
+    if (!baseUrl) {
+      writeJson(response, 400, { ok: false, code: "missing_base_url", error: "baseUrl is required" });
+      return;
+    }
+    if (!apiKey && !existingProvider?.secretConfigured) {
+      writeJson(response, 400, {
+        ok: false,
+        code: "missing_api_key",
+        error: "apiKey is required for the first LLM provider save",
+      });
+      return;
+    }
+
+    await upsertProvider(
+      {
+        id: providerId,
+        name,
+        type: "openai-compatible",
+        baseUrl,
+        defaultFor: ["conversation-primary"],
+        models: uniqueSettingsStrings([model, fallbackModel]),
+        chatModels: uniqueSettingsStrings([model, fallbackModel]),
+        imageModels: [],
+        ...(apiKey ? { apiKey } : {}),
+      },
+      settingsStore,
+    );
+    await upsertModelRole(
+      {
+        id: "conversation-primary",
+        providerId,
+        model,
+        fallbackModel: fallbackModel || null,
+      },
+      settingsStore,
+    );
+
+    writeJson(response, 200, {
+      ok: true,
+      settings: await buildWorkbenchSettings({
+        configPath: workspaceConfigPath(rootDir),
+        settingsStore,
       }),
     });
     return;
@@ -731,4 +804,12 @@ function parseRunSummary(summary: string) {
     result[line.slice(0, separator).trim()] = line.slice(separator + 1).trim();
   }
   return result;
+}
+
+function readSettingsString(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function uniqueSettingsStrings(values: string[]) {
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }

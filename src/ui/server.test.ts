@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -176,6 +176,56 @@ test("Settings API exposes real SQLite provider settings without fake endpoints"
   }
 });
 
+test("Settings API saves LLM provider config with encrypted API key", async () => {
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-settings-save-"));
+  const server = await serveWorkbench({ port: 0, rootDir: workspace });
+
+  try {
+    const missingKey = await postJson(apiUrl(server.url, "/api/settings/llm-provider"), {
+      name: "Local Chat",
+      baseUrl: "https://llm.example.com/v1",
+      model: "meta-model",
+    });
+    assert.equal(missingKey.status, 400);
+    assert.equal(missingKey.body.code, "missing_api_key");
+
+    const saved = await postJson(apiUrl(server.url, "/api/settings/llm-provider"), {
+      name: "Local Chat",
+      baseUrl: "https://llm.example.com/v1",
+      apiKey: "sk-test-secret",
+      model: "meta-model",
+      fallbackModel: "meta-fallback",
+    });
+    assert.equal(saved.status, 200);
+    assert.equal(saved.body.ok, true);
+    assert.equal(saved.body.settings.providers[0].endpoint, "https://llm.example.com/v1");
+    assert.equal(saved.body.settings.providers[0].secretConfigured, true);
+    assert.equal(
+      saved.body.settings.modelRoles.find((item: { id?: string }) => item.id === "conversation-primary")?.defaultModel,
+      "openai-compat / meta-model",
+    );
+
+    const dbBytes = await readFile(path.join(workspace, ".moyu", "settings.sqlite"));
+    assert.equal(dbBytes.includes(Buffer.from("sk-test-secret")), false);
+
+    const updated = await postJson(apiUrl(server.url, "/api/settings/llm-provider"), {
+      name: "Local Chat Updated",
+      baseUrl: "https://llm.example.com/v1",
+      model: "meta-model-2",
+    });
+    assert.equal(updated.status, 200);
+    assert.equal(updated.body.settings.providers[0].name, "Local Chat Updated");
+    assert.equal(updated.body.settings.providers[0].secretConfigured, true);
+    assert.equal(
+      updated.body.settings.modelRoles.find((item: { id?: string }) => item.id === "conversation-primary")?.defaultModel,
+      "openai-compat / meta-model-2",
+    );
+  } finally {
+    await server.close();
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
 test("Workbench static routes expose the formal frontend and prototype compatibility entry", async () => {
   const server = await serveWorkbench({ port: 0, rootDir: path.resolve(".") });
 
@@ -189,6 +239,10 @@ test("Workbench static routes expose the formal frontend and prototype compatibi
     assert.match(workbench, /data-download-artifact/);
     assert.match(workbench, /data-install-agent-diff/);
     assert.match(workbench, /data-discard-install-conflict/);
+
+    const appScript = await getText(apiUrl(server.url, "/ui/workbench/src/app.js"));
+    assert.match(appScript, /data-settings-llm-provider-form/);
+    assert.match(appScript, /\/api\/settings\/llm-provider/);
 
     const compatibility = await getText(apiUrl(server.url, "/ui/workbench-prototype/"));
     assert.match(compatibility, /ui\/workbench\//);
