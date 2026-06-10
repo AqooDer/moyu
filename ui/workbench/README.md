@@ -27,14 +27,7 @@ npm run workbench:serve
 http://127.0.0.1:4177/ui/workbench/
 ```
 
-如果 `4177` 已被普通静态服务占用，命令会自动换到下一个可用端口，并在终端打印真实地址，例如：
-
-```text
-port 4177 is busy, using 4178 instead
-workbench: http://127.0.0.1:4178/ui/workbench/
-```
-
-此时必须打开终端打印的 `workbench:` 地址；继续停留在旧的 `4177` 静态页面时，创建、打开和安装 Agent 的 API 动作不会生效。
+单个项目只启动一个 Workbench 端口。如果 `4177` 被占用，先确认监听进程属于当前项目；需要重启时先停掉旧进程，再重新执行 `npm run workbench:serve`。不要为同一个项目叠加 `4178`、`4179` 之类的新端口。
 
 如果只想看静态页面，也可以启动普通静态服务：
 
@@ -87,7 +80,16 @@ Workbench 中选择「元智能体」后，可以直接在底部输入框描述�
 4. 用户回复「确认创建」后，同一 API 强制使用 LLM 生成 Agent spec，并生成可审核 Agent 草案。
 5. 右侧检查器显示本次 Run 的 Trace、Artifact Delivery、草案文件和验证记录。
 
-这条对话链路要求 `.env` 中配置 `MOYU_LLM_PROVIDER_BASE_URL` 和 `MOYU_LLM_PROVIDER_API_KEY`。未配置或 provider 调用失败时，Workbench 会显示错误，不会回退到本地规则假装创建成功。
+这条对话链路要求先配置本地 SQLite Settings：
+
+```bash
+npm run dev -- settings configure-llm \
+  --base-url https://api.openai.com \
+  --api-key your_api_key_here \
+  --model gpt-4.1-mini
+```
+
+配置会写入 `.moyu/settings.sqlite`，API key 加密后保存，`.moyu/settings.key` 只留在本机。未配置或 provider 调用失败时，Workbench 会显示错误，不会回退到本地规则假装创建成功。
 
 如果只想从 CLI 创建，仍可直接运行：
 

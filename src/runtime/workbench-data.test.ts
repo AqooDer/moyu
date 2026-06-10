@@ -489,7 +489,10 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runWorkbench.messages[1].kind, "plan");
     assert.match(runWorkbench.messages[1].content, /执行图片生成/);
     assert.match(runWorkbench.messages[2].content, /dry-run 已完成/);
-    assert.equal(runWorkbench.settings.providers.length >= 1, true);
+    assert.equal(
+      runWorkbench.settings.providers.some((provider) => provider.endpoint.includes("relay.example.com")),
+      false,
+    );
     assert.equal(
       runWorkbench.settings.agentContexts.some(
         (item) => item.agentId === "image-gen/prototype-v1" && item.runtimeEvidence.includes("image_model"),

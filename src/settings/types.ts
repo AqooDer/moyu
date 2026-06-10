@@ -43,6 +43,7 @@ export interface WorkbenchProvider {
   endpoint: string;
   defaultFor: string[];
   models: string[];
+  secretConfigured?: boolean;
   note: LocalizedText;
 }
 

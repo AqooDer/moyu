@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { listAgents, type AgentMcpServerSummary } from "../agent/registry.js";
+import type { SqliteSettingsPaths } from "../settings/store/sqlite.js";
 import { buildWorkbenchSettings, type WorkbenchSettings } from "../settings/workbench.js";
 import {
   listArtifacts,
@@ -133,6 +134,7 @@ export async function buildWorkbenchData(
     prototypeRoot?: string;
     selectedRunId?: string;
     configPath?: string;
+    settingsStore?: SqliteSettingsPaths;
     workStorePath?: string;
   } = {},
 ): Promise<WorkbenchData> {
@@ -165,7 +167,7 @@ export async function buildWorkbenchData(
     messages,
     artifacts: workbenchArtifacts,
     agents,
-    settings: await buildWorkbenchSettings({ configPath: input.configPath }),
+    settings: await buildWorkbenchSettings({ configPath: input.configPath, settingsStore: input.settingsStore }),
   };
 }
 
@@ -176,6 +178,7 @@ export async function writeWorkbenchData(
     artifactLimit?: number;
     prototypeRoot?: string;
     configPath?: string;
+    settingsStore?: SqliteSettingsPaths;
     workStorePath?: string;
   } = {},
 ) {

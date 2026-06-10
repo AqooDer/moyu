@@ -4,12 +4,17 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { readWorkStore } from "../runtime/work-store.js";
+import { upsertModelRole, upsertProvider } from "../settings/store/sqlite.js";
 import { sendMetaAgentConversationMessage } from "./conversation.js";
 
 test("Meta-Agent conversation requires real LLM provider configuration", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-meta-conversation-missing-config-"));
   const restore = captureLlmEnv();
 
   try {
+    process.chdir(workspace);
+    delete process.env.MOYU_LLM_PROVIDER_ID;
     delete process.env.MOYU_LLM_PROVIDER_BASE_URL;
     delete process.env.MOYU_LLM_PROVIDER_API_KEY;
     delete process.env.MOYU_LLM_PROVIDER_MODEL;
@@ -18,10 +23,12 @@ test("Meta-Agent conversation requires real LLM provider configuration", async (
       sendMetaAgentConversationMessage({
         message: "创建一个研究摘要 Agent",
       }),
-      /requires MOYU_LLM_PROVIDER_BASE_URL and MOYU_LLM_PROVIDER_API_KEY/,
+      /requires a real OpenAI-compatible chat model/,
     );
   } finally {
+    process.chdir(previousCwd);
     restore();
+    await rm(workspace, { recursive: true, force: true });
   }
 });
 
@@ -160,6 +167,89 @@ test("Meta-Agent conversation uses LLM decisions and strict LLM spec creation", 
   }
 });
 
+test("Meta-Agent conversation can use encrypted SQLite provider settings without LLM env", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-meta-conversation-sqlite-"));
+  const restore = captureLlmEnv();
+  const previousFetch = globalThis.fetch;
+  const settingsStore = {
+    dbPath: path.join(workspace, ".moyu", "settings.sqlite"),
+    keyPath: path.join(workspace, ".moyu", "settings.key"),
+  };
+  const requestedUrls: string[] = [];
+
+  try {
+    process.chdir(workspace);
+    delete process.env.MOYU_LLM_PROVIDER_BASE_URL;
+    delete process.env.MOYU_LLM_PROVIDER_API_KEY;
+    delete process.env.MOYU_LLM_PROVIDER_MODEL;
+    await upsertProvider(
+      {
+        id: "openai-compat",
+        name: "Local OpenAI-compatible Provider",
+        baseUrl: "https://llm.example.com/v1",
+        defaultFor: ["conversation-primary"],
+        models: ["meta-model"],
+        chatModels: ["meta-model"],
+        apiKey: "test-key",
+      },
+      settingsStore,
+    );
+    await upsertModelRole(
+      {
+        id: "conversation-primary",
+        providerId: "openai-compat",
+        model: "meta-model",
+      },
+      settingsStore,
+    );
+    globalThis.fetch = async (input, init) => {
+      requestedUrls.push(String(input));
+      const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      const messages = body.messages as Array<{ role?: string; content?: string }>;
+      const system = messages.find((message) => message.role === "system")?.content ?? "";
+      if (system.includes("decide the next conversation action")) {
+        const userPrompt = messages.find((message) => message.role === "user")?.content ?? "";
+        return jsonChatResponse({
+          action: userPrompt.includes("确认创建") ? "create" : "ready",
+          reply: userPrompt.includes("确认创建") ? "开始创建。" : "需求已足够，确认后创建。",
+          creation_prompt: "创建一个资料整理 Agent，输入 docs，输出 markdown summary artifact。",
+          missing: [],
+        });
+      }
+      return jsonChatResponse({
+        agent_id: "research/sqlite-config-agent-v1",
+        name: "SQLite Config Agent",
+        description: "Create agents through SQLite-backed provider settings.",
+        kind: "task",
+        tags: ["settings"],
+      });
+    };
+
+    const draft = await sendMetaAgentConversationMessage({
+      message: "创建一个资料整理 Agent，输入 docs，输出 markdown summary artifact。",
+      settingsDbPath: settingsStore.dbPath,
+      settingsKeyPath: settingsStore.keyPath,
+    });
+    const created = await sendMetaAgentConversationMessage({
+      workId: draft.workId,
+      message: "确认创建",
+      settingsDbPath: settingsStore.dbPath,
+      settingsKeyPath: settingsStore.keyPath,
+    });
+
+    assert.equal(created.state, "created");
+    assert.equal(created.result?.agentId, "research/sqlite-config-agent-v1");
+    assert.equal(created.result?.specSource, "llm");
+    assert.equal(requestedUrls.every((url) => url === "https://llm.example.com/v1/chat/completions"), true);
+  } finally {
+    globalThis.fetch = previousFetch;
+    process.chdir(previousCwd);
+    restore();
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
 function jsonChatResponse(content: unknown) {
   return new Response(
     JSON.stringify({
@@ -183,10 +273,12 @@ function setLlmEnv() {
 }
 
 function captureLlmEnv() {
+  const previousProviderId = process.env.MOYU_LLM_PROVIDER_ID;
   const previousBaseUrl = process.env.MOYU_LLM_PROVIDER_BASE_URL;
   const previousApiKey = process.env.MOYU_LLM_PROVIDER_API_KEY;
   const previousModel = process.env.MOYU_LLM_PROVIDER_MODEL;
   return () => {
+    restoreEnv("MOYU_LLM_PROVIDER_ID", previousProviderId);
     restoreEnv("MOYU_LLM_PROVIDER_BASE_URL", previousBaseUrl);
     restoreEnv("MOYU_LLM_PROVIDER_API_KEY", previousApiKey);
     restoreEnv("MOYU_LLM_PROVIDER_MODEL", previousModel);

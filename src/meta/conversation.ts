@@ -1,4 +1,4 @@
-import { readMetaAgentLlmConfig, type ChatCompletionConfig } from "../lib/env.js";
+import { readMetaAgentLlmConfigFromStore, type ChatCompletionConfig } from "../lib/env.js";
 import { createChatCompletion } from "../lib/openai-compat-chat.js";
 import type { ConversationMessage, WorkState } from "../runtime/types.js";
 import {
@@ -17,6 +17,9 @@ export interface MetaConversationInput {
   name?: string;
   description?: string;
   persist?: boolean;
+  configPath?: string;
+  settingsDbPath?: string;
+  settingsKeyPath?: string;
 }
 
 export interface MetaConversationResult {
@@ -56,7 +59,7 @@ export async function sendMetaAgentConversationMessage(
   if (!message) {
     throw new Error("message is required");
   }
-  const config = readRequiredMetaConversationLlmConfig();
+  const config = await readRequiredMetaConversationLlmConfig(input);
 
   const now = new Date().toISOString();
   const workId = input.workId?.trim() || createMetaConversationWorkId();
@@ -94,6 +97,9 @@ export async function sendMetaAgentConversationMessage(
       workId,
       recordPromptMessage: false,
       requireLlmSpec: true,
+      configPath: input.configPath,
+      settingsDbPath: input.settingsDbPath,
+      settingsKeyPath: input.settingsKeyPath,
     });
     const messages = await listConversationMessages({ ...options, workId });
     return {
@@ -125,11 +131,14 @@ export async function sendMetaAgentConversationMessage(
   };
 }
 
-function readRequiredMetaConversationLlmConfig() {
-  const config = readMetaAgentLlmConfig();
+async function readRequiredMetaConversationLlmConfig(input: MetaConversationInput) {
+  const config = await readMetaAgentLlmConfigFromStore({
+    dbPath: input.settingsDbPath,
+    keyPath: input.settingsKeyPath,
+  });
   if (!config) {
     throw new MetaAgentConversationError(
-      "Meta-Agent conversation requires MOYU_LLM_PROVIDER_BASE_URL and MOYU_LLM_PROVIDER_API_KEY. Configure a real OpenAI-compatible chat model before creating Agents through conversation.",
+      "Meta-Agent conversation requires a real OpenAI-compatible chat model in local SQLite settings or MOYU_LLM_PROVIDER_* env overrides. Run `npm run dev -- settings configure-llm` before creating Agents through conversation.",
       { statusCode: 503, code: "missing_llm_provider_config" },
     );
   }

@@ -51,7 +51,7 @@ The Workbench server prints the actual local URL, usually:
 http://127.0.0.1:4177/ui/workbench/
 ```
 
-If port `4177` is already in use, Moyu automatically switches to the next available port.
+Moyu keeps one Workbench port per project. If `4177` is already in use, confirm the listener belongs to this project and stop it before starting a new server.
 
 ## Try The First Agent
 
@@ -69,15 +69,18 @@ Real image generation requires local `.env` configuration. See [Engineering Note
 
 ## Configure Meta-Agent LLM
 
-Configure an OpenAI-compatible chat model for Meta-Agent creation:
+Configure an OpenAI-compatible chat model for Meta-Agent creation in the local encrypted SQLite settings store:
 
 ```bash
-MOYU_LLM_PROVIDER_BASE_URL=https://api.openai.com
-MOYU_LLM_PROVIDER_API_KEY=your_api_key_here
-MOYU_LLM_PROVIDER_MODEL=gpt-4.1-mini
+npm run dev -- settings configure-llm \
+  --base-url https://api.openai.com \
+  --api-key your_api_key_here \
+  --model gpt-4.1-mini
 ```
 
-Workbench conversation-based Agent creation requires this configuration. If it is missing, or if the provider call fails, `/api/meta/conversation` fails clearly instead of generating a rule-based fake draft.
+This creates `.moyu/settings.sqlite` plus `.moyu/settings.key`. Provider metadata and model roles live in SQLite; API keys are encrypted before they are stored. `.moyu/` is ignored by git.
+
+Workbench conversation-based Agent creation requires this real configuration. If it is missing, or if the provider call fails, `/api/meta/conversation` fails clearly instead of generating a rule-based fake draft. `MOYU_LLM_PROVIDER_*` environment variables can still override the local SQLite settings for one-off runs.
 
 Then run:
 

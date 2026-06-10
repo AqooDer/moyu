@@ -2,7 +2,7 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { stringify } from "yaml";
 import { formatValidationResult, validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
-import { readMetaAgentLlmConfig, type ChatCompletionConfig } from "../lib/env.js";
+import { readMetaAgentLlmConfigFromStore, type ChatCompletionConfig } from "../lib/env.js";
 import { createChatCompletion } from "../lib/openai-compat-chat.js";
 import { createArtifactDeliveryRecord } from "../runtime/artifact-delivery.js";
 import { startInlineWorkerJob } from "../runtime/async-worker.js";
@@ -29,6 +29,9 @@ export interface MetaCreateAgentOptions {
   requireLlmSpec?: boolean;
   persist?: boolean;
   force?: boolean;
+  configPath?: string;
+  settingsDbPath?: string;
+  settingsKeyPath?: string;
 }
 
 export interface MetaCreateAgentResult {
@@ -425,11 +428,14 @@ async function tryDraftAgentSpecWithLlm(options: MetaCreateAgentOptions): Promis
   draft: MetaAgentLlmDraft | null;
   generation: AgentSpecGeneration;
 }> {
-  const config = readMetaAgentLlmConfig();
+  const config = await readMetaAgentLlmConfigFromStore({
+    dbPath: options.settingsDbPath,
+    keyPath: options.settingsKeyPath,
+  });
   if (!config) {
     if (options.requireLlmSpec) {
       throw new Error(
-        "MOYU_LLM_PROVIDER_BASE_URL and MOYU_LLM_PROVIDER_API_KEY are required for real Meta-Agent creation.",
+        "A real OpenAI-compatible chat model in local SQLite settings or MOYU_LLM_PROVIDER_* env overrides is required for real Meta-Agent creation.",
       );
     }
     return {

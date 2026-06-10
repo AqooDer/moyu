@@ -16,12 +16,14 @@ import { getWorkbenchSkills } from "./skills/settings.js";
 import { getWorkbenchTools } from "./tools/settings.js";
 import type { WorkbenchSettings } from "./types.js";
 import { buildPluginRegistrySnapshot } from "../plugins/registry.js";
+import type { SqliteSettingsPaths } from "./store/sqlite.js";
 
 export type { WorkbenchSettings } from "./types.js";
 
 export async function buildWorkbenchSettings(
   input: {
     configPath?: string;
+    settingsStore?: SqliteSettingsPaths;
     knowledgeBaseConfig?: WorkspaceKnowledgeBaseConfig;
   } = {},
 ): Promise<WorkbenchSettings> {
@@ -97,8 +99,8 @@ export async function buildWorkbenchSettings(
       ],
     },
     pluginRegistry: pluginRegistry.summary,
-    providers: getWorkbenchProviders(),
-    modelRoles: getWorkbenchModelRoles(),
+    providers: await getWorkbenchProviders(input.settingsStore),
+    modelRoles: await getWorkbenchModelRoles(input.settingsStore),
     knowledgeBases: getWorkbenchKnowledgeBases(knowledgeBaseConfig),
     skills: getWorkbenchSkills(),
     tools: getWorkbenchTools(),

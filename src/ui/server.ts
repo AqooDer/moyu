@@ -20,6 +20,7 @@ import { getRunHistoryDetail, openRunTrace } from "../runtime/history.js";
 import { listWorkSummaries, type WorkLifecycleState } from "../runtime/work-manager.js";
 import { listConversationMessages } from "../runtime/work-store.js";
 import { buildWorkbenchData } from "../runtime/workbench-data.js";
+import { defaultSettingsDbPath, defaultSettingsKeyPath } from "../settings/store/sqlite.js";
 import { buildWorkbenchSettings } from "../settings/workbench.js";
 import { buildPluginRegistrySnapshot } from "../plugins/registry.js";
 
@@ -88,7 +89,7 @@ export async function serveWorkbench(input: ServeWorkbenchOptions = {}) {
     }
   });
 
-  const port = await listenWithFallback(server, host, requestedPort, input.portFallback ?? true);
+  const port = await listenWithFallback(server, host, requestedPort, input.portFallback ?? false);
 
   return {
     host,
@@ -124,7 +125,10 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
     writeJson(response, 200, {
       ok: true,
       schemaVersion: 1,
-      settings: await buildWorkbenchSettings({ configPath: workspaceConfigPath(rootDir) }),
+      settings: await buildWorkbenchSettings({
+        configPath: workspaceConfigPath(rootDir),
+        settingsStore: settingsStorePaths(rootDir),
+      }),
     });
     return;
   }
@@ -307,6 +311,8 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       name: payload.name,
       description: payload.description,
       persist: Boolean(payload.persist),
+      settingsDbPath: settingsDbPath(rootDir),
+      settingsKeyPath: settingsKeyPath(rootDir),
     });
     const workbench = await buildServerWorkbenchData(rootDir);
     writeJson(response, result.validation.ok ? 200 : 422, { ok: result.validation.ok, result, workbench });
@@ -329,6 +335,8 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
         name: payload.name,
         description: payload.description,
         persist: Boolean(payload.persist),
+        settingsDbPath: settingsDbPath(rootDir),
+        settingsKeyPath: settingsKeyPath(rootDir),
       },
       { storePath: workStorePath(rootDir) },
     );
@@ -465,12 +473,28 @@ function buildServerWorkbenchData(
     ...input,
     tracesRoot: tracesRoot(rootDir),
     configPath: workspaceConfigPath(rootDir),
+    settingsStore: settingsStorePaths(rootDir),
     workStorePath: workStorePath(rootDir),
   });
 }
 
 function workspaceConfigPath(rootDir: string) {
   return path.join(rootDir, "moyu.config.json");
+}
+
+function settingsStorePaths(rootDir: string) {
+  return {
+    dbPath: settingsDbPath(rootDir),
+    keyPath: settingsKeyPath(rootDir),
+  };
+}
+
+function settingsDbPath(rootDir: string) {
+  return defaultSettingsDbPath(rootDir);
+}
+
+function settingsKeyPath(rootDir: string) {
+  return defaultSettingsKeyPath(rootDir);
 }
 
 function tracesRoot(rootDir: string) {

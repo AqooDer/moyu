@@ -51,7 +51,7 @@ Workbench 服务会在终端输出真实本地地址，通常是：
 http://127.0.0.1:4177/ui/workbench/
 ```
 
-如果 `4177` 被占用，服务会自动切换到下一个可用端口。
+Moyu 对单个项目只保留一个 Workbench 端口。如果 `4177` 被占用，先确认监听进程属于当前项目，再停掉旧进程后重新启动。
 
 ## 试运行第一个 Agent
 
@@ -69,15 +69,18 @@ npm run dev -- agent run image-gen/prototype-v1 \
 
 ## 配置 Meta-Agent 大模型
 
-为 Meta-Agent 创建 Agent 配置 OpenAI-compatible 对话模型：
+为 Meta-Agent 创建 Agent 配置 OpenAI-compatible 对话模型，配置会写入本地加密 SQLite Settings：
 
 ```bash
-MOYU_LLM_PROVIDER_BASE_URL=https://api.openai.com
-MOYU_LLM_PROVIDER_API_KEY=your_api_key_here
-MOYU_LLM_PROVIDER_MODEL=gpt-4.1-mini
+npm run dev -- settings configure-llm \
+  --base-url https://api.openai.com \
+  --api-key your_api_key_here \
+  --model gpt-4.1-mini
 ```
 
-Workbench 对话式创建 Agent 必须配置这些环境变量。缺少配置或 provider 调用失败时，`/api/meta/conversation` 会明确报错，不会生成规则化假草案。
+该命令会创建 `.moyu/settings.sqlite` 和 `.moyu/settings.key`。Provider 元数据和模型角色存入 SQLite，API key 加密后存入 secret 表；`.moyu/` 已被 git 忽略。
+
+Workbench 对话式创建 Agent 必须有这份真实配置。缺少配置或 provider 调用失败时，`/api/meta/conversation` 会明确报错，不会生成规则化假草案。`MOYU_LLM_PROVIDER_*` 环境变量仍可作为单次运行 override。
 
 然后运行：
 

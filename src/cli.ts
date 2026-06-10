@@ -32,6 +32,12 @@ import {
   listRunHistory,
 } from "./runtime/history.js";
 import { writeWorkbenchData } from "./runtime/workbench-data.js";
+import {
+  defaultSettingsDbPath,
+  defaultSettingsKeyPath,
+  upsertModelRole,
+  upsertProvider,
+} from "./settings/store/sqlite.js";
 import { runImageGenSpike } from "./spike/image-gen.js";
 import { serveWorkbench } from "./ui/server.js";
 
@@ -147,6 +153,8 @@ metaCommand
   .option("--description <text>", "Agent description")
   .option("--out <path>", "draft output root; ignored when --persist is set")
   .option("--root <path>", "installed Agents root directory", "agents")
+  .option("--settings-db <path>", "SQLite settings database path", defaultSettingsDbPath())
+  .option("--settings-key <path>", "SQLite settings encryption key path", defaultSettingsKeyPath())
   .option("--persist", "write directly into the Agents root instead of a draft directory")
   .option("--force", "allow overwriting an existing draft or Agent folder")
   .action(async (opts) => {
@@ -157,6 +165,8 @@ metaCommand
       description: opts.description,
       outDir: opts.out,
       rootDir: opts.root,
+      settingsDbPath: opts.settingsDb,
+      settingsKeyPath: opts.settingsKey,
       persist: Boolean(opts.persist),
       force: Boolean(opts.force),
     });
@@ -195,6 +205,60 @@ metaCommand
       }
       throw error;
     }
+  });
+
+const settingsCommand = program.command("settings").description("manage local SQLite settings");
+
+settingsCommand
+  .command("configure-llm")
+  .description("configure an OpenAI-compatible LLM provider in encrypted local SQLite settings")
+  .option("--provider <id>", "provider id", "openai-compat")
+  .option("--name <name>", "provider display name", "OpenAI-compatible chat provider")
+  .option("--base-url <url>", "provider base URL")
+  .option("--api-key <key>", "provider API key; if omitted, reads MOYU_LLM_PROVIDER_API_KEY")
+  .option("--model <model>", "chat model", "gpt-4.1-mini")
+  .option("--fallback-model <model>", "fallback chat model", "gpt-4.1-mini")
+  .option("--db <path>", "SQLite settings database path", defaultSettingsDbPath())
+  .option("--key <path>", "SQLite settings encryption key path", defaultSettingsKeyPath())
+  .action(async (opts) => {
+    const baseUrl = opts.baseUrl || process.env.MOYU_LLM_PROVIDER_BASE_URL;
+    const apiKey = opts.apiKey || process.env.MOYU_LLM_PROVIDER_API_KEY;
+    if (!baseUrl) {
+      throw new Error("Missing provider base URL. Pass --base-url or set MOYU_LLM_PROVIDER_BASE_URL.");
+    }
+    if (!apiKey) {
+      throw new Error("Missing provider API key. Pass --api-key or set MOYU_LLM_PROVIDER_API_KEY.");
+    }
+
+    await upsertProvider(
+      {
+        id: opts.provider,
+        name: opts.name,
+        type: "openai-compatible",
+        baseUrl,
+        defaultFor: ["conversation-primary"],
+        models: [opts.model, opts.fallbackModel].filter(Boolean),
+        chatModels: [opts.model, opts.fallbackModel].filter(Boolean),
+        imageModels: [],
+        apiKey,
+      },
+      { dbPath: opts.db, keyPath: opts.key },
+    );
+    await upsertModelRole(
+      {
+        id: "conversation-primary",
+        providerId: opts.provider,
+        model: opts.model,
+        fallbackModel: opts.fallbackModel,
+      },
+      { dbPath: opts.db, keyPath: opts.key },
+    );
+
+    console.log(`settings_db: ${path.relative(process.cwd(), path.resolve(opts.db))}`);
+    console.log(`provider: ${opts.provider}`);
+    console.log(`base_url: ${baseUrl}`);
+    console.log(`api_key: encrypted`);
+    console.log(`conversation-primary: ${opts.model}`);
   });
 
 const runCommand = program.command("run").description("inspect runtime run history");
@@ -350,10 +414,8 @@ uiCommand
     const server = await serveWorkbench({
       host: opts.host,
       port: Number.isFinite(port) && port > 0 ? port : 4177,
+      portFallback: false,
     });
-    if (server.port !== server.requestedPort) {
-      console.log(`port ${server.requestedPort} is busy, using ${server.port} instead`);
-    }
     console.log(`workbench: ${server.url}`);
     console.log(
       "api: /api/workbench, /api/settings, /api/plugins, /api/policies, /api/works, /api/messages, /api/agents, /api/runs/:id, /api/artifacts/:id, /api/artifacts/:id/download, /api/artifact-preview, /api/artifact-content, /api/artifact/open, /api/run/open-trace, /api/meta/conversation, /api/meta/create-agent, /api/meta/install-agent, /api/meta/install-agent/version, /api/meta/install-agent/diff, /api/agent/run",

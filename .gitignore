@@ -5,6 +5,7 @@ artifacts/
 .env
 .env.*
 !.env.example
+.moyu/
 moyu.config.json
 .DS_Store
 .idea/

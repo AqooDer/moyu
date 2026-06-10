@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { upsertModelRole, upsertProvider } from "../settings/store/sqlite.js";
 import { serveWorkbench } from "./server.js";
 
 test("Settings API exposes the Workbench settings center independently", async () => {
@@ -130,6 +131,51 @@ test("Settings API exposes workspace knowledge base config", async () => {
   }
 });
 
+test("Settings API exposes real SQLite provider settings without fake endpoints", async () => {
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-settings-sqlite-"));
+  const settingsStore = {
+    dbPath: path.join(workspace, ".moyu", "settings.sqlite"),
+    keyPath: path.join(workspace, ".moyu", "settings.key"),
+  };
+  await upsertProvider(
+    {
+      id: "openai-compat",
+      name: "Local OpenAI-compatible Provider",
+      baseUrl: "https://llm.example.com/v1",
+      defaultFor: ["conversation-primary", "image-generation"],
+      models: ["meta-model", "gpt-image-2"],
+      chatModels: ["meta-model"],
+      imageModels: ["gpt-image-2"],
+      apiKey: "sk-test-secret",
+    },
+    settingsStore,
+  );
+  await upsertModelRole(
+    {
+      id: "conversation-primary",
+      providerId: "openai-compat",
+      model: "meta-model",
+    },
+    settingsStore,
+  );
+  const server = await serveWorkbench({ port: 0, rootDir: workspace });
+
+  try {
+    const response = await getJson(apiUrl(server.url, "/api/settings"));
+    const providerEndpoints = response.settings.providers.map((item: { endpoint?: string }) => item.endpoint);
+    assert.deepEqual(providerEndpoints, ["https://llm.example.com/v1"]);
+    assert.equal(providerEndpoints.some((endpoint: string) => endpoint.includes("relay.example.com")), false);
+    assert.equal(response.settings.providers[0].secretConfigured, true);
+    assert.equal(
+      response.settings.modelRoles.find((item: { id?: string }) => item.id === "conversation-primary")?.defaultModel,
+      "openai-compat / meta-model",
+    );
+  } finally {
+    await server.close();
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
 test("Workbench static routes expose the formal frontend and prototype compatibility entry", async () => {
   const server = await serveWorkbench({ port: 0, rootDir: path.resolve(".") });
 
@@ -172,7 +218,7 @@ test("Workbench API rejects Meta-Agent conversation without real LLM config", as
     assert.equal(response.status, 503);
     assert.equal(response.body.ok, false);
     assert.equal(response.body.code, "missing_llm_provider_config");
-    assert.match(response.body.error, /requires MOYU_LLM_PROVIDER_BASE_URL/);
+    assert.match(response.body.error, /requires a real OpenAI-compatible chat model/);
   } finally {
     await server.close();
     process.chdir(previousCwd);
