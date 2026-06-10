@@ -71,7 +71,7 @@ npm run workbench:export-data
 - `GET /api/artifact-preview?id=<artifact_id>`：读取统一产物预览响应
 - `GET /api/artifact-content?id=<artifact_id>`：读取文本产物内容，用于右侧检查器审核草案文件
 - `POST /api/artifact/open`：用系统默认应用打开某个本地产物文件
-- `POST /api/meta/conversation`：通过多轮对话收集需求，确认后创建 Agent 草案，并返回最新 Workbench 数据
+- `POST /api/meta/conversation`：调用配置的 OpenAI-compatible 对话模型进行多轮需求澄清和确认，确认后创建 Agent 草案，并返回最新 Workbench 数据
 - `POST /api/meta/create-agent`：通过元智能体创建 Agent 草案，并返回最新 Workbench 数据
 - `POST /api/meta/install-agent`：把某次元智能体 Run 生成的 Agent 草案安装到正式 `agents/`；默认拒绝覆盖已存在的 Agent
 - `POST /api/meta/install-agent/version`：当安装冲突时，把草案安装为下一个未占用 Agent 版本
@@ -82,10 +82,12 @@ npm run workbench:export-data
 Workbench 中选择「元智能体」后，可以直接在底部输入框描述要创建的 Agent。当前最小闭环：
 
 1. 用户描述目标、输入、输出、模型 / 工具 / MCP。
-2. 信息不足时，元智能体继续追问。
+2. Workbench 调用本地 `/api/meta/conversation`，由配置的 LLM 判断是继续追问、整理确认，还是进入创建。
 3. 信息足够时，元智能体回复确认 checkpoint。
-4. 用户回复「确认创建」后，Workbench 调用本地 `/api/meta/conversation`，生成可审核 Agent 草案。
+4. 用户回复「确认创建」后，同一 API 强制使用 LLM 生成 Agent spec，并生成可审核 Agent 草案。
 5. 右侧检查器显示本次 Run 的 Trace、Artifact Delivery、草案文件和验证记录。
+
+这条对话链路要求 `.env` 中配置 `MOYU_LLM_PROVIDER_BASE_URL` 和 `MOYU_LLM_PROVIDER_API_KEY`。未配置或 provider 调用失败时，Workbench 会显示错误，不会回退到本地规则假装创建成功。
 
 如果只想从 CLI 创建，仍可直接运行：
 

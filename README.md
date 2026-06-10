@@ -32,7 +32,7 @@ The first end-to-end path is already working:
 - `image-gen/prototype-v1` is the first local Agent.
 - Runtime traces are modeled as `Run / Step / Artifact`.
 - Artifacts can be listed, inspected, and opened from the CLI.
-- The Meta-Agent can collect requirements through Workbench conversation, generate Agent drafts, install reviewed Agents, and use a configured OpenAI-compatible chat model for the first Agent specification draft.
+- The Meta-Agent can collect requirements through Workbench conversation backed by a configured OpenAI-compatible chat model, generate Agent drafts, install reviewed Agents, and record whether each specification draft came from the LLM or a local fallback path.
 - Work and conversation messages now persist in a local Workbench store for session recovery.
 - The Workbench defaults to Chinese and supports English.
 - The image generation path supports an OpenAI-compatible image API, currently tested with `gpt-image-2`.
@@ -69,13 +69,15 @@ Real image generation requires local `.env` configuration. See [Engineering Note
 
 ## Configure Meta-Agent LLM
 
-To let `meta create-agent` use a real OpenAI-compatible chat model before falling back to local rules, configure:
+Configure an OpenAI-compatible chat model for Meta-Agent creation:
 
 ```bash
 MOYU_LLM_PROVIDER_BASE_URL=https://api.openai.com
 MOYU_LLM_PROVIDER_API_KEY=your_api_key_here
 MOYU_LLM_PROVIDER_MODEL=gpt-4.1-mini
 ```
+
+Workbench conversation-based Agent creation requires this configuration. If it is missing, or if the provider call fails, `/api/meta/conversation` fails clearly instead of generating a rule-based fake draft.
 
 Then run:
 
@@ -86,7 +88,7 @@ npm run dev -- meta create-agent \
 
 The generated trace records whether the spec came from `llm` or the local `rule` fallback.
 
-You can also start `npm run workbench:serve`, select **Meta Agent**, describe the Agent in the composer, and reply `confirm create` after the Meta-Agent asks for confirmation.
+You can also start `npm run workbench:serve`, select **Meta Agent**, describe the Agent in the composer, and reply `confirm create` after the Meta-Agent asks for confirmation. This Workbench path calls the configured chat model for the conversation decision and requires the final Agent spec to come from the LLM.
 
 ## Documentation
 

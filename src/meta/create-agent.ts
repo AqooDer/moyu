@@ -26,6 +26,7 @@ export interface MetaCreateAgentOptions {
   rootDir?: string;
   workId?: string;
   recordPromptMessage?: boolean;
+  requireLlmSpec?: boolean;
   persist?: boolean;
   force?: boolean;
 }
@@ -426,6 +427,11 @@ async function tryDraftAgentSpecWithLlm(options: MetaCreateAgentOptions): Promis
 }> {
   const config = readMetaAgentLlmConfig();
   if (!config) {
+    if (options.requireLlmSpec) {
+      throw new Error(
+        "MOYU_LLM_PROVIDER_BASE_URL and MOYU_LLM_PROVIDER_API_KEY are required for real Meta-Agent creation.",
+      );
+    }
     return {
       draft: null,
       generation: {
@@ -453,6 +459,11 @@ async function tryDraftAgentSpecWithLlm(options: MetaCreateAgentOptions): Promis
       },
     };
   } catch (error) {
+    if (options.requireLlmSpec) {
+      throw new Error(
+        `Meta-Agent LLM spec generation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     return {
       draft: null,
       generation: {

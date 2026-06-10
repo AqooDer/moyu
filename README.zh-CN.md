@@ -32,7 +32,7 @@ Moyu 目前由单人维护，仍处于活跃原型开发阶段。它还没有大
 - `image-gen/prototype-v1` 是首个本地 Agent。
 - Runtime Trace 已拆成 `Run / Step / Artifact` 结构。
 - 产物可以通过 CLI 查询、查看和打开。
-- 元智能体可以通过 Workbench 对话收集需求、生成 Agent 草案、安装审核后的 Agent，并在配置 OpenAI-compatible 对话模型后用真实模型先生成 Agent 规格草案。
+- 元智能体可以通过接入 OpenAI-compatible 对话模型的 Workbench 对话收集需求、生成 Agent 草案、安装审核后的 Agent，并记录每次规格草案来自 LLM 还是本地兜底路径。
 - Work 与对话消息会写入本地 Workbench store，支持任务会话恢复。
 - Workbench 默认中文，支持 English 切换。
 - 生图链路支持 OpenAI-compatible 图片接口，当前验证模型为 `gpt-image-2`。
@@ -69,13 +69,15 @@ npm run dev -- agent run image-gen/prototype-v1 \
 
 ## 配置 Meta-Agent 大模型
 
-如果希望 `meta create-agent` 先调用真实 OpenAI-compatible 对话模型生成 Agent 规格，再回退到本地规则，需要配置：
+为 Meta-Agent 创建 Agent 配置 OpenAI-compatible 对话模型：
 
 ```bash
 MOYU_LLM_PROVIDER_BASE_URL=https://api.openai.com
 MOYU_LLM_PROVIDER_API_KEY=your_api_key_here
 MOYU_LLM_PROVIDER_MODEL=gpt-4.1-mini
 ```
+
+Workbench 对话式创建 Agent 必须配置这些环境变量。缺少配置或 provider 调用失败时，`/api/meta/conversation` 会明确报错，不会生成规则化假草案。
 
 然后运行：
 
@@ -86,7 +88,7 @@ npm run dev -- meta create-agent \
 
 生成的 Trace 会记录规格来源是 `llm` 还是本地 `rule` 兜底。
 
-也可以启动 `npm run workbench:serve`，在 Workbench 中选择 **元智能体**，直接在输入框里描述要创建的 Agent；当元智能体整理出确认项后，回复“确认创建”即可生成可审核草案。
+也可以启动 `npm run workbench:serve`，在 Workbench 中选择 **元智能体**，直接在输入框里描述要创建的 Agent；当元智能体整理出确认项后，回复“确认创建”即可生成可审核草案。这条 Workbench 对话链路会调用配置的大模型做对话决策，并强制使用 LLM 生成最终 Agent spec。
 
 ## 文档
 

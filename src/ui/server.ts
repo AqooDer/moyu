@@ -5,7 +5,7 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { findAgent, listAgents } from "../agent/registry.js";
 import { runImageAgent } from "../agent/run.js";
-import { sendMetaAgentConversationMessage } from "../meta/conversation.js";
+import { MetaAgentConversationError, sendMetaAgentConversationMessage } from "../meta/conversation.js";
 import { createAgentWithMeta } from "../meta/create-agent.js";
 import { listAgentDraftRecords, type AgentDraftState } from "../meta/agent-draft.js";
 import {
@@ -79,9 +79,11 @@ export async function serveWorkbench(input: ServeWorkbenchOptions = {}) {
     try {
       await routeRequest(request, response, rootDir);
     } catch (error) {
-      writeJson(response, 500, {
+      const statusCode = error instanceof MetaAgentConversationError ? error.statusCode : 500;
+      writeJson(response, statusCode, {
         ok: false,
         error: error instanceof Error ? error.message : String(error),
+        code: error instanceof MetaAgentConversationError ? error.code : undefined,
       });
     }
   });

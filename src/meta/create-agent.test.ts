@@ -105,6 +105,34 @@ test("Meta-Agent falls back to local rules when configured chat provider fails",
   }
 });
 
+test("Meta-Agent strict LLM spec mode fails instead of falling back", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-meta-llm-strict-"));
+  const restore = captureLlmEnv();
+  const previousFetch = globalThis.fetch;
+
+  try {
+    process.chdir(workspace);
+    process.env.MOYU_LLM_PROVIDER_BASE_URL = "https://llm.example.com";
+    process.env.MOYU_LLM_PROVIDER_API_KEY = "test-key";
+    process.env.MOYU_LLM_PROVIDER_MODEL = "meta-model";
+    globalThis.fetch = async () => new Response("provider unavailable", { status: 500 });
+
+    await assert.rejects(
+      createAgentWithMeta({
+        prompt: "Create a research notes organizer Agent",
+        requireLlmSpec: true,
+      }),
+      /Meta-Agent LLM spec generation failed: chat completion request failed: 500 provider unavailable/,
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    process.chdir(previousCwd);
+    restore();
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
 function captureLlmEnv() {
   const previousBaseUrl = process.env.MOYU_LLM_PROVIDER_BASE_URL;
   const previousApiKey = process.env.MOYU_LLM_PROVIDER_API_KEY;

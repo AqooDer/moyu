@@ -1,3 +1,6 @@
+import { readMetaAgentLlmConfig, type ChatCompletionConfig } from "../lib/env.js";
+import { createChatCompletion } from "../lib/openai-compat-chat.js";
+import type { ConversationMessage, WorkState } from "../runtime/types.js";
 import {
   appendConversationMessages,
   createMessageId,
@@ -5,7 +8,6 @@ import {
   upsertWorkRecord,
   type WorkStoreOptions,
 } from "../runtime/work-store.js";
-import type { ConversationMessage, WorkState } from "../runtime/types.js";
 import { createAgentWithMeta, type MetaCreateAgentResult } from "./create-agent.js";
 
 export interface MetaConversationInput {
@@ -25,6 +27,27 @@ export interface MetaConversationResult {
   result: MetaCreateAgentResult | null;
 }
 
+type MetaConversationAction = "ask" | "ready" | "create";
+
+interface MetaConversationDecision {
+  action: MetaConversationAction;
+  reply: string;
+  creationPrompt: string | null;
+  missing: string[];
+}
+
+export class MetaAgentConversationError extends Error {
+  readonly statusCode: number;
+  readonly code: string;
+
+  constructor(message: string, input: { statusCode: number; code: string }) {
+    super(message);
+    this.name = "MetaAgentConversationError";
+    this.statusCode = input.statusCode;
+    this.code = input.code;
+  }
+}
+
 export async function sendMetaAgentConversationMessage(
   input: MetaConversationInput,
   options: WorkStoreOptions = {},
@@ -33,6 +56,7 @@ export async function sendMetaAgentConversationMessage(
   if (!message) {
     throw new Error("message is required");
   }
+  const config = readRequiredMetaConversationLlmConfig();
 
   const now = new Date().toISOString();
   const workId = input.workId?.trim() || createMetaConversationWorkId();
@@ -46,59 +70,167 @@ export async function sendMetaAgentConversationMessage(
     content: message,
     createdAt: now,
   });
-  await upsertConversationWork({
-    workId,
-    title: deriveConversationTitle([...previousMessages, nextUserMessage]),
-    state: "waiting_user",
-    updatedAt: now,
-  }, options);
+  await upsertConversationWork(
+    {
+      workId,
+      title: deriveConversationTitle([...previousMessages, nextUserMessage]),
+      state: "waiting_user",
+      updatedAt: now,
+    },
+    options,
+  );
   await appendConversationMessages([nextUserMessage], options);
 
   const conversation = [...previousMessages, nextUserMessage];
-  const aggregatePrompt = buildAgentCreationPrompt(conversation);
-  if (isCreateConfirmation(message) && hasMinimumAgentRequirement(aggregatePrompt)) {
+  const decision = await requestMetaConversationDecision(conversation, config);
+  const creationPrompt = decision.creationPrompt || buildAgentCreationPrompt(conversation);
+  if (decision.action === "create") {
     const result = await createAgentWithMeta({
-      prompt: aggregatePrompt,
+      prompt: creationPrompt,
       agentId: input.agentId,
       name: input.name,
       description: input.description,
       persist: Boolean(input.persist),
       workId,
       recordPromptMessage: false,
+      requireLlmSpec: true,
     });
     const messages = await listConversationMessages({ ...options, workId });
     return {
       workId,
       state: "created",
-      reply: `已根据这段对话创建 Agent 草案 ${result.agentId}，请审核产物后安装。`,
+      reply: decision.reply || `已根据这段对话创建 Agent 草案 ${result.agentId}，请审核产物后安装。`,
       messages,
       result,
     };
   }
 
-  const readiness = evaluateAgentRequirement(aggregatePrompt);
-  const reply =
-    readiness.ready
-      ? buildReadyReply(aggregatePrompt)
-      : buildClarifyingReply(readiness.missing);
   const replyMessage = createConversationMessage({
-    id: createConversationMessageId(workId, readiness.ready ? "ready" : "clarify"),
+    id: createConversationMessageId(workId, decision.action === "ready" ? "ready" : "clarify"),
     workId,
     runId: null,
     role: "agent",
-    kind: readiness.ready ? "checkpoint" : "agent_message",
-    content: reply,
+    kind: decision.action === "ready" ? "checkpoint" : "agent_message",
+    content: decision.reply,
     createdAt: addMilliseconds(now, 1),
   });
   await appendConversationMessages([replyMessage], options);
   const messages = await listConversationMessages({ ...options, workId });
   return {
     workId,
-    state: readiness.ready ? "ready_to_create" : "collecting",
-    reply,
+    state: decision.action === "ready" ? "ready_to_create" : "collecting",
+    reply: decision.reply,
     messages,
     result: null,
   };
+}
+
+function readRequiredMetaConversationLlmConfig() {
+  const config = readMetaAgentLlmConfig();
+  if (!config) {
+    throw new MetaAgentConversationError(
+      "Meta-Agent conversation requires MOYU_LLM_PROVIDER_BASE_URL and MOYU_LLM_PROVIDER_API_KEY. Configure a real OpenAI-compatible chat model before creating Agents through conversation.",
+      { statusCode: 503, code: "missing_llm_provider_config" },
+    );
+  }
+  return config;
+}
+
+async function requestMetaConversationDecision(
+  messages: ConversationMessage[],
+  config: ChatCompletionConfig,
+): Promise<MetaConversationDecision> {
+  let responseContent = "";
+  try {
+    const response = await createChatCompletion(config, {
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content: buildMetaConversationSystemPrompt(),
+        },
+        {
+          role: "user",
+          content: buildMetaConversationDecisionPrompt(messages),
+        },
+      ],
+    });
+    responseContent = response.content;
+    return normalizeMetaConversationDecision(parseJsonObject(response.content));
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new MetaAgentConversationError(
+      `Meta-Agent LLM conversation failed: ${detail}${responseContent ? `; content=${responseContent.slice(0, 240)}` : ""}`,
+      { statusCode: 502, code: "llm_conversation_failed" },
+    );
+  }
+}
+
+function buildMetaConversationSystemPrompt() {
+  return [
+    "You are Moyu Meta-Agent, a real LLM agent that creates local Moyu Agents through conversation.",
+    "You must decide the next conversation action from the full transcript.",
+    "Return JSON only. Do not include markdown or extra prose.",
+    "",
+    "Return this JSON object:",
+    "{",
+    '  "action": "ask" | "ready" | "create",',
+    '  "reply": "message to show the user",',
+    '  "creation_prompt": "complete requirement for Agent generation, required for ready/create, null for ask",',
+    '  "missing": ["short missing field names"]',
+    "}",
+    "",
+    "Action rules:",
+    "- Use ask when the target, inputs, outputs, capabilities/tools, or acceptance criteria are still unclear.",
+    "- Use ready when the requirement is clear enough but the latest user message has not confirmed creation.",
+    "- Use create only when the latest user message clearly confirms creating the Agent from the prior requirement.",
+    "- The reply for ready must ask the user to confirm creation.",
+    "- The creation_prompt must summarize only the user's Agent requirement and must be suitable for generating a Moyu Agent spec.",
+    "- Do not pretend to create files. The host runtime will create files only after action=create.",
+  ].join("\n");
+}
+
+function buildMetaConversationDecisionPrompt(messages: ConversationMessage[]) {
+  const transcript = messages
+    .map((message, index) => {
+      const role = message.role === "agent" ? "assistant" : message.role;
+      return `${index + 1}. ${role} (${message.kind}): ${message.content.trim()}`;
+    })
+    .join("\n");
+  return ["Conversation transcript:", transcript, "", "Decide the next Meta-Agent action now."].join("\n");
+}
+
+function normalizeMetaConversationDecision(raw: unknown): MetaConversationDecision {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("LLM conversation decision JSON must be an object");
+  }
+
+  const value = raw as Record<string, unknown>;
+  const action = readAction(value.action);
+  const reply = readString(value.reply);
+  const creationPrompt = readString(value.creation_prompt) ?? readString(value.creationPrompt);
+  if (!reply) {
+    throw new Error("LLM conversation decision must include reply");
+  }
+  if ((action === "ready" || action === "create") && !creationPrompt) {
+    throw new Error("LLM conversation decision must include creation_prompt for ready/create");
+  }
+
+  return {
+    action,
+    reply,
+    creationPrompt: creationPrompt ?? null,
+    missing: Array.isArray(value.missing)
+      ? value.missing.map((item) => readString(item)).filter((item): item is string => Boolean(item))
+      : [],
+  };
+}
+
+function readAction(raw: unknown): MetaConversationAction {
+  if (raw === "ask" || raw === "ready" || raw === "create") {
+    return raw;
+  }
+  throw new Error("LLM conversation decision action must be ask, ready, or create");
 }
 
 function upsertConversationWork(
@@ -165,62 +297,24 @@ function buildAgentCreationPrompt(messages: ConversationMessage[]) {
     .filter((message) => message.role === "user")
     .map((message, index) => `${index + 1}. ${message.content.trim()}`)
     .filter(Boolean);
-  return [
-    "Create a Moyu Agent from this conversation.",
-    "",
-    "User requirements:",
-    ...lines,
-  ].join("\n");
+  return ["Create a Moyu Agent from this conversation.", "", "User requirements:", ...lines].join("\n");
 }
 
-function isCreateConfirmation(message: string) {
-  return /^(确认|可以|开始|创建|创建吧|按这个|就这样|没问题)(创建)?([，。,.!！\s]|$)/.test(message.trim()) ||
-    /^(go|yes|confirm|create|proceed)([\s,.!]|$)/i.test(message.trim());
-}
-
-function hasMinimumAgentRequirement(prompt: string) {
-  return evaluateAgentRequirement(prompt).ready;
-}
-
-function evaluateAgentRequirement(prompt: string) {
-  const missing: string[] = [];
-  if (prompt.replace(/\s+/g, " ").trim().length < 24) {
-    missing.push("目标");
+function parseJsonObject(content: string): unknown {
+  try {
+    return JSON.parse(content);
+  } catch {
+    const start = content.indexOf("{");
+    const end = content.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(content.slice(start, end + 1));
+    }
+    throw new Error("LLM conversation decision was not valid JSON");
   }
-  if (!/(输入|参数|prompt|文件|用户|input|source|topic|message)/i.test(prompt)) {
-    missing.push("输入");
-  }
-  if (!/(输出|产出|生成|保存|图片|文档|报告|artifact|trace|output|save|generate|summary)/i.test(prompt)) {
-    missing.push("输出");
-  }
-  if (!/(工具|调用|模型|api|mcp|大模型|接口|provider|tool|model|llm|fetch|search|runtime)/i.test(prompt)) {
-    missing.push("能力或工具");
-  }
-  return {
-    ready: missing.length === 0,
-    missing,
-  };
 }
 
-function buildReadyReply(prompt: string) {
-  const summary = prompt
-    .split("\n")
-    .filter((line) => /^\d+\./.test(line))
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .slice(0, 220);
-  return [
-    "我已经整理好 Agent 创建规格草案。",
-    summary ? `当前需求摘要：${summary}` : null,
-    "如果确认无误，请回复“确认创建”，我会生成可审核的 Agent 草案、Trace 和验证记录。",
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
-function buildClarifyingReply(missing: string[]) {
-  const fields = missing.length > 0 ? missing.join("、") : "目标、输入、输出和工具";
-  return `我需要再补齐 ${fields}。请继续描述这个 Agent 要解决什么问题、接收什么输入、产出什么结果，以及需要调用哪些模型、工具或 MCP。`;
+function readString(raw: unknown) {
+  return typeof raw === "string" && raw.trim() ? raw.trim() : null;
 }
 
 function addMilliseconds(value: string, milliseconds: number) {

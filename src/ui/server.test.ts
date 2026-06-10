@@ -151,9 +151,9 @@ test("Workbench static routes expose the formal frontend and prototype compatibi
   }
 });
 
-test("Workbench API creates Agent drafts through Meta-Agent conversation", async () => {
+test("Workbench API rejects Meta-Agent conversation without real LLM config", async () => {
   const previousCwd = process.cwd();
-  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-meta-conversation-"));
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-meta-conversation-missing-llm-"));
   const previousLlmProviderBaseUrl = process.env.MOYU_LLM_PROVIDER_BASE_URL;
   const previousLlmProviderApiKey = process.env.MOYU_LLM_PROVIDER_API_KEY;
   const previousLlmProviderModel = process.env.MOYU_LLM_PROVIDER_MODEL;
@@ -161,6 +161,70 @@ test("Workbench API creates Agent drafts through Meta-Agent conversation", async
   delete process.env.MOYU_LLM_PROVIDER_BASE_URL;
   delete process.env.MOYU_LLM_PROVIDER_API_KEY;
   delete process.env.MOYU_LLM_PROVIDER_MODEL;
+
+  const server = await serveWorkbench({ port: 0, rootDir: workspace });
+
+  try {
+    const response = await postJson(apiUrl(server.url, "/api/meta/conversation"), {
+      message:
+        "创建一个研究摘要 Agent，输入 topic 和 docs，调用大模型和 search API，输出 markdown summary artifact 并保存 trace。",
+    });
+    assert.equal(response.status, 503);
+    assert.equal(response.body.ok, false);
+    assert.equal(response.body.code, "missing_llm_provider_config");
+    assert.match(response.body.error, /requires MOYU_LLM_PROVIDER_BASE_URL/);
+  } finally {
+    await server.close();
+    process.chdir(previousCwd);
+    restoreEnv("MOYU_LLM_PROVIDER_BASE_URL", previousLlmProviderBaseUrl);
+    restoreEnv("MOYU_LLM_PROVIDER_API_KEY", previousLlmProviderApiKey);
+    restoreEnv("MOYU_LLM_PROVIDER_MODEL", previousLlmProviderModel);
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test("Workbench API creates Agent drafts through real Meta-Agent LLM conversation", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-meta-conversation-"));
+  const previousLlmProviderBaseUrl = process.env.MOYU_LLM_PROVIDER_BASE_URL;
+  const previousLlmProviderApiKey = process.env.MOYU_LLM_PROVIDER_API_KEY;
+  const previousLlmProviderModel = process.env.MOYU_LLM_PROVIDER_MODEL;
+  const previousFetch = globalThis.fetch;
+  const requestedUrls: string[] = [];
+  process.chdir(workspace);
+  process.env.MOYU_LLM_PROVIDER_BASE_URL = "https://llm.example.com/v1";
+  process.env.MOYU_LLM_PROVIDER_API_KEY = "test-key";
+  process.env.MOYU_LLM_PROVIDER_MODEL = "meta-model";
+
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (!url.startsWith("https://llm.example.com")) {
+      return previousFetch(input, init);
+    }
+    requestedUrls.push(url);
+    const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    const messages = body.messages as Array<{ role?: string; content?: string }>;
+    const system = messages.find((message) => message.role === "system")?.content ?? "";
+    if (system.includes("decide the next conversation action")) {
+      const userPrompt = messages.find((message) => message.role === "user")?.content ?? "";
+      return jsonChatResponse({
+        action: userPrompt.includes("确认创建") ? "create" : "ready",
+        reply: userPrompt.includes("确认创建")
+          ? "收到确认，我会创建研究摘要 Agent 草案。"
+          : "需求已足够，确认后我会创建研究摘要 Agent 草案。",
+        creation_prompt:
+          "创建一个研究摘要 Agent，输入 topic 和 docs，调用大模型和 search API，输出 markdown summary artifact 并保存 trace。",
+        missing: [],
+      });
+    }
+    return jsonChatResponse({
+      agent_id: "research/summary-agent-v1",
+      name: "Research Summary Agent",
+      description: "Summarize research materials into traceable markdown artifacts.",
+      kind: "task",
+      tags: ["research", "summary"],
+    });
+  };
 
   const server = await serveWorkbench({ port: 0, rootDir: workspace });
 
@@ -173,7 +237,7 @@ test("Workbench API creates Agent drafts through Meta-Agent conversation", async
     assert.equal(first.body.ok, true);
     assert.equal(first.body.conversation.state, "ready_to_create");
     assert.equal(first.body.conversation.result, null);
-    assert.match(first.body.conversation.reply, /确认创建/);
+    assert.match(first.body.conversation.reply, /Agent 草案/);
     assert.equal(first.body.workbench.messages.some((message: { kind?: string }) => message.kind === "checkpoint"), true);
 
     const second = await postJson(apiUrl(server.url, "/api/meta/conversation"), {
@@ -183,11 +247,18 @@ test("Workbench API creates Agent drafts through Meta-Agent conversation", async
     assert.equal(second.status, 200);
     assert.equal(second.body.ok, true);
     assert.equal(second.body.conversation.state, "created");
-    assert.equal(second.body.conversation.result.agentId, "custom/agent-v1");
+    assert.equal(second.body.conversation.result.agentId, "research/summary-agent-v1");
+    assert.equal(second.body.conversation.result.specSource, "llm");
     assert.equal(second.body.workbench.selectedRun.workId, first.body.conversation.workId);
     assert.equal(second.body.workbench.messages.some((message: { kind?: string }) => message.kind === "summary"), true);
+    assert.deepEqual(requestedUrls, [
+      "https://llm.example.com/v1/chat/completions",
+      "https://llm.example.com/v1/chat/completions",
+      "https://llm.example.com/v1/chat/completions",
+    ]);
   } finally {
     await server.close();
+    globalThis.fetch = previousFetch;
     process.chdir(previousCwd);
     restoreEnv("MOYU_LLM_PROVIDER_BASE_URL", previousLlmProviderBaseUrl);
     restoreEnv("MOYU_LLM_PROVIDER_API_KEY", previousLlmProviderApiKey);
@@ -782,6 +853,22 @@ async function postJson(url: string, body: unknown) {
     status: response.status,
     body: await response.json(),
   };
+}
+
+function jsonChatResponse(content: unknown) {
+  return new Response(
+    JSON.stringify({
+      model: "meta-model",
+      choices: [
+        {
+          message: {
+            content: JSON.stringify(content),
+          },
+        },
+      ],
+    }),
+    { status: 200, headers: { "content-type": "application/json" } },
+  );
 }
 
 function assertRunSandbox(input: { sandbox: any; runId: string; outputsPath: string }) {
