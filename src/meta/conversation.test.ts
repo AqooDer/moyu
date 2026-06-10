@@ -51,6 +51,15 @@ test("Meta-Agent conversation collects requirements before confirmed creation", 
       store.messages.some(
         (message) =>
           message.workId === draft.workId &&
+          message.role === "user" &&
+          message.content.includes("Create a Moyu Agent from this conversation."),
+      ),
+      false,
+    );
+    assert.equal(
+      store.messages.some(
+        (message) =>
+          message.workId === draft.workId &&
           message.role === "agent" &&
           message.kind === "summary" &&
           /已生成 Agent 草案/.test(message.content),

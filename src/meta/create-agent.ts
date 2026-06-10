@@ -25,6 +25,7 @@ export interface MetaCreateAgentOptions {
   outDir?: string;
   rootDir?: string;
   workId?: string;
+  recordPromptMessage?: boolean;
   persist?: boolean;
   force?: boolean;
 }
@@ -332,7 +333,7 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
       agentId: "meta/create-agent",
       title: options.prompt,
       state: validation.ok ? "waiting_user" : "completed",
-      prompt: options.prompt,
+      prompt: options.recordPromptMessage === false ? null : options.prompt,
       planSummary: formatPlanSummary(runtime.snapshot.plan),
       summary: validation.ok
         ? `已生成 Agent 草案 ${spec.agentId}，请审核产物后安装。`

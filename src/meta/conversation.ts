@@ -64,6 +64,7 @@ export async function sendMetaAgentConversationMessage(
       description: input.description,
       persist: Boolean(input.persist),
       workId,
+      recordPromptMessage: false,
     });
     const messages = await listConversationMessages({ ...options, workId });
     return {
