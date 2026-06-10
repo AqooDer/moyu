@@ -5,6 +5,7 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { findAgent, listAgents } from "../agent/registry.js";
 import { runImageAgent } from "../agent/run.js";
+import { defaultLlmCallLogPath, listLlmCallLogs } from "../lib/llm-call-log.js";
 import { MetaAgentConversationError, sendMetaAgentConversationMessage } from "../meta/conversation.js";
 import { createAgentWithMeta } from "../meta/create-agent.js";
 import { listAgentDraftRecords, type AgentDraftState } from "../meta/agent-draft.js";
@@ -143,6 +144,17 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       settings: await buildWorkbenchSettings({
         configPath: workspaceConfigPath(rootDir),
         settingsStore: settingsStorePaths(rootDir),
+      }),
+    });
+    return;
+  }
+
+  if (method === "GET" && url.pathname === "/api/llm-calls") {
+    writeJson(response, 200, {
+      ok: true,
+      calls: await listLlmCallLogs({
+        logPath: llmCallLogPath(rootDir),
+        limit: readPositiveInteger(url.searchParams.get("limit"), 50),
       }),
     });
     return;
@@ -386,6 +398,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       persist: Boolean(payload.persist),
       settingsDbPath: settingsDbPath(rootDir),
       settingsKeyPath: settingsKeyPath(rootDir),
+      llmCallLogPath: llmCallLogPath(rootDir),
     });
     const workbench = await buildServerWorkbenchData(rootDir);
     writeJson(response, result.validation.ok ? 200 : 422, { ok: result.validation.ok, result, workbench });
@@ -410,6 +423,7 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
         persist: Boolean(payload.persist),
         settingsDbPath: settingsDbPath(rootDir),
         settingsKeyPath: settingsKeyPath(rootDir),
+        llmCallLogPath: llmCallLogPath(rootDir),
       },
       { storePath: workStorePath(rootDir) },
     );
@@ -548,6 +562,7 @@ function buildServerWorkbenchData(
     configPath: workspaceConfigPath(rootDir),
     settingsStore: settingsStorePaths(rootDir),
     workStorePath: workStorePath(rootDir),
+    llmCallLogPath: llmCallLogPath(rootDir),
   });
 }
 
@@ -576,6 +591,10 @@ function tracesRoot(rootDir: string) {
 
 function workStorePath(rootDir: string) {
   return path.join(rootDir, "artifacts", "workbench", "work-store.json");
+}
+
+function llmCallLogPath(rootDir: string) {
+  return defaultLlmCallLogPath(rootDir);
 }
 
 async function listenWithFallback(
@@ -760,6 +779,14 @@ function readMaxBytes(value: string | null) {
     return undefined;
   }
   return Math.min(Math.floor(parsed), 512 * 1024);
+}
+
+function readPositiveInteger(value: string | null, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return Math.floor(parsed);
 }
 
 function readDraftState(value: string | null): AgentDraftState | undefined {

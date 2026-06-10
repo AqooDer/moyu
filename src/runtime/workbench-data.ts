@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { listAgents, type AgentMcpServerSummary } from "../agent/registry.js";
+import { listLlmCallLogs, type LlmCallLogRecord } from "../lib/llm-call-log.js";
 import type { SqliteSettingsPaths } from "../settings/store/sqlite.js";
 import { buildWorkbenchSettings, type WorkbenchSettings } from "../settings/workbench.js";
 import {
@@ -41,6 +42,7 @@ export interface WorkbenchData {
   artifacts: WorkbenchArtifact[];
   agents: WorkbenchAgent[];
   settings: WorkbenchSettings;
+  llmCalls: LlmCallLogRecord[];
 }
 
 export interface WorkbenchRun {
@@ -136,6 +138,7 @@ export async function buildWorkbenchData(
     configPath?: string;
     settingsStore?: SqliteSettingsPaths;
     workStorePath?: string;
+    llmCallLogPath?: string;
   } = {},
 ): Promise<WorkbenchData> {
   const tracesRoot = input.tracesRoot ?? "traces";
@@ -158,6 +161,7 @@ export async function buildWorkbenchData(
   });
   const agents = await getWorkbenchAgents();
   const workbenchArtifacts = artifacts.map((artifact) => toWorkbenchArtifact(artifact, prototypeRoot));
+  const llmCalls = await listLlmCallLogs({ logPath: input.llmCallLogPath, limit: 12 });
 
   return {
     schemaVersion: 1,
@@ -168,6 +172,7 @@ export async function buildWorkbenchData(
     artifacts: workbenchArtifacts,
     agents,
     settings: await buildWorkbenchSettings({ configPath: input.configPath, settingsStore: input.settingsStore }),
+    llmCalls,
   };
 }
 
@@ -180,6 +185,7 @@ export async function writeWorkbenchData(
     configPath?: string;
     settingsStore?: SqliteSettingsPaths;
     workStorePath?: string;
+    llmCallLogPath?: string;
   } = {},
 ) {
   const data = await buildWorkbenchData(input);

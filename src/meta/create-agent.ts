@@ -32,6 +32,7 @@ export interface MetaCreateAgentOptions {
   configPath?: string;
   settingsDbPath?: string;
   settingsKeyPath?: string;
+  llmCallLogPath?: string;
 }
 
 export interface MetaCreateAgentResult {
@@ -494,6 +495,8 @@ async function requestMetaAgentDraft(
   durationMs: number;
 }> {
   const response = await createChatCompletion(config, {
+    purpose: "meta.create-agent.spec-draft",
+    logPath: options.llmCallLogPath,
     temperature: 0.2,
     messages: [
       {

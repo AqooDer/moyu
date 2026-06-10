@@ -2512,6 +2512,7 @@ kbd {
 }
 
 .context-summary-row,
+.context-code-row,
 .context-tag-row {
   display: grid;
   gap: 3px;
@@ -2519,6 +2520,7 @@ kbd {
 }
 
 .context-summary-row span,
+.context-code-row span,
 .context-tag-row > span {
   color: var(--muted);
   font-size: 10.5px;
@@ -2530,6 +2532,22 @@ kbd {
   color: #303735;
   font-size: 12px;
   line-height: 1.45;
+}
+
+.context-code-row pre {
+  overflow: auto;
+  max-height: 180px;
+  margin: 0;
+  border: 1px solid rgba(31, 35, 34, 0.08);
+  border-radius: 7px;
+  background: rgba(247, 246, 242, 0.8);
+  color: #303735;
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 8px;
 }
 
 .context-tag-list {

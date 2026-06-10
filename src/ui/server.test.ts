@@ -243,6 +243,8 @@ test("Workbench static routes expose the formal frontend and prototype compatibi
     const appScript = await getText(apiUrl(server.url, "/ui/workbench/src/app.js"));
     assert.match(appScript, /data-settings-llm-provider-form/);
     assert.match(appScript, /\/api\/settings\/llm-provider/);
+    assert.match(appScript, /llmCallsTitle/);
+    assert.match(appScript, /LLM 调用日志/);
 
     const compatibility = await getText(apiUrl(server.url, "/ui/workbench-prototype/"));
     assert.match(compatibility, /ui\/workbench\//);
@@ -351,11 +353,40 @@ test("Workbench API creates Agent drafts through real Meta-Agent LLM conversatio
     assert.equal(second.body.conversation.result.specSource, "llm");
     assert.equal(second.body.workbench.selectedRun.workId, first.body.conversation.workId);
     assert.equal(second.body.workbench.messages.some((message: { kind?: string }) => message.kind === "summary"), true);
+    assert.equal(second.body.workbench.llmCalls.length, 3);
+    assert.deepEqual(
+      second.body.workbench.llmCalls.map((call: { purpose?: string }) => call.purpose).sort(),
+      ["meta.conversation.decision", "meta.conversation.decision", "meta.create-agent.spec-draft"],
+    );
+    assert.equal(
+      second.body.workbench.llmCalls.some((call: { request?: { messages?: Array<{ content?: string }> } }) =>
+        call.request?.messages?.some((message) => message.content?.includes("Conversation transcript")),
+      ),
+      true,
+    );
+    assert.equal(
+      second.body.workbench.llmCalls.some((call: { response?: { content?: string } }) =>
+        call.response?.content?.includes("research/summary-agent-v1"),
+      ),
+      true,
+    );
     assert.deepEqual(requestedUrls, [
       "https://llm.example.com/v1/chat/completions",
       "https://llm.example.com/v1/chat/completions",
       "https://llm.example.com/v1/chat/completions",
     ]);
+
+    const logApi = await getJson(apiUrl(server.url, "/api/llm-calls?limit=2"));
+    assert.equal(logApi.ok, true);
+    assert.equal(logApi.calls.length, 2);
+    assert.equal(new Date(logApi.calls[0].startedAt).getTime() >= new Date(logApi.calls[1].startedAt).getTime(), true);
+    assert.equal(JSON.stringify(logApi).includes("test-key"), false);
+
+    const rawLog = await readFile(path.join(workspace, ".moyu", "llm-calls.jsonl"), "utf8");
+    assert.match(rawLog, /meta\.conversation\.decision/);
+    assert.match(rawLog, /meta\.create-agent\.spec-draft/);
+    assert.match(rawLog, /研究摘要 Agent/);
+    assert.equal(rawLog.includes("test-key"), false);
   } finally {
     await server.close();
     globalThis.fetch = previousFetch;

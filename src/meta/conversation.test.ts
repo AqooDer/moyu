@@ -55,6 +55,12 @@ test("Meta-Agent conversation fails instead of falling back when LLM provider fa
     assert.equal(store.messages.length, 1);
     assert.equal(store.messages[0].role, "user");
     assert.equal(store.works[0].agentId, "meta/create-agent");
+
+    const rawLog = await readFile(path.join(workspace, ".moyu", "llm-calls.jsonl"), "utf8");
+    assert.match(rawLog, /meta\.conversation\.decision/);
+    assert.match(rawLog, /研究摘要 Agent/);
+    assert.match(rawLog, /chat completion request failed: 500 provider unavailable/);
+    assert.equal(rawLog.includes("test-key"), false);
   } finally {
     globalThis.fetch = previousFetch;
     process.chdir(previousCwd);

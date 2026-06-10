@@ -20,6 +20,7 @@ export interface MetaConversationInput {
   configPath?: string;
   settingsDbPath?: string;
   settingsKeyPath?: string;
+  llmCallLogPath?: string;
 }
 
 export interface MetaConversationResult {
@@ -85,7 +86,7 @@ export async function sendMetaAgentConversationMessage(
   await appendConversationMessages([nextUserMessage], options);
 
   const conversation = [...previousMessages, nextUserMessage];
-  const decision = await requestMetaConversationDecision(conversation, config);
+  const decision = await requestMetaConversationDecision(conversation, config, input.llmCallLogPath);
   const creationPrompt = decision.creationPrompt || buildAgentCreationPrompt(conversation);
   if (decision.action === "create") {
     const result = await createAgentWithMeta({
@@ -100,6 +101,7 @@ export async function sendMetaAgentConversationMessage(
       configPath: input.configPath,
       settingsDbPath: input.settingsDbPath,
       settingsKeyPath: input.settingsKeyPath,
+      llmCallLogPath: input.llmCallLogPath,
     });
     const messages = await listConversationMessages({ ...options, workId });
     return {
@@ -148,10 +150,13 @@ async function readRequiredMetaConversationLlmConfig(input: MetaConversationInpu
 async function requestMetaConversationDecision(
   messages: ConversationMessage[],
   config: ChatCompletionConfig,
+  llmCallLogPath?: string,
 ): Promise<MetaConversationDecision> {
   let responseContent = "";
   try {
     const response = await createChatCompletion(config, {
+      purpose: "meta.conversation.decision",
+      logPath: llmCallLogPath,
       temperature: 0.2,
       messages: [
         {

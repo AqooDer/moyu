@@ -134,6 +134,17 @@ const messages = {
     traceEventsFallback: "等待运行写入 events trace",
     traceEventStep: "Step",
     traceEventArtifact: "Artifact",
+    llmCallsTitle: "LLM 调用日志",
+    llmCallsEmpty: "暂无 LLM 调用日志",
+    llmCallsFallback: "配置模型并通过 Meta-Agent 对话后，这里会显示真实请求、提示词和返回。",
+    llmCallPurpose: "用途",
+    llmCallProvider: "Provider",
+    llmCallModel: "模型",
+    llmCallTemperature: "Temperature",
+    llmCallDuration: "耗时",
+    llmCallMessages: "请求 messages",
+    llmCallResponse: "响应内容",
+    llmCallError: "错误",
     policyGateTitle: "策略评估",
     policyGateEmpty: "暂无策略评估",
     policyGateFallback: "等待真实运行写入 policy trace",
@@ -500,6 +511,17 @@ const messages = {
     traceEventsFallback: "Waiting for a run to write events trace",
     traceEventStep: "Step",
     traceEventArtifact: "Artifact",
+    llmCallsTitle: "LLM call log",
+    llmCallsEmpty: "No LLM calls yet",
+    llmCallsFallback: "After configuring a model and using Meta Agent conversation, real requests, prompts, and responses appear here.",
+    llmCallPurpose: "Purpose",
+    llmCallProvider: "Provider",
+    llmCallModel: "Model",
+    llmCallTemperature: "Temperature",
+    llmCallDuration: "Duration",
+    llmCallMessages: "Request messages",
+    llmCallResponse: "Response content",
+    llmCallError: "Error",
     policyGateTitle: "Policy evaluation",
     policyGateEmpty: "No policy evaluation",
     policyGateFallback: "Waiting for a real run to write policy trace",
@@ -1310,6 +1332,7 @@ function renderWorkbenchData() {
     run?.policy || null,
     run?.worker || null,
     run?.events || [],
+    workbenchData.llmCalls || [],
   );
   renderRunState();
   renderActionHint();
@@ -1475,7 +1498,7 @@ function createTimelineItem(step) {
   return item;
 }
 
-function renderContextPipeline(execution, sandbox, pipeline, policy, worker, events) {
+function renderContextPipeline(execution, sandbox, pipeline, policy, worker, events, llmCalls) {
   const root = document.querySelector("[data-context-pipeline]");
   if (!root) {
     return;
@@ -1493,6 +1516,7 @@ function renderContextPipeline(execution, sandbox, pipeline, policy, worker, eve
 
   nodes.push(createPolicyEvaluationSection(policy, dict));
   nodes.push(createWorkerJobSection(worker, dict));
+  nodes.push(createLlmCallLogSection(llmCalls, dict));
   nodes.push(createTraceEventSection(events, dict));
   root.replaceChildren(...nodes);
 }
@@ -1764,6 +1788,65 @@ function createWorkerJobSection(worker, dict) {
   return section;
 }
 
+function createLlmCallLogSection(calls, dict) {
+  if (!Array.isArray(calls) || calls.length === 0) {
+    return createContextEmptyState(dict.llmCallsEmpty, dict.llmCallsFallback);
+  }
+
+  const section = document.createElement("section");
+  section.className = "context-section llm-call-log";
+  const header = document.createElement("div");
+  header.className = "context-pipeline-head";
+  header.append(
+    createText("strong", dict.llmCallsTitle),
+    createStatusPill(String(calls.length), "succeeded"),
+    createText("small", ".moyu/llm-calls.jsonl"),
+  );
+
+  const list = document.createElement("ol");
+  list.className = "context-stage-list";
+  list.append(...calls.map((call, index) => createLlmCallItem(call, index, dict)));
+  section.append(header, list);
+  return section;
+}
+
+function createLlmCallItem(call, index, dict) {
+  const failed = Boolean(call.error);
+  const item = document.createElement("li");
+  item.className = `context-stage llm-call-item ${failed ? "failed" : "succeeded"}`;
+  const marker = document.createElement("span");
+  marker.className = "context-stage-index";
+  marker.textContent = String(index + 1);
+
+  const body = document.createElement("div");
+  body.className = "context-stage-body";
+  const head = document.createElement("div");
+  head.className = "context-stage-head";
+  head.append(
+    createText("strong", call.purpose || call.id || dict.llmCallsTitle),
+    createStatusPill(failed ? dict.workerFailed : dict.workerSucceeded, failed ? "failed" : "succeeded"),
+  );
+
+  body.append(
+    head,
+    createText("small", `${call.id || "-"} · ${formatDateTime(call.startedAt)}`),
+    createContextSummaryRow(dict.llmCallPurpose, call.purpose || "-"),
+    createContextSummaryRow(dict.llmCallProvider, call.provider || "-"),
+    createContextSummaryRow(dict.llmCallModel, call.response?.model || call.model || "-"),
+    createContextSummaryRow(dict.llmCallTemperature, String(call.request?.temperature ?? "-")),
+    createContextSummaryRow(dict.llmCallDuration, formatDuration(call.durationMs)),
+    createContextCodeRow(dict.llmCallMessages, formatLlmMessages(call.request?.messages)),
+  );
+  if (call.response?.content) {
+    body.append(createContextCodeRow(dict.llmCallResponse, call.response.content));
+  }
+  if (call.error?.message) {
+    body.append(createContextCodeRow(dict.llmCallError, call.error.message));
+  }
+  item.append(marker, body);
+  return item;
+}
+
 function createTraceEventSection(events, dict) {
   if (!Array.isArray(events) || events.length === 0) {
     return createContextEmptyState(dict.traceEventsEmpty, dict.traceEventsFallback);
@@ -1857,6 +1940,20 @@ function createContextSummaryRow(label, value) {
   row.className = "context-summary-row";
   row.append(createText("span", label), createText("p", value || "-"));
   return row;
+}
+
+function createContextCodeRow(label, value) {
+  const row = document.createElement("div");
+  row.className = "context-code-row";
+  row.append(createText("span", label), createText("pre", value || "-"));
+  return row;
+}
+
+function formatLlmMessages(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return "-";
+  }
+  return messages.map((message) => `${message.role || "unknown"}:\n${message.content || ""}`).join("\n\n---\n\n");
 }
 
 function createContextTagRow(label, values) {
