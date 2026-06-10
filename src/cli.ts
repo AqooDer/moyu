@@ -323,8 +323,8 @@ const uiCommand = program.command("ui").description("prepare local Workbench dat
 
 uiCommand
   .command("export-data")
-  .description("export runtime data for the static Workbench")
-  .option("--out <path>", "output JSON path", "ui/workbench/public/data/workbench.json")
+  .description("export runtime data for inspection")
+  .option("--out <path>", "output JSON path", "artifacts/workbench-data/workbench.json")
   .option("--traces <path>", "traces root directory", "traces")
   .option("--limit <number>", "maximum number of artifacts to include", "12")
   .action(async (opts) => {

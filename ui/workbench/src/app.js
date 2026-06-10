@@ -1,6 +1,6 @@
 const messages = {
   zh: {
-    currentWork: "创建生图原型 Agent",
+    currentWork: "暂无当前任务",
     localWorkspace: "本地工作区 / moyu",
     engineRunning: "本地引擎运行中",
     engineStatic: "静态预览",
@@ -18,12 +18,6 @@ const messages = {
     noWorks: "暂无任务记录",
     noAgents: "暂无可用 Agents",
     workFallbackDesc: "通过对话创建或运行 Agent 后会出现在这里",
-    pptWork: "创建生图原型 Agent",
-    pptWorkDesc: "Agent 产物 · 等待创建确认",
-    visualWork: "制作平台介绍 PPT",
-    visualWorkDesc: "调用多个 Agent · 规划中",
-    researchWork: "竞品资料整理",
-    researchWorkDesc: "研究 Agent · 进行中",
     newWork: "新建 Agent / 任务",
     agentMeta: "元智能体",
     agentMetaDesc: "通过对话创建、改造和验证 Agent",
@@ -36,19 +30,13 @@ const messages = {
     settings: "设置",
     runtimeReady: "Moyu Core 0.3.1 已连接",
     workSession: "Agent 创建会话",
-    recipeLoaded: "Recipe 已加载",
+    sessionNoRun: "暂无运行",
+    sessionWaitingForConversation: "等待对话输入",
     progressContent: "需求澄清",
     progressVisual: "能力契约",
     progressOutline: "文件骨架",
     progressDeck: "验证发布",
     you: "你",
-    userAsk: "帮我创建一个生图原型 Agent。它要能调用 gpt-image-2 中转接口，支持生成 3 张 UI 概念图，并把图片、Trace 和提示词都保存下来。",
-    agentPlanIntro:
-      "我会先把你的自然语言需求转成 Agent 契约，再生成代码文件、Recipe 和验证用例。这里的产物不是一次任务结果，而是一个可运行、可热加载的 Agent。",
-    planMd: "澄清目标、输入和输出",
-    planImage: "生成 Agent 能力契约",
-    planOutline: "创建 Agent 文件骨架",
-    planDeck: "运行验证并注册 Agent",
     orchestrationTitle: "元智能体正在规划",
     orchestrationDesc:
       "元智能体不会让你拖节点画布，而是通过对话生成 Agent 规格、代码和验证任务。生成后的 Agent 再由 Moyu Runtime 加载并参与后续任务编排。",
@@ -56,39 +44,21 @@ const messages = {
     callPolicy: "创建策略",
     callPolicyValue: "先生成契约，确认后写入 Agent 文件",
     imageAgent: "元智能体",
-    imageAgentResult: "我已经整理出生图原型 Agent 的能力契约草案：输入是提示词与数量，输出是图片文件、Trace 和可复用提示词记录。",
-    nextDelivery: "Agent 创建队列",
-    nextDeliveryDesc: "确认后由元智能体继续生成 Agent 文件、Recipe、测试夹具，并把新 Agent 注册到本地运行时。",
-    deliveryCover: "agent.yaml 能力契约",
-    deliverySections: "handler.ts 执行入口",
-    deliveryOutline: "recipe.ts 示例编排",
-    deliveryDeck: "verification.trace.json 验证记录",
-    confirmed: "已确认",
-    runningOutline: "正在创建 Agent",
     createFailed: "创建失败",
-    approveMessage: "确认，按这个能力契约创建生图原型 Agent。",
-    runAdvanceReply: "已继续执行元智能体：Agent 契约、执行入口和示例 Recipe 已生成，运行时正在执行一次 dry-run 验证并准备注册这个 Agent。",
     realRunReply: "元智能体已经完成真实创建：Agent 文件、Recipe、Skill 与验证 Trace 已写入本地草案目录，右侧展示的是这次运行生成的真实产物。",
-    apiUnavailableReply: "当前页面运行在静态服务下，我先按演示状态继续；启动 `npm run workbench:serve` 后，这个按钮会真正调用本地元智能体。",
+    apiUnavailableReply: "本地 Workbench API 未连接。请启动 `npm run workbench:serve` 后再执行真实操作。",
     createFailedReply: "元智能体创建失败，请查看本地终端或 Trace 后重试。",
-    checkpointApprovedTitle: "能力契约已确认，元智能体正在创建 Agent",
-    checkpointApprovedDesc: "文件骨架已经生成，下一步进入验证与注册。新增产物会作为这个 Agent 的版本化资产保留。",
-    traceCoverCall: "生成 Agent 文件骨架",
-    traceOutlineCall: "执行 Agent 验证",
-    generatedAssets: "已生成 Agent 文件",
-    outlineRunning: "验证运行中",
     checkpoint: "需要确认",
     checkpointTitle: "是否按这个契约创建新的生图原型 Agent？",
     checkpointDesc: "确认后我会自动选择未占用的 Agent ID，写入文件骨架、示例 Recipe 和验证 Trace，并把它加入待安装队列。",
     approve: "确认创建",
     adjust: "修改契约",
+    adjustContractHint: "请在输入框补充要修改的 Agent 要求。",
     composerHint: "描述你想创建的 Agent，或补充输入、输出、工具和验证要求",
     messageInput: "消息输入",
     composerPlaceholder: "告诉元智能体这个 Agent 应该具备什么能力...",
     selectedAgent: "当前：元智能体 / create-agent",
     send: "发送",
-    sentMessage: "补充：这个 Agent 需要支持 raw-prompt，并且默认生成 3 张概念图。",
-    queuedReply: "已收到，我会把补充要求合并进 Agent 契约，并重新检查输入参数、输出产物和验证用例。",
     inspector: "检查器",
     currentWorkArtifacts: "当前 Agent 的产物、Trace 与运行上下文",
     artifacts: "Agent 产物",
@@ -192,7 +162,6 @@ const messages = {
     workId: "Agent ID",
     runId: "Run ID",
     state: "状态",
-    waitingConfirm: "等待确认",
     model: "模型",
     duration: "累计耗时",
     prompt: "提示词",
@@ -281,6 +250,7 @@ const messages = {
     runAgentFailed: "运行失败，请查看 Trace 或本地终端后重试。",
     runAgentApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run workbench:serve` 后再运行。",
     runAgentNoSelection: "请先在左侧选择一个已安装 Agent。",
+    runAgentPromptRequired: "请先在输入框填写运行需求。",
     realRunMode: "真实运行",
     runCount: "数量",
     metaDesignTitle: "元智能体设计入口",
@@ -380,7 +350,7 @@ const messages = {
     settingsOpenHint: "设置中心展示的是 Workspace 默认配置，Agent 可继承后再覆盖。",
   },
   en: {
-    currentWork: "Create Image Prototype Agent",
+    currentWork: "No active work",
     localWorkspace: "Local workspace / moyu",
     engineRunning: "Local engine running",
     engineStatic: "Static preview",
@@ -398,12 +368,6 @@ const messages = {
     noWorks: "No works yet",
     noAgents: "No Agents available",
     workFallbackDesc: "Created or run Agents will appear here",
-    pptWork: "Create image prototype Agent",
-    pptWorkDesc: "Agent artifact · waiting for approval",
-    visualWork: "Create platform intro deck",
-    visualWorkDesc: "Multi-Agent work · planning",
-    researchWork: "Competitor research",
-    researchWorkDesc: "Research Agent · running",
     newWork: "New Agent / Work",
     agentMeta: "Meta Agent",
     agentMetaDesc: "Create, revise, and verify Agents through dialogue",
@@ -416,19 +380,13 @@ const messages = {
     settings: "Settings",
     runtimeReady: "Moyu Core 0.3.1 connected",
     workSession: "Agent Creation Session",
-    recipeLoaded: "Recipe loaded",
+    sessionNoRun: "No run yet",
+    sessionWaitingForConversation: "Waiting for conversation",
     progressContent: "Clarify",
     progressVisual: "Contract",
     progressOutline: "Files",
     progressDeck: "Verify",
     you: "You",
-    userAsk: "Help me create an image prototype Agent. It should call the gpt-image-2 relay, generate three UI concept images, and save images, trace, and prompts.",
-    agentPlanIntro:
-      "I will turn your natural-language request into an Agent contract, then generate code files, a Recipe, and verification fixtures. The output is a runnable Agent, not a one-off task result.",
-    planMd: "Clarify goal, inputs, and outputs",
-    planImage: "Draft Agent capability contract",
-    planOutline: "Create Agent file skeleton",
-    planDeck: "Verify and register Agent",
     orchestrationTitle: "Meta Agent is planning",
     orchestrationDesc:
       "The Meta Agent does not ask you to drag nodes. It creates Agent specs, code, and verification tasks through conversation. The generated Agent is then loaded by Moyu Runtime for future orchestration.",
@@ -436,39 +394,21 @@ const messages = {
     callPolicy: "Creation policy",
     callPolicyValue: "Draft contract first, then write Agent files after approval",
     imageAgent: "Meta Agent",
-    imageAgentResult: "I drafted the capability contract for the image prototype Agent: inputs are prompt and count; outputs are image files, trace, and reusable prompt records.",
-    nextDelivery: "Agent Creation Queue",
-    nextDeliveryDesc: "After approval, the Meta Agent creates Agent files, a Recipe, test fixtures, and registers the Agent in the local runtime.",
-    deliveryCover: "agent.yaml capability contract",
-    deliverySections: "handler.ts execution entry",
-    deliveryOutline: "recipe.ts sample orchestration",
-    deliveryDeck: "verification.trace.json verification record",
-    confirmed: "Confirmed",
-    runningOutline: "Creating Agent",
     createFailed: "Creation failed",
-    approveMessage: "Approved. Create the image prototype Agent from this contract.",
-    runAdvanceReply: "Meta Agent execution continued: the Agent contract, execution entry, and sample Recipe are ready. The runtime is now running a dry-run verification before registering the Agent.",
     realRunReply: "The Meta Agent has completed a real creation run. Agent files, Recipe, Skill, and verification Trace were written to the local draft directory; the inspector now shows real artifacts from that run.",
-    apiUnavailableReply: "This page is currently served as a static Workbench, so I advanced the demo state. Start `npm run workbench:serve` to make this button call the local Meta Agent.",
+    apiUnavailableReply: "The local Workbench API is not connected. Start `npm run workbench:serve` before running real actions.",
     createFailedReply: "Meta Agent creation failed. Check the local terminal or Trace, then try again.",
-    checkpointApprovedTitle: "Contract approved. Meta Agent is creating the Agent",
-    checkpointApprovedDesc: "The file skeleton is ready. Next comes verification and registration. New outputs stay versioned as assets of this Agent.",
-    traceCoverCall: "Generated Agent file skeleton",
-    traceOutlineCall: "Ran Agent verification",
-    generatedAssets: "Agent files generated",
-    outlineRunning: "Verification running",
     checkpoint: "Needs confirmation",
     checkpointTitle: "Create a new image prototype Agent from this contract?",
     checkpointDesc: "After approval I will choose an available Agent ID, write the skeleton, sample Recipe, and verification trace, then queue it for installation.",
     approve: "Create",
     adjust: "Revise contract",
+    adjustContractHint: "Add the Agent changes in the composer.",
     composerHint: "Describe the Agent you want to create, or add inputs, outputs, tools, and verification rules",
     messageInput: "Message input",
     composerPlaceholder: "Tell the Meta Agent what this Agent should do...",
     selectedAgent: "Current: Meta Agent / create-agent",
     send: "Send",
-    sentMessage: "Add support for raw-prompt and default to three concept images.",
-    queuedReply: "Got it. I will merge that into the Agent contract and re-check inputs, outputs, and verification cases.",
     inspector: "Inspector",
     currentWorkArtifacts: "Artifacts, trace, and runtime context for this Agent",
     artifacts: "Agent Artifacts",
@@ -572,7 +512,6 @@ const messages = {
     workId: "Agent ID",
     runId: "Run ID",
     state: "State",
-    waitingConfirm: "Waiting for confirmation",
     model: "Model",
     duration: "Total duration",
     prompt: "Prompt",
@@ -661,6 +600,7 @@ const messages = {
     runAgentFailed: "Run failed. Check the Trace or local terminal, then retry.",
     runAgentApiUnavailable: "This page is not served by the Workbench API. Start `npm run workbench:serve` before running.",
     runAgentNoSelection: "Select an installed Agent from the left panel first.",
+    runAgentPromptRequired: "Enter a run prompt in the composer first.",
     realRunMode: "Real run",
     runCount: "Count",
     metaDesignTitle: "Meta Agent design entry",
@@ -778,9 +718,9 @@ let settingsState = {
 };
 let currentArtifacts = [];
 const prototypeState = {
-  phase: "waiting",
-  baseArtifacts: getBaseAgentArtifacts(),
-  baseTimeline: getBaseTimelineSteps(),
+  phase: "idle",
+  baseArtifacts: [],
+  baseTimeline: [],
   selectedArtifactName: "",
   selectedArtifactId: "",
   usesRealRun: false,
@@ -798,7 +738,7 @@ const prototypeState = {
   selectedSettingsSection: "overview",
   centerView: "conversation",
   previewRequestId: 0,
-  lastRuntimeMessageKey: "runAdvanceReply",
+  lastRuntimeMessageKey: "",
 };
 
 applySavedLayout();
@@ -1047,7 +987,6 @@ function bindStaticSelection() {
 }
 
 function bindRunActions() {
-  document.querySelector("[data-run-action='approve']")?.addEventListener("click", advanceDemoRun);
   document.querySelector("[data-install-agent]")?.addEventListener("click", installAgentDraftFromCurrentRun);
   document.querySelector("[data-install-agent-version]")?.addEventListener("click", installAgentDraftVersionFromConflict);
   document.querySelector("[data-install-agent-diff]")?.addEventListener("click", viewInstallDiffFromConflict);
@@ -1060,10 +999,9 @@ function bindRunActions() {
   document.querySelectorAll("[data-run-action='adjust']").forEach((button) => button.addEventListener("click", () => {
     const textarea = document.querySelector(".composer textarea");
     if (textarea) {
-      textarea.value = currentLang === "en" ? "Revise the contract: add a provider health check and clearer failure messages." : "修改契约：增加 provider 健康检查，并把失败原因说清楚。";
-      textarea.dispatchEvent(new Event("input"));
       textarea.focus();
     }
+    setInstallStatus(messages[currentLang].adjustContractHint, "hint");
   }));
 }
 
@@ -1241,21 +1179,22 @@ async function loadWorkbenchData() {
     return;
   }
 
-  try {
-    const response = await fetch("./public/data/workbench.json", { cache: "no-store" });
-    if (!response.ok) {
-      return;
-    }
-    const data = await response.json();
-    if (data && data.schemaVersion === 1) {
-      workbenchData = data;
-      hydrateSettingsFromWorkbenchData();
-      renderWorkbenchData();
-      renderRuntimeMode();
-    }
-  } catch {
-    // The prototype still works as a static mock when exported runtime data is absent.
-  }
+  workbenchData = createEmptyWorkbenchData();
+  renderWorkbenchData();
+  renderRuntimeMode();
+}
+
+function createEmptyWorkbenchData() {
+  return {
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    selectedRun: null,
+    works: [],
+    messages: [],
+    artifacts: [],
+    agents: [],
+    settings: null,
+  };
 }
 
 function renderRuntimeMode() {
@@ -1315,24 +1254,19 @@ function renderWorkbenchData() {
   const realTimeline = getTimelineFromRun(run);
 
   syncSelectedWorkWithRun(run, workbenchData.works || []);
-  prototypeState.usesRealRun = Boolean(run && (realArtifacts.length > 0 || realTimeline.length > 0));
+  prototypeState.usesRealRun = Boolean(run);
   prototypeState.runState = run?.state || "";
-  if (prototypeState.usesRealRun) {
-    prototypeState.phase = run?.state === "created" || run?.state === "running" ? "waiting" : "outline";
-    prototypeState.baseArtifacts = realArtifacts;
-    prototypeState.baseTimeline = realTimeline.length > 0 ? realTimeline : getBaseTimelineSteps(run);
-  } else {
-    prototypeState.baseArtifacts = getBaseAgentArtifacts();
-    prototypeState.baseTimeline = getBaseTimelineSteps(run);
-  }
-  currentArtifacts = getVisibleArtifacts();
+  prototypeState.phase = run ? run.state || "unknown" : "idle";
+  prototypeState.baseArtifacts = realArtifacts;
+  prototypeState.baseTimeline = realTimeline;
+  currentArtifacts = realArtifacts;
   renderWorks(workbenchData.works || []);
   renderAgents(workbenchData.agents || []);
   renderPersistentMessages(workbenchData.messages || []);
   renderArtifacts(currentArtifacts, run?.delivery || null);
   renderConversationArtifacts(currentArtifacts);
   updateArtifactDetail(getSelectedArtifact(currentArtifacts));
-  renderTimelineSteps(getVisibleTimelineSteps());
+  renderTimelineSteps(realTimeline);
   renderRunDetails(run, currentArtifacts);
   renderContextPipeline(
     run?.execution || null,
@@ -1343,7 +1277,6 @@ function renderWorkbenchData() {
     run?.events || [],
   );
   renderRunState();
-  renderStateMessages();
   renderActionHint();
   renderSettingsCenter();
 }
@@ -1359,66 +1292,6 @@ function syncSelectedWorkWithRun(run, works) {
   }
 }
 
-async function advanceDemoRun() {
-  if (prototypeState.phase !== "waiting") {
-    return;
-  }
-
-  prototypeState.isSubmitting = true;
-  renderRunState();
-
-  const apiResult = await createAgentViaApi();
-  prototypeState.isSubmitting = false;
-  if (apiResult?.workbench) {
-    workbenchData = apiResult.workbench;
-    prototypeState.lastRuntimeMessageKey = "realRunReply";
-    renderWorkbenchData();
-    setActiveInspectorTab("artifacts");
-    scrollMessagesToBottom();
-    return;
-  }
-
-  if (apiResult?.error) {
-    prototypeState.phase = "waiting";
-    prototypeState.lastRuntimeMessageKey = "createFailedReply";
-    renderRunState();
-    renderStateMessages();
-    scrollMessagesToBottom();
-    return;
-  }
-
-  prototypeState.lastRuntimeMessageKey = "apiUnavailableReply";
-  prototypeState.phase = "outline";
-
-  currentArtifacts = getVisibleArtifacts();
-  renderArtifacts(currentArtifacts, workbenchData?.selectedRun?.delivery || null);
-  renderConversationArtifacts(currentArtifacts);
-  updateArtifactDetail(getSelectedArtifact(currentArtifacts));
-  renderTimelineSteps(getVisibleTimelineSteps());
-  renderRunState();
-  renderStateMessages();
-  setActiveInspectorTab("artifacts");
-  scrollMessagesToBottom();
-}
-
-function renderStateMessages() {
-  const scroll = document.querySelector("[data-message-scroll]");
-  if (!scroll) {
-    return;
-  }
-
-  scroll.querySelectorAll("[data-state-message]").forEach((node) => node.remove());
-  if (prototypeState.phase !== "outline" && prototypeState.lastRuntimeMessageKey !== "createFailedReply") {
-    return;
-  }
-
-  const dict = messages[currentLang] ?? messages.zh;
-  if (prototypeState.lastRuntimeMessageKey !== "createFailedReply") {
-    scroll.append(createMessage("user", dict.you, dict.approveMessage, { stateMessage: true }));
-  }
-  scroll.append(createRunResultMessage(dict[prototypeState.lastRuntimeMessageKey] || dict.runAdvanceReply));
-}
-
 function renderPersistentMessages(persistentMessages) {
   const scroll = document.querySelector("[data-message-scroll]");
   if (!scroll) {
@@ -1426,31 +1299,30 @@ function renderPersistentMessages(persistentMessages) {
   }
 
   const hasPersistentMessages = Array.isArray(persistentMessages) && persistentMessages.length > 0;
-  scroll.querySelectorAll("[data-persistent-message]").forEach((node) => node.remove());
-  scroll.querySelectorAll(".message:not([data-state-message])").forEach((node) => {
-    node.toggleAttribute("hidden", hasPersistentMessages && isStaticNarrativeMessage(node));
-  });
   if (!hasPersistentMessages) {
+    scroll.replaceChildren(createConversationEmptyState());
     return;
   }
 
-  const anchor = scroll.querySelector("[data-state-message]") || scroll.firstElementChild;
   const nodes = persistentMessages.map(createPersistentMessage);
-  if (anchor) {
-    scroll.insertBefore(createPersistentMessageGroup(nodes), anchor);
-    return;
-  }
-  scroll.append(...nodes);
+  scroll.replaceChildren(...nodes);
 }
 
-function isStaticNarrativeMessage(node) {
-  return !node.querySelector(".checkpoint-card, .meta-agent-design-card, .conversation-run-card");
-}
-
-function createPersistentMessageGroup(nodes) {
-  const fragment = document.createDocumentFragment();
-  fragment.append(...nodes);
-  return fragment;
+function createConversationEmptyState() {
+  const dict = messages[currentLang] ?? messages.zh;
+  const article = document.createElement("article");
+  article.className = "message agent-message conversation-empty-state";
+  const avatar = document.createElement("div");
+  avatar.className = "avatar-bubble moyu";
+  avatar.textContent = "墨";
+  const body = document.createElement("div");
+  body.className = "message-body";
+  const meta = document.createElement("div");
+  meta.className = "message-meta";
+  meta.append(createText("strong", "Moyu"), createText("span", ""));
+  body.append(meta, createText("p", dict.workFallbackDesc));
+  article.append(avatar, body);
+  return article;
 }
 
 function createPersistentMessage(message) {
@@ -1484,87 +1356,27 @@ function getPersistentMessageAuthor(message) {
 
 function renderRunState() {
   const dict = messages[currentLang] ?? messages.zh;
-  if (prototypeState.isSubmitting) {
-    renderApprovedCheckpoint(dict);
-    renderProgress("outline");
-    renderDeliveryQueue("outline");
-    renderSessionState(dict.runningOutline, "runningOutline");
-    setCheckpointActionsDisabled(true);
+  if (!workbenchData?.selectedRun) {
+    renderProgress(null);
+    renderSessionState(dict.sessionNoRun, dict.sessionWaitingForConversation);
     return;
   }
-
-  setCheckpointActionsDisabled(false);
-  if (prototypeState.phase === "outline") {
-    renderApprovedCheckpoint(dict);
-    renderProgress(prototypeState.usesRealRun && prototypeState.runState === "succeeded" ? "deck" : "outline");
-    renderDeliveryQueue("outline");
-    renderSessionState(
-      prototypeState.usesRealRun && prototypeState.runState === "succeeded" ? dict.completed : dict.runningOutline,
-      prototypeState.usesRealRun && prototypeState.runState === "succeeded" ? "completed" : "runningOutline",
-    );
-    return;
-  }
-
-  renderWaitingCheckpoint(dict);
-  renderProgress("visual");
-  renderDeliveryQueue("waiting");
-  renderSessionState(dict.waitingConfirm, "waitingConfirm");
+  const run = workbenchData.selectedRun;
+  renderProgress(getRunProgressStep(run));
+  renderSessionState(resolveRunStateLabel(run.state), run.id || dict.notAvailable);
 }
 
-function setCheckpointActionsDisabled(disabled) {
-  document.querySelectorAll("[data-run-action]").forEach((button) => {
-    button.disabled = disabled;
-  });
-}
-
-function renderWaitingCheckpoint(dict) {
-  const card = document.querySelector(".checkpoint-card");
-  if (!card) {
-    return;
+function getRunProgressStep(run) {
+  if (!run) {
+    return null;
   }
-
-  card.classList.remove("approved");
-  const label = card.querySelector(".checkpoint-label");
-  const title = card.querySelector("strong");
-  const description = card.querySelector("p");
-
-  if (label) {
-    label.textContent = dict.checkpoint;
-    label.setAttribute("data-i18n", "checkpoint");
+  if (run.state === "succeeded") {
+    return "deck";
   }
-  if (title) {
-    title.textContent = dict.checkpointTitle;
-    title.setAttribute("data-i18n", "checkpointTitle");
+  if (Array.isArray(run.steps) && run.steps.length > 0) {
+    return "outline";
   }
-  if (description) {
-    description.textContent = dict.checkpointDesc;
-    description.setAttribute("data-i18n", "checkpointDesc");
-  }
-}
-
-function renderApprovedCheckpoint(dict) {
-  const card = document.querySelector(".checkpoint-card");
-  if (!card) {
-    return;
-  }
-
-  card.classList.add("approved");
-  const label = card.querySelector(".checkpoint-label");
-  const title = card.querySelector("strong");
-  const description = card.querySelector("p");
-
-  if (label) {
-    label.textContent = dict.confirmed;
-    label.setAttribute("data-i18n", "confirmed");
-  }
-  if (title) {
-    title.textContent = dict.checkpointApprovedTitle;
-    title.setAttribute("data-i18n", "checkpointApprovedTitle");
-  }
-  if (description) {
-    description.textContent = dict.checkpointApprovedDesc;
-    description.setAttribute("data-i18n", "checkpointApprovedDesc");
-  }
+  return "content";
 }
 
 function renderProgress(activeStep) {
@@ -1577,52 +1389,23 @@ function renderProgress(activeStep) {
   };
   steps.forEach((step, index) => {
     const stepName = ["content", "visual", "outline", "deck"][index];
-    const doneSteps = doneByStep[activeStep] || ["content"];
+    const doneSteps = activeStep ? doneByStep[activeStep] || [] : [];
     step.classList.toggle("done", doneSteps.includes(stepName));
     step.classList.toggle("active", stepName === activeStep);
   });
 }
 
-function renderSessionState(text, i18nKey) {
-  const state = document.querySelector(".session-meta span:first-child");
+function renderSessionState(stateText, runText) {
+  const state = document.querySelector("[data-session-state]");
   if (state) {
-    state.textContent = text;
-    state.setAttribute("data-i18n", i18nKey);
+    state.textContent = stateText;
+    state.removeAttribute("data-i18n");
   }
-}
-
-function renderDeliveryQueue(phase) {
-  document.querySelectorAll("[data-delivery-step]").forEach((item) => {
-    const step = item.getAttribute("data-delivery-step");
-    const isOutlinePhase = phase === "outline";
-    item.classList.toggle("done", isOutlinePhase && (step === "cover" || step === "sections"));
-    item.classList.toggle("active", isOutlinePhase && step === "outline");
-  });
-}
-
-function getBaseTimelineSteps(run) {
-  return [
-    { titleKey: "traceStarted", subtitle: "10:20:31", duration: "0ms", status: "done" },
-    { titleKey: "traceAgentCall", subtitle: "meta/create-agent", duration: "1.6s", status: "done" },
-    { titleKey: "traceImageCall", subtitle: "agent-spec", duration: "4.2s", status: "active" },
-    { titleKey: "traceCheckpoint", subtitle: "checkpoint", duration: "-", status: "" },
-  ];
-}
-
-function getVisibleTimelineSteps() {
-  if (prototypeState.usesRealRun) {
-    return prototypeState.baseTimeline;
+  const run = document.querySelector("[data-session-run-ref]");
+  if (run) {
+    run.textContent = runText;
+    run.removeAttribute("data-i18n");
   }
-
-  if (prototypeState.phase !== "outline") {
-    return prototypeState.baseTimeline;
-  }
-
-  return [
-    ...prototypeState.baseTimeline.map((step) => (step.status === "active" ? { ...step, status: "done" } : step)),
-    { titleKey: "traceCoverCall", subtitle: "agents/image-gen/prototype-v1", duration: "6.8s", status: "done" },
-    { titleKey: "traceOutlineCall", subtitle: "runtime dry-run", duration: "running", status: "active" },
-  ];
 }
 
 function renderTimelineSteps(steps) {
@@ -1631,7 +1414,19 @@ function renderTimelineSteps(steps) {
     return;
   }
 
+  if (!Array.isArray(steps) || steps.length === 0) {
+    timeline.replaceChildren(createTimelineEmptyState());
+    return;
+  }
   timeline.replaceChildren(...steps.map(createTimelineItem));
+}
+
+function createTimelineEmptyState() {
+  const dict = messages[currentLang] ?? messages.zh;
+  const item = document.createElement("li");
+  item.className = "timeline-empty";
+  item.append(document.createElement("span"), createText("div", dict.noArtifactsTraceHint), createText("em", "-"));
+  return item;
 }
 
 function createTimelineItem(step) {
@@ -2077,6 +1872,17 @@ function resolveExecutionMode(mode) {
   return dict[keyMap[mode] || "executionModeDryRun"] || mode || "-";
 }
 
+function resolveRunStateLabel(state) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const labels = {
+    succeeded: dict.completed,
+    running: dict.runningAgent,
+    failed: dict.createFailed,
+    queued: dict.workerQueued,
+  };
+  return labels[state] || state || dict.notAvailable;
+}
+
 function resolveExecutionCapabilityState(state) {
   const dict = messages[currentLang] ?? messages.zh;
   const keyMap = {
@@ -2154,8 +1960,8 @@ function renderRunDetails(run, artifacts) {
   const dict = messages[currentLang] ?? messages.zh;
   if (!run) {
     list.replaceChildren(
-      createRunDetailItem(dict.workId, "meta/create-agent"),
-      createRunDetailItem(dict.state, dict.waitingConfirm),
+      createRunDetailItem(dict.workId, dict.notAvailable),
+      createRunDetailItem(dict.state, dict.sessionNoRun),
       createRunDetailItem(dict.duration, dict.notAvailable),
       createRunDetailItem(dict.traceFile, dict.notAvailable),
     );
@@ -2191,37 +1997,6 @@ function createRunDetailItem(label, value) {
   return item;
 }
 
-function getBaseAgentArtifacts() {
-  return [
-    {
-      name: "agent.yaml",
-      type: "yaml",
-      sizeBytes: 2400,
-    },
-    {
-      name: "handler.ts",
-      type: "ts",
-      sizeBytes: 7800,
-    },
-    {
-      name: "agent.recipe.ts",
-      type: "ts",
-      sizeBytes: 4300,
-    },
-  ];
-}
-
-function getVisibleArtifacts() {
-  if (prototypeState.usesRealRun) {
-    return prototypeState.baseArtifacts.slice();
-  }
-
-  if (prototypeState.phase === "outline") {
-    return mergeGeneratedArtifacts(prototypeState.baseArtifacts);
-  }
-  return prototypeState.baseArtifacts.slice();
-}
-
 function getSelectedArtifact(artifacts) {
   if (prototypeState.selectedArtifactId) {
     return artifacts.find((artifact) => artifact.id === prototypeState.selectedArtifactId) || artifacts[0] || null;
@@ -2230,85 +2005,6 @@ function getSelectedArtifact(artifacts) {
     return artifacts.find((artifact) => artifact.name === prototypeState.selectedArtifactName) || artifacts[0] || null;
   }
   return artifacts[0] || null;
-}
-
-function mergeGeneratedArtifacts(artifacts) {
-  const generated = getGeneratedArtifacts();
-  const names = new Set(generated.map((artifact) => artifact.name));
-  return [...generated, ...artifacts.filter((artifact) => !names.has(artifact.name))];
-}
-
-function getGeneratedArtifacts() {
-  return [
-    {
-      name: "verification.trace.json",
-      type: "json",
-      sizeBytes: 6200,
-    },
-    {
-      name: "README.agent.md",
-      type: "md",
-      sizeBytes: 3100,
-    },
-  ];
-}
-
-function createRunResultMessage(text) {
-  const article = createMessage("agent", "Moyu Runtime", text, { stateMessage: true });
-  const body = article.querySelector(".message-body");
-  const artifacts = document.createElement("div");
-  artifacts.className = "artifact-strip compact";
-  const visibleArtifacts = getVisibleArtifacts().slice(0, 3);
-  artifacts.append(
-    ...(visibleArtifacts.length > 0
-      ? visibleArtifacts.map((artifact, index) => createMiniArtifact(artifact, index === 0))
-      : [
-          createMiniArtifact({ name: "agent.yaml", type: "yaml", sizeBytes: 2400 }, true),
-          createMiniArtifact({ name: "handler.ts", type: "ts", sizeBytes: 7800 }, false),
-          createMiniArtifact({ name: "verification.trace.json", type: "json", sizeBytes: 6200 }, false),
-        ]),
-  );
-  body?.append(artifacts);
-  return article;
-}
-
-async function createAgentViaApi() {
-  if (!canUseWorkbenchApi()) {
-    return null;
-  }
-
-  try {
-    const response = await fetch("/api/meta/create-agent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(getMetaCreatePayload()),
-    });
-
-    if (response.status === 404 || response.status === 405) {
-      return null;
-    }
-
-    const data = await response.json();
-    if (!response.ok || !data?.ok) {
-      return { error: data?.error || "create failed" };
-    }
-    return data;
-  } catch {
-    return null;
-  }
-}
-
-function getMetaCreatePayload() {
-  const promptNode = document.querySelector("[data-i18n='userAsk']");
-  return {
-    prompt: promptNode?.textContent?.trim() || messages.zh.userAsk,
-    name: currentLang === "en" ? "Image Prototype Agent" : "生图原型 Agent",
-    description:
-      currentLang === "en"
-        ? "Generate UI concept images through an OpenAI-compatible image relay and keep traceable artifacts."
-        : "通过 OpenAI-compatible 图片中转接口生成 UI 概念图，并保存可追踪产物。",
-    persist: false,
-  };
 }
 
 function canUseLocalApi() {
@@ -2494,7 +2190,7 @@ async function selectWorkbenchWork(work) {
     prototypeState.selectedArtifactName = "";
     renderWorkbenchData();
   } catch {
-    // Keep the current view; the local service may have stopped while the static prototype remains usable.
+    setInstallStatus(messages[currentLang].apiUnavailableReply, "warning");
   }
 }
 
@@ -3670,6 +3366,11 @@ async function runSelectedAgentFromWorkbench() {
     setInstallStatus(dict.runAgentNoSelection, "warning");
     return;
   }
+  const prompt = getRunPrompt();
+  if (!prompt) {
+    setInstallStatus(dict.runAgentPromptRequired, "warning");
+    return;
+  }
   if (prototypeState.isRunningAgent) {
     return;
   }
@@ -3685,7 +3386,7 @@ async function runSelectedAgentFromWorkbench() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         agentId,
-        prompt: getRunPrompt(),
+        prompt,
         count: runOptions.count,
         size: "1024x1024",
         style: "realistic",
@@ -3761,8 +3462,7 @@ function renderActionHint() {
 
 function getRunPrompt() {
   const textarea = document.querySelector(".composer textarea");
-  const promptNode = document.querySelector("[data-i18n='userAsk']");
-  return textarea?.value.trim() || promptNode?.textContent?.trim() || messages.zh.userAsk;
+  return textarea?.value.trim() || "";
 }
 
 function getAgentRunOptions() {
@@ -3888,7 +3588,7 @@ async function submitComposerMessage() {
   }
 
   if (!shouldUseMetaConversationApi()) {
-    appendDemoExchange();
+    appendConversationError(messages[currentLang].apiUnavailableReply);
     return;
   }
 
@@ -3925,7 +3625,7 @@ async function submitComposerMessage() {
       scrollMessagesToBottom();
       return;
     }
-    appendConversationError(messages[currentLang].queuedReply);
+    appendConversationError(messages[currentLang].createFailedReply);
   } catch {
     appendConversationError(messages[currentLang].createFailedReply);
   } finally {
@@ -3961,23 +3661,6 @@ function appendConversationError(text) {
   }
   scroll.append(createMessage("agent", "Moyu", text));
   scrollMessagesToBottom();
-}
-
-function appendDemoExchange() {
-  const scroll = document.querySelector("[data-message-scroll]");
-  const textarea = document.querySelector(".composer textarea");
-  if (!scroll) {
-    return;
-  }
-
-  const value = textarea?.value.trim() || messages[currentLang].sentMessage;
-  scroll.append(createMessage("user", messages[currentLang].you, value));
-  scroll.append(createMessage("agent", "Moyu", messages[currentLang].queuedReply));
-  if (textarea) {
-    textarea.value = "";
-    textarea.dispatchEvent(new Event("input"));
-  }
-  scroll.scrollTop = scroll.scrollHeight;
 }
 
 function createMessage(kind, author, text, options = {}) {

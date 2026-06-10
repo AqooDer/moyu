@@ -14,6 +14,26 @@ import { formatRunHistoryDetail, getRunHistoryDetail } from "./history.js";
 import { readWorkStore } from "./work-store.js";
 import { buildWorkbenchData } from "./workbench-data.js";
 
+test("empty Workbench data stays empty instead of injecting prototype records", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-workbench-empty-"));
+
+  try {
+    process.chdir(workspace);
+    const workbench = await buildWorkbenchData();
+
+    assert.equal(workbench.selectedRun, null);
+    assert.deepEqual(workbench.works, []);
+    assert.deepEqual(workbench.messages, []);
+    assert.deepEqual(workbench.artifacts, []);
+    assert.deepEqual(workbench.agents, []);
+    assert.equal(workbench.settings.nav.length > 0, true);
+  } finally {
+    process.chdir(previousCwd);
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
 test("meta-created Agents can be installed, run, and selected in Workbench data", async () => {
   const previousCwd = process.cwd();
   const workspace = await mkdtemp(path.join(tmpdir(), "moyu-workbench-test-"));

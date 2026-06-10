@@ -1,9 +1,8 @@
-import { mkdir, stat, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { listAgents, type AgentMcpServerSummary } from "../agent/registry.js";
 import { buildWorkbenchSettings, type WorkbenchSettings } from "../settings/workbench.js";
 import {
-  buildArtifactPreviewMetadata,
   listArtifacts,
   type ArtifactHistoryItem,
   type ArtifactPreviewMetadata,
@@ -30,7 +29,7 @@ import {
   type WorkProgress,
   type WorkSummary,
 } from "./work-manager.js";
-import { createWorkIdFromRunId, listConversationMessages, listWorkRecords } from "./work-store.js";
+import { listConversationMessages, listWorkRecords } from "./work-store.js";
 
 export interface WorkbenchData {
   schemaVersion: 1;
@@ -156,12 +155,7 @@ export async function buildWorkbenchData(
     limit: artifactLimit,
   });
   const agents = await getWorkbenchAgents();
-  const workbenchArtifacts =
-    artifacts.length > 0
-      ? artifacts.map((artifact) => toWorkbenchArtifact(artifact, prototypeRoot))
-      : selectedRun
-        ? []
-        : await fallbackWorkbenchArtifacts(prototypeRoot);
+  const workbenchArtifacts = artifacts.map((artifact) => toWorkbenchArtifact(artifact, prototypeRoot));
 
   return {
     schemaVersion: 1,
@@ -298,36 +292,7 @@ function getWorkbenchWorks(
   selectedRun: WorkbenchRun | null,
 ): WorkbenchWork[] {
   if (summaries.length === 0) {
-    return [
-      {
-        id: "meta-create-agent",
-        title: { zh: "创建生图原型 Agent", en: "Create Image Prototype Agent" },
-        description: {
-          zh: "等待通过元智能体开启第一个创建会话",
-          en: "Waiting for the first Meta Agent creation session",
-        },
-        state: "waiting",
-        storedState: null,
-        agentId: "meta/create-agent",
-        runId: "",
-        runIds: [],
-        currentRunId: null,
-        updatedAt: null,
-        active: true,
-        artifactCount: 0,
-        dryRun: false,
-        lifecycle: {
-          state: "unknown",
-          source: "work_store",
-          currentRunId: null,
-          runState: null,
-          planState: null,
-          progress: emptyProgress(),
-          updatedAt: null,
-        },
-        progress: emptyProgress(),
-      },
-    ];
+    return [];
   }
 
   const selectedRunId = selectedRun?.id || summaries[0]?.currentRunId || summaries[0]?.runIds[0];
@@ -398,10 +363,7 @@ async function getWorkbenchMessages(
   if (messages.length > 0) {
     return messages.map(toWorkbenchMessage);
   }
-  if (!selectedRun) {
-    return [];
-  }
-  return getFallbackMessagesFromRun(selectedRun);
+  return [];
 }
 
 function toWorkbenchMessage(message: ConversationMessage): WorkbenchMessage {
@@ -415,55 +377,6 @@ function toWorkbenchMessage(message: ConversationMessage): WorkbenchMessage {
     artifactIds: message.artifactIds,
     createdAt: message.createdAt,
   };
-}
-
-function getFallbackMessagesFromRun(run: WorkbenchRun): WorkbenchMessage[] {
-  const workId = run.workId || createWorkIdFromRunId(run.id);
-  const createdAt = run.startedAt || new Date(0).toISOString();
-  const messages: WorkbenchMessage[] = [];
-  if (run.prompt) {
-    messages.push({
-      id: `fallback-${run.id}-user`,
-      workId,
-      runId: run.id,
-      role: "user",
-      kind: "user_message",
-      content: run.prompt,
-      artifactIds: [],
-      createdAt,
-    });
-  }
-  if (run.plan) {
-    messages.push({
-      id: `fallback-${run.id}-plan`,
-      workId,
-      runId: run.id,
-      role: "agent",
-      kind: "plan",
-      content: formatFallbackPlan(run.plan),
-      artifactIds: [],
-      createdAt: addMilliseconds(createdAt, 1),
-    });
-  }
-  messages.push({
-    id: `fallback-${run.id}-summary`,
-    workId,
-    runId: run.id,
-    role: "agent",
-    kind: "summary",
-    content: `${run.agentId} ${formatWorkLifecycleState(run.state, "zh")}，产物数 ${run.artifactCount}。`,
-    artifactIds: [],
-    createdAt,
-  });
-  return messages;
-}
-
-function formatFallbackPlan(plan: PlanRecord) {
-  const lines = [`计划：${plan.title}`];
-  for (const [index, step] of plan.steps.entries()) {
-    lines.push(`${index + 1}. ${step.title}：${step.summary}`);
-  }
-  return lines.join("\n");
 }
 
 function getWorkbenchWorkDescription(work: WorkSummary) {
@@ -521,83 +434,6 @@ function compactText(value: string, maxLength: number) {
   return `${normalized.slice(0, Math.max(0, maxLength - 1))}...`;
 }
 
-function addMilliseconds(value: string, milliseconds: number) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return new Date(date.getTime() + milliseconds).toISOString();
-}
-
-function emptyProgress(): WorkProgress {
-  return {
-    totalSteps: 0,
-    completedSteps: 0,
-    runningSteps: 0,
-    failedSteps: 0,
-    skippedSteps: 0,
-    pendingSteps: 0,
-    percent: 0,
-  };
-}
-
-async function fallbackWorkbenchArtifacts(prototypeRoot: string): Promise<WorkbenchArtifact[]> {
-  const candidates = [
-    {
-      name: "moyu-logo-master.png",
-      path: "brand/source/moyu-logo-master.png",
-      agentId: "image-gen/prototype-v1",
-    },
-    {
-      name: "image-01.png",
-      path: "artifacts/agent-runs/image-gen__prototype-v1/run-image-gen__prototype-v1-mplf2lfk-ako86f/image-01.png",
-      agentId: "image-gen/prototype-v1",
-    },
-    {
-      name: "artifact-detail-02.png",
-      path: "artifacts/ui-concepts/artifact-detail-02/image-01.png",
-      agentId: "image-gen/prototype-v1",
-    },
-  ];
-  const artifacts: WorkbenchArtifact[] = [];
-
-  for (const candidate of candidates) {
-    const resolvedPath = path.resolve(candidate.path);
-    const fileInfo = await safeStat(resolvedPath);
-    if (!fileInfo?.isFile()) {
-      continue;
-    }
-    artifacts.push({
-      id: `prototype-${artifacts.length + 1}`,
-      runId: "prototype-static",
-      agentId: candidate.agentId,
-      type: "png",
-      role: artifacts.length === 0 ? "primary" : "intermediate",
-      name: candidate.name,
-      path: candidate.path,
-      url: toRelativeUrl(resolvedPath, prototypeRoot),
-      sizeBytes: fileInfo.size,
-      sha256: null,
-      createdAt: null,
-      preview: buildArtifactPreviewMetadata({
-        type: "png",
-        name: candidate.name,
-        path: resolvedPath,
-      }),
-    });
-  }
-
-  return artifacts;
-}
-
-async function safeStat(filePath: string) {
-  try {
-    return await stat(filePath);
-  } catch {
-    return null;
-  }
-}
-
 function isRuntimeTrace(trace: unknown): trace is RuntimeTrace {
   return Boolean(
     trace &&
@@ -610,48 +446,9 @@ function isRuntimeTrace(trace: unknown): trace is RuntimeTrace {
   );
 }
 
-const defaultAgents: WorkbenchAgent[] = [
-  {
-    id: "image-gen/prototype-v1",
-    title: { zh: "生图原型 Agent", en: "Image Prototype Agent" },
-    description: {
-      zh: "根据提示词生成界面概念图",
-      en: "Generate UI concepts from prompts",
-    },
-    mcpServers: [],
-  },
-  {
-    id: "code-review/draft",
-    title: { zh: "代码审查 Agent", en: "Code Review Agent" },
-    description: {
-      zh: "阅读代码并给出风险建议",
-      en: "Inspect code and surface risks",
-    },
-    mcpServers: [],
-  },
-  {
-    id: "docs-organizer/draft",
-    title: { zh: "文档整理 Agent", en: "Documentation Agent" },
-    description: {
-      zh: "整理需求、Trace 与产物说明",
-      en: "Organize requirements, traces, and artifacts",
-    },
-    mcpServers: [],
-  },
-  {
-    id: "research/draft",
-    title: { zh: "资料研究 Agent", en: "Research Agent" },
-    description: {
-      zh: "检索、归纳并输出结构化结论",
-      en: "Search, summarize, and structure findings",
-    },
-    mcpServers: [],
-  },
-];
-
 async function getWorkbenchAgents() {
   const installed = await listAgents();
-  const mapped = installed.map((agent): WorkbenchAgent => {
+  return installed.map((agent): WorkbenchAgent => {
     const title = agent.name || agent.agentId;
     const description = agent.description || agent.recipeRef || agent.path;
     return {
@@ -660,11 +457,5 @@ async function getWorkbenchAgents() {
       description: { zh: description, en: description },
       mcpServers: agent.mcpServers,
     };
-  });
-
-  const seen = new Set(mapped.map((agent) => agent.id));
-  return [
-    ...mapped,
-    ...defaultAgents.filter((agent) => !seen.has(agent.id) && agent.id.endsWith("/draft")),
-  ].sort((left, right) => left.id.localeCompare(right.id));
+  }).sort((left, right) => left.id.localeCompare(right.id));
 }

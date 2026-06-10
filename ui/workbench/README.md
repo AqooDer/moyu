@@ -48,13 +48,13 @@ python3 -m http.server 4177 --bind 127.0.0.1
 http://127.0.0.1:4177/ui/workbench/
 ```
 
-也可以先导出运行数据：
+也可以导出运行数据用于人工检查或调试：
 
 ```bash
 npm run workbench:export-data
 ```
 
-`workbench:export-data` 会生成 `ui/workbench/public/data/workbench.json`。Workbench 页面会优先读取这份数据；如果没有生成数据，则使用页面内置的静态演示内容。
+`workbench:export-data` 默认生成 `artifacts/workbench-data/workbench.json`。Workbench 页面不会把导出的 JSON 当作界面兜底数据；本地 API 不可用时，页面显示离线空态和真实错误提示。
 
 旧脚本 `prototype:workbench` 和 `prototype:export-data` 仍保留为兼容别名。
 
@@ -138,7 +138,7 @@ npm run dev -- agent validate /private/tmp/moyu-meta-create-agent/custom__meta-i
 - 设置中心支持 `#settings/<section>` 直达分组，例如 `#settings/models`、`#settings/knowledge`、`#settings/mcp`
 - 设置中心具备独立加载态、空态、失败态与重试，不依赖 Workbench 会话状态
 - 中英文切换
-- 读取 `public/data/workbench.json` 中的运行与产物数据
+- 无真实 Work / Run / Artifact 时展示空态，不注入演示数据
 
 ## 视觉方向
 
