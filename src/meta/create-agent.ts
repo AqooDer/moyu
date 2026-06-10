@@ -8,6 +8,7 @@ import { createMetaAgentMiddlewarePipeline } from "../runtime/middleware-pipelin
 import { createPolicyEvaluationRecord } from "../runtime/policy-gate.js";
 import { createPlanRecord, formatPlanSummary } from "../runtime/plans.js";
 import { finalizeFailedRun } from "../runtime/run-finalizer.js";
+import { createRunSandboxFilesystem } from "../runtime/sandbox-filesystem.js";
 import { runRuntimeStep } from "../runtime/step-runner.js";
 import { RuntimeStore } from "../runtime/store.js";
 import { createWorkIdFromRunId, recordRunConversation } from "../runtime/work-store.js";
@@ -110,6 +111,13 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
           dependsOn: ["validate"],
         },
       ],
+    }),
+  );
+  runtime.setSandboxFilesystem(
+    await createRunSandboxFilesystem({
+      run: runtime.snapshot.run,
+      outputsDir: path.dirname(agentPath),
+      createdAt: runtime.snapshot.run.startedAt,
     }),
   );
   const middleware = runtime.setMiddlewarePipeline(

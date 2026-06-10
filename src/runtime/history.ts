@@ -15,6 +15,10 @@ import type {
   PolicyRiskLevel,
   RuntimeTrace,
   PlanRecord,
+  SandboxCleanupPolicy,
+  SandboxDirectoryKind,
+  SandboxFilesystemRecord,
+  SandboxFilesystemState,
   TraceEventKind,
   TraceEventRecord,
   WorkerJobMode,
@@ -145,6 +149,8 @@ export function formatRunHistoryDetail(detail: RunHistoryDetail) {
     lines.push(...formatPlanLines(trace.plan));
     lines.push("", "execution:");
     lines.push(...formatExecutionLines(trace.execution));
+    lines.push("", "sandbox:");
+    lines.push(...formatSandboxLines(trace.sandbox));
     lines.push("", "middleware:");
     lines.push(...formatMiddlewareLines(trace.middleware));
     lines.push("", "policy:");
@@ -294,6 +300,7 @@ function normalizeRuntimeTrace(trace: RuntimeTrace): RuntimeTrace {
     middleware: normalizeMiddlewarePipeline(trace.middleware),
     policy: normalizePolicyEvaluation(trace.policy),
     execution: normalizeExecutionMode(trace.execution),
+    sandbox: normalizeSandboxFilesystem(trace.sandbox),
     worker: normalizeWorkerJob(trace.worker),
     events: normalizeTraceEvents(trace.events),
     run: {
@@ -545,6 +552,25 @@ function formatExecutionLines(execution: ExecutionModeRecord | null) {
   return lines;
 }
 
+function formatSandboxLines(sandbox: SandboxFilesystemRecord | null) {
+  if (!sandbox) {
+    return ["- none"];
+  }
+
+  const lines = [
+    `- ${sandbox.id} scope=${sandbox.scope} state=${sandbox.state} root=${sandbox.relativeRoot || sandbox.root}`,
+  ];
+  for (const directory of sandbox.directories) {
+    lines.push(
+      `  - ${directory.kind} writable=${directory.writable ? "yes" : "no"} cleanup=${directory.cleanupPolicy} created=${directory.created ? "yes" : "no"} path=${directory.relativePath || directory.path}`,
+    );
+  }
+  if (sandbox.constraints.length > 0) {
+    lines.push(`  constraints: ${sandbox.constraints.join(" / ")}`);
+  }
+  return lines;
+}
+
 function formatWorkerLines(worker: WorkerJobRecord | null) {
   if (!worker) {
     return ["- none"];
@@ -704,9 +730,59 @@ function normalizeExecutionCapabilityState(value: unknown): ExecutionCapabilityS
     : "planned";
 }
 
+function normalizeSandboxFilesystem(sandbox: unknown): SandboxFilesystemRecord | null {
+  if (!sandbox || typeof sandbox !== "object") {
+    return null;
+  }
+  const raw = sandbox as SandboxFilesystemRecord;
+  return {
+    id: typeof raw.id === "string" && raw.id ? raw.id : `sandbox-${raw.runId || "unknown"}`,
+    runId: typeof raw.runId === "string" && raw.runId ? raw.runId : "run-unknown",
+    workId: typeof raw.workId === "string" && raw.workId ? raw.workId : "work-unknown",
+    root: typeof raw.root === "string" ? raw.root : "",
+    relativeRoot: typeof raw.relativeRoot === "string" ? raw.relativeRoot : "",
+    scope: typeof raw.scope === "string" && raw.scope ? raw.scope : "run",
+    state: normalizeSandboxFilesystemState(raw.state),
+    directories: Array.isArray(raw.directories)
+      ? raw.directories.map((directory) => ({
+          id: typeof directory.id === "string" && directory.id ? directory.id : "sandbox-directory-unknown",
+          kind: normalizeSandboxDirectoryKind(directory.kind),
+          path: typeof directory.path === "string" ? directory.path : "",
+          relativePath: typeof directory.relativePath === "string" ? directory.relativePath : "",
+          writable: Boolean(directory.writable),
+          cleanupPolicy: normalizeSandboxCleanupPolicy(directory.cleanupPolicy),
+          created: Boolean(directory.created),
+          summary: typeof directory.summary === "string" ? directory.summary : "",
+        }))
+      : [],
+    constraints: normalizeStringList(raw.constraints),
+    createdAt: typeof raw.createdAt === "string" && raw.createdAt ? raw.createdAt : new Date(0).toISOString(),
+    updatedAt: typeof raw.updatedAt === "string" && raw.updatedAt ? raw.updatedAt : new Date(0).toISOString(),
+  };
+}
+
+function normalizeSandboxFilesystemState(value: unknown): SandboxFilesystemState {
+  return ["ready", "partial", "skipped", "failed"].includes(String(value))
+    ? (value as SandboxFilesystemState)
+    : "ready";
+}
+
+function normalizeSandboxDirectoryKind(value: unknown): SandboxDirectoryKind {
+  return ["workspace", "uploads", "outputs", "temp", "traces"].includes(String(value))
+    ? (value as SandboxDirectoryKind)
+    : "workspace";
+}
+
+function normalizeSandboxCleanupPolicy(value: unknown): SandboxCleanupPolicy {
+  return ["keep", "ephemeral", "manual"].includes(String(value))
+    ? (value as SandboxCleanupPolicy)
+    : "keep";
+}
+
 function normalizeTraceEventKind(value: unknown): TraceEventKind {
   return [
     "execution_mode_selected",
+    "sandbox_created",
     "worker_queued",
     "worker_started",
     "worker_finished",

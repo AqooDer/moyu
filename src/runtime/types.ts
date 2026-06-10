@@ -17,8 +17,12 @@ export type WorkerJobState = "queued" | "running" | "succeeded" | "failed" | "ca
 export type WorkerJobMode = "inline" | "background";
 export type ExecutionMode = "dry_run" | "live" | "replay";
 export type ExecutionCapabilityState = "enabled" | "planned" | "skipped" | "blocked";
+export type SandboxDirectoryKind = "workspace" | "uploads" | "outputs" | "temp" | "traces";
+export type SandboxFilesystemState = "ready" | "partial" | "skipped" | "failed";
+export type SandboxCleanupPolicy = "keep" | "ephemeral" | "manual";
 export type TraceEventKind =
   | "execution_mode_selected"
+  | "sandbox_created"
   | "worker_queued"
   | "worker_started"
   | "worker_finished"
@@ -231,6 +235,31 @@ export interface ExecutionModeRecord {
   updatedAt: string;
 }
 
+export interface SandboxDirectoryRecord {
+  id: string;
+  kind: SandboxDirectoryKind;
+  path: string;
+  relativePath: string;
+  writable: boolean;
+  cleanupPolicy: SandboxCleanupPolicy;
+  created: boolean;
+  summary: string;
+}
+
+export interface SandboxFilesystemRecord {
+  id: string;
+  runId: string;
+  workId: string;
+  root: string;
+  relativeRoot: string;
+  scope: string;
+  state: SandboxFilesystemState;
+  directories: SandboxDirectoryRecord[];
+  constraints: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TraceEventRecord {
   id: string;
   runId: string;
@@ -308,6 +337,7 @@ export interface RuntimeTrace {
   middleware: MiddlewarePipelineRecord | null;
   policy: PolicyEvaluationRecord | null;
   execution: ExecutionModeRecord | null;
+  sandbox: SandboxFilesystemRecord | null;
   worker: WorkerJobRecord | null;
   events: TraceEventRecord[];
   steps: StepRecord[];

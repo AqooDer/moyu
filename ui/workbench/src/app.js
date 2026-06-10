@@ -114,6 +114,25 @@ const messages = {
     executionCapabilityPlanned: "规划中",
     executionCapabilitySkipped: "跳过",
     executionCapabilityBlocked: "阻断",
+    sandboxTitle: "沙盒文件系统",
+    sandboxEmpty: "暂无沙盒文件系统",
+    sandboxFallback: "等待运行写入 sandbox trace",
+    sandboxScope: "作用域",
+    sandboxRoot: "根目录",
+    sandboxDirectory: "目录",
+    sandboxPath: "路径",
+    sandboxWritable: "可写",
+    sandboxCleanup: "清理策略",
+    sandboxCreated: "已创建",
+    sandboxConstraints: "限制",
+    sandboxWorkspace: "工作区",
+    sandboxUploads: "上传区",
+    sandboxOutputs: "产物区",
+    sandboxTemp: "临时区",
+    sandboxTraces: "Trace 区",
+    sandboxKeep: "保留",
+    sandboxEphemeral: "临时",
+    sandboxManual: "手动",
     contextPipelineTitle: "运行上下文管线",
     contextPipelineEmpty: "暂无上下文管线",
     contextPipelineFallback: "等待真实运行写入 middleware trace",
@@ -463,6 +482,25 @@ const messages = {
     executionCapabilityPlanned: "Planned",
     executionCapabilitySkipped: "Skipped",
     executionCapabilityBlocked: "Blocked",
+    sandboxTitle: "Sandbox filesystem",
+    sandboxEmpty: "No sandbox filesystem",
+    sandboxFallback: "Waiting for a run to write sandbox trace",
+    sandboxScope: "Scope",
+    sandboxRoot: "Root",
+    sandboxDirectory: "Directory",
+    sandboxPath: "Path",
+    sandboxWritable: "Writable",
+    sandboxCleanup: "Cleanup",
+    sandboxCreated: "Created",
+    sandboxConstraints: "Constraints",
+    sandboxWorkspace: "Workspace",
+    sandboxUploads: "Uploads",
+    sandboxOutputs: "Outputs",
+    sandboxTemp: "Temp",
+    sandboxTraces: "Trace",
+    sandboxKeep: "Keep",
+    sandboxEphemeral: "Ephemeral",
+    sandboxManual: "Manual",
     contextPipelineTitle: "Runtime context pipeline",
     contextPipelineEmpty: "No context pipeline",
     contextPipelineFallback: "Waiting for a real run to write middleware trace",
@@ -1271,6 +1309,7 @@ function renderWorkbenchData() {
   renderRunDetails(run, currentArtifacts);
   renderContextPipeline(
     run?.execution || null,
+    run?.sandbox || null,
     run?.middleware || null,
     run?.policy || null,
     run?.worker || null,
@@ -1579,7 +1618,7 @@ function createTimelineItem(step) {
   return item;
 }
 
-function renderContextPipeline(execution, pipeline, policy, worker, events) {
+function renderContextPipeline(execution, sandbox, pipeline, policy, worker, events) {
   const root = document.querySelector("[data-context-pipeline]");
   if (!root) {
     return;
@@ -1588,6 +1627,7 @@ function renderContextPipeline(execution, pipeline, policy, worker, events) {
   const dict = messages[currentLang] ?? messages.zh;
   const nodes = [];
   nodes.push(createExecutionModeSection(execution, dict));
+  nodes.push(createSandboxFilesystemSection(sandbox, dict));
   if (!pipeline || !Array.isArray(pipeline.stages) || pipeline.stages.length === 0) {
     nodes.push(createContextEmptyState(dict.contextPipelineEmpty, dict.contextPipelineFallback));
   } else {
@@ -1672,6 +1712,78 @@ function createExecutionModeSection(execution, dict) {
 
   section.append(header, list);
   return section;
+}
+
+function createSandboxFilesystemSection(sandbox, dict) {
+  if (!sandbox || !Array.isArray(sandbox.directories) || sandbox.directories.length === 0) {
+    return createContextEmptyState(dict.sandboxEmpty, dict.sandboxFallback);
+  }
+
+  const section = document.createElement("section");
+  section.className = "context-section sandbox-filesystem";
+  const header = document.createElement("div");
+  header.className = "context-pipeline-head";
+  header.append(
+    createText("strong", dict.sandboxTitle),
+    createStatusPill(resolveContextPipelineState(sandbox.state), sandbox.state || "ready"),
+    createText("small", `${sandbox.scope || "run"} · ${sandbox.relativeRoot || sandbox.root || "-"}`),
+  );
+
+  const list = document.createElement("ol");
+  list.className = "context-stage-list";
+  const summary = document.createElement("li");
+  summary.className = `context-stage ${sandbox.state || "ready"}`;
+  const marker = document.createElement("span");
+  marker.className = "context-stage-index";
+  marker.textContent = "S";
+  const body = document.createElement("div");
+  body.className = "context-stage-body";
+  const head = document.createElement("div");
+  head.className = "context-stage-head";
+  head.append(
+    createText("strong", sandbox.id || dict.sandboxTitle),
+    createStatusPill(resolveContextPipelineState(sandbox.state), sandbox.state || "ready"),
+  );
+  body.append(
+    head,
+    createText("small", sandbox.runId || "-"),
+    createContextSummaryRow(dict.sandboxScope, sandbox.scope || "run"),
+    createContextSummaryRow(dict.sandboxRoot, sandbox.relativeRoot || sandbox.root || "-"),
+    createContextTagRow(dict.sandboxConstraints, sandbox.constraints),
+  );
+  summary.append(marker, body);
+  list.append(summary, ...sandbox.directories.map((directory, index) => createSandboxDirectoryItem(directory, index, dict)));
+  section.append(header, list);
+  return section;
+}
+
+function createSandboxDirectoryItem(directory, index, dict) {
+  const item = document.createElement("li");
+  item.className = `context-stage ${directory.created ? "ready" : "failed"}`;
+  const marker = document.createElement("span");
+  marker.className = "context-stage-index";
+  marker.textContent = String(index + 1);
+
+  const body = document.createElement("div");
+  body.className = "context-stage-body";
+  const head = document.createElement("div");
+  head.className = "context-stage-head";
+  head.append(
+    createText("strong", resolveSandboxDirectoryKind(directory.kind)),
+    createStatusPill(directory.writable ? dict.sandboxWritable : dict.no, directory.created ? "ready" : "failed"),
+  );
+  body.append(
+    head,
+    createText("small", directory.id || "-"),
+    createContextSummaryRow(dict.sandboxDirectory, directory.kind || "-"),
+    createContextSummaryRow(dict.sandboxPath, directory.relativePath || directory.path || "-"),
+    createContextSummaryRow(dict.sandboxWritable, directory.writable ? dict.yes : dict.no),
+    createContextSummaryRow(dict.sandboxCleanup, resolveSandboxCleanupPolicy(directory.cleanupPolicy)),
+    createContextSummaryRow(dict.sandboxCreated, directory.created ? dict.yes : dict.no),
+    createContextSummaryRow(dict.policyGateSummary, directory.summary),
+  );
+  item.append(marker, body);
+  return item;
 }
 
 function createMiddlewarePipelineSection(pipeline, dict) {
@@ -1947,6 +2059,28 @@ function resolveExecutionCapabilityState(state) {
     blocked: "executionCapabilityBlocked",
   };
   return dict[keyMap[state] || "executionCapabilityPlanned"] || state || "-";
+}
+
+function resolveSandboxDirectoryKind(kind) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    workspace: "sandboxWorkspace",
+    uploads: "sandboxUploads",
+    outputs: "sandboxOutputs",
+    temp: "sandboxTemp",
+    traces: "sandboxTraces",
+  };
+  return dict[keyMap[kind] || "sandboxDirectory"] || kind || "-";
+}
+
+function resolveSandboxCleanupPolicy(policy) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    keep: "sandboxKeep",
+    ephemeral: "sandboxEphemeral",
+    manual: "sandboxManual",
+  };
+  return dict[keyMap[policy] || "sandboxKeep"] || policy || "-";
 }
 
 function resolveWorkerState(state) {

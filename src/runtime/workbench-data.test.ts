@@ -53,6 +53,11 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftTrace.execution.queue, "meta.create-agent.inline");
     assert.equal(draftTrace.execution.dryRunRequested, true);
     assert.equal(draftTrace.execution.dryRunEffective, true);
+    assertRunSandbox({
+      sandbox: draftTrace.sandbox,
+      runId: draft.runId,
+      outputsPath: `artifacts/meta-agent-runs/${draft.runId}`,
+    });
     assert.equal(
       draftTrace.execution.capabilities.some(
         (capability: { id?: string; state?: string }) =>
@@ -86,6 +91,10 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftTrace.worker.state, "succeeded");
     assert.equal(
       draftTrace.events.some((event: { kind?: string; state?: string }) => event.kind === "execution_mode_selected" && event.state === "dry_run"),
+      true,
+    );
+    assert.equal(
+      draftTrace.events.some((event: { kind?: string; state?: string }) => event.kind === "sandbox_created" && event.state === "ready"),
       true,
     );
     assert.equal(
@@ -200,6 +209,11 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runTrace.execution.entrypoint, "agent.run.image");
     assert.equal(runTrace.execution.dryRunRequested, true);
     assert.equal(runTrace.execution.dryRunEffective, true);
+    assertRunSandbox({
+      sandbox: runTrace.sandbox,
+      runId,
+      outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${runId}`,
+    });
     assert.equal(
       runTrace.execution.capabilities.some(
         (capability: { id?: string; state?: string }) =>
@@ -276,6 +290,10 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
       true,
     );
     assert.equal(
+      runTrace.events.some((event: { kind?: string; state?: string }) => event.kind === "sandbox_created" && event.state === "ready"),
+      true,
+    );
+    assert.equal(
       runTrace.events.some((event: { kind?: string; state?: string }) => event.kind === "worker_finished" && event.state === "succeeded"),
       true,
     );
@@ -298,6 +316,11 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftWorkbench.selectedRun?.execution?.title, "Meta-Agent 创建执行模式");
     assert.equal(draftWorkbench.selectedRun?.execution?.mode, "dry_run");
     assert.equal(draftWorkbench.selectedRun?.execution?.queue, "meta.create-agent.inline");
+    assertRunSandbox({
+      sandbox: draftWorkbench.selectedRun?.sandbox,
+      runId: draft.runId,
+      outputsPath: `artifacts/meta-agent-runs/${draft.runId}`,
+    });
     assert.equal(draftWorkbench.selectedRun?.worker?.queue, "meta.create-agent.inline");
     assert.equal(draftWorkbench.selectedRun?.worker?.state, "succeeded");
     assert.equal(
@@ -349,6 +372,11 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runWorkbench.selectedRun?.execution?.title, "Agent 运行执行模式");
     assert.equal(runWorkbench.selectedRun?.execution?.mode, "dry_run");
     assert.equal(runWorkbench.selectedRun?.execution?.dryRunEffective, true);
+    assertRunSandbox({
+      sandbox: runWorkbench.selectedRun?.sandbox,
+      runId,
+      outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${runId}`,
+    });
     assert.equal(runWorkbench.selectedRun?.worker?.queue, "agent.run.inline");
     assert.equal(runWorkbench.selectedRun?.worker?.state, "succeeded");
     assert.equal(
@@ -372,6 +400,9 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.match(formattedRun, /execution:/);
     assert.match(formattedRun, /Agent 运行执行模式/);
     assert.match(formattedRun, /image-provider-call skipped/);
+    assert.match(formattedRun, /sandbox:/);
+    assert.match(formattedRun, /outputs writable=yes cleanup=keep/);
+    assert.match(formattedRun, /traces writable=yes cleanup=keep/);
     assert.match(formattedRun, /worker:/);
     assert.match(formattedRun, /agent\.run\.inline/);
     assert.match(formattedRun, /events:/);
@@ -459,6 +490,11 @@ test("failed image Agent runs still persist trace, plan, and Workbench conversat
     assert.equal(trace.execution.mode, "live");
     assert.equal(trace.execution.dryRunRequested, false);
     assert.equal(trace.execution.dryRunEffective, false);
+    assertRunSandbox({
+      sandbox: trace.sandbox,
+      runId,
+      outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${runId}`,
+    });
     assert.equal(
       trace.execution.capabilities.some(
         (capability: { id?: string; state?: string }) =>
@@ -494,6 +530,11 @@ test("failed image Agent runs still persist trace, plan, and Workbench conversat
     assert.equal(workbench.selectedRun?.middleware?.title, "Agent 运行上下文装配管线");
     assert.equal(workbench.selectedRun?.policy?.title, "Agent 运行策略评估");
     assert.equal(workbench.selectedRun?.execution?.mode, "live");
+    assertRunSandbox({
+      sandbox: workbench.selectedRun?.sandbox,
+      runId,
+      outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${runId}`,
+    });
     assert.equal(workbench.selectedRun?.worker?.state, "failed");
     assert.equal(
       workbench.selectedRun?.events.some((event) => event.kind === "worker_finished" && event.state === "failed"),
@@ -553,6 +594,11 @@ test("failed Meta-Agent persist step still persists trace, plan, and Workbench c
     assert.equal(trace.execution.mode, "live");
     assert.equal(trace.execution.dryRunRequested, false);
     assert.equal(trace.execution.dryRunEffective, false);
+    assertRunSandbox({
+      sandbox: trace.sandbox,
+      runId,
+      outputsPath: "agents",
+    });
     assert.equal(trace.worker.queue, "meta.create-agent.inline");
     assert.equal(trace.worker.state, "failed");
     assert.equal(trace.worker.error.code, "run_failed");
@@ -578,6 +624,11 @@ test("failed Meta-Agent persist step still persists trace, plan, and Workbench c
     assert.equal(workbench.selectedRun?.middleware?.title, "Meta-Agent 上下文装配管线");
     assert.equal(workbench.selectedRun?.policy?.title, "Meta-Agent 创建策略评估");
     assert.equal(workbench.selectedRun?.execution?.mode, "live");
+    assertRunSandbox({
+      sandbox: workbench.selectedRun?.sandbox,
+      runId,
+      outputsPath: "agents",
+    });
     assert.equal(workbench.selectedRun?.worker?.state, "failed");
     assert.equal(
       workbench.selectedRun?.events.some((event) => event.kind === "worker_finished" && event.state === "failed"),
@@ -605,6 +656,33 @@ function readSummaryValue(summary: string, key: string) {
   const line = summary.split("\n").find((item) => item.startsWith(prefix));
   assert.ok(line, `summary should include ${key}`);
   return line.slice(prefix.length);
+}
+
+function assertRunSandbox(input: { sandbox: any; runId: string; outputsPath: string }) {
+  const { sandbox, runId, outputsPath } = input;
+  assert.ok(sandbox, "sandbox should be present");
+  assert.equal(sandbox.id, `sandbox-${runId}`);
+  assert.equal(sandbox.runId, runId);
+  assert.equal(sandbox.scope, "run");
+  assert.equal(sandbox.state, "ready");
+  assert.equal(sandbox.relativeRoot, `artifacts/sandboxes/${runId}`);
+  assert.deepEqual(
+    sandbox.directories.map((directory: { kind: string }) => directory.kind),
+    ["workspace", "uploads", "outputs", "temp", "traces"],
+  );
+  assert.equal(findSandboxDirectory(sandbox, "workspace").relativePath, `artifacts/sandboxes/${runId}/workspace`);
+  assert.equal(findSandboxDirectory(sandbox, "uploads").relativePath, `artifacts/sandboxes/${runId}/uploads`);
+  assert.equal(findSandboxDirectory(sandbox, "outputs").relativePath, outputsPath);
+  assert.equal(findSandboxDirectory(sandbox, "temp").cleanupPolicy, "ephemeral");
+  assert.equal(findSandboxDirectory(sandbox, "traces").relativePath, `traces/${runId}`);
+  assert.equal(sandbox.directories.every((directory: { writable?: boolean; created?: boolean }) => directory.writable && directory.created), true);
+  assert.equal(sandbox.constraints.some((item: string) => item.includes("No process isolation")), true);
+}
+
+function findSandboxDirectory(sandbox: any, kind: string) {
+  const directory = sandbox.directories.find((item: { kind?: string }) => item.kind === kind);
+  assert.ok(directory, `sandbox should include ${kind}`);
+  return directory;
 }
 
 function restoreEnv(key: string, value: string | undefined) {

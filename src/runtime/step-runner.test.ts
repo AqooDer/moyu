@@ -270,6 +270,75 @@ test("runtime store records execution mode snapshots", () => {
   assert.equal(event?.data.entrypoint, "test.runner");
 });
 
+test("runtime store records sandbox filesystem snapshots", () => {
+  const runtime = createRuntimeWithPlan("run-sandbox");
+
+  const sandbox = runtime.setSandboxFilesystem({
+    id: "sandbox-run-sandbox",
+    runId: runtime.runId,
+    workId: `work-${runtime.runId}`,
+    root: "/workspace/artifacts/sandboxes/run-sandbox",
+    relativeRoot: "artifacts/sandboxes/run-sandbox",
+    scope: "run",
+    state: "ready",
+    directories: [
+      {
+        id: "sandbox-run-sandbox-workspace",
+        kind: "workspace",
+        path: "/workspace/artifacts/sandboxes/run-sandbox/workspace",
+        relativePath: "artifacts/sandboxes/run-sandbox/workspace",
+        writable: true,
+        cleanupPolicy: "keep",
+        created: true,
+        summary: "Run workspace.",
+      },
+      {
+        id: "sandbox-run-sandbox-outputs",
+        kind: "outputs",
+        path: "/workspace/artifacts/agent-runs/test/runner/run-sandbox",
+        relativePath: "artifacts/agent-runs/test/runner/run-sandbox",
+        writable: true,
+        cleanupPolicy: "keep",
+        created: true,
+        summary: "Run outputs.",
+      },
+    ],
+    constraints: ["No process isolation in v1."],
+    createdAt: runtime.snapshot.run.startedAt,
+    updatedAt: runtime.snapshot.run.startedAt,
+  });
+
+  assert.equal(runtime.snapshot.sandbox?.id, "sandbox-run-sandbox");
+  assert.equal(sandbox.state, "ready");
+  assert.deepEqual(
+    sandbox.directories.map((directory) => directory.kind),
+    ["workspace", "outputs"],
+  );
+  assert.equal(sandbox.directories[0].writable, true);
+  assert.equal(
+    runtime.snapshot.events.some(
+      (event) => event.kind === "sandbox_created" && event.state === "ready",
+    ),
+    true,
+  );
+  const event = runtime.snapshot.events.find((item) => item.kind === "sandbox_created");
+  assert.equal(event?.data.scope, "run");
+  assert.deepEqual(event?.data.directories, [
+    {
+      kind: "workspace",
+      relativePath: "artifacts/sandboxes/run-sandbox/workspace",
+      writable: true,
+      cleanupPolicy: "keep",
+    },
+    {
+      kind: "outputs",
+      relativePath: "artifacts/agent-runs/test/runner/run-sandbox",
+      writable: true,
+      cleanupPolicy: "keep",
+    },
+  ]);
+});
+
 function createRuntimeWithPlan(runId: string) {
   const runtime = RuntimeStore.createRun({
     id: runId,

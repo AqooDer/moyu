@@ -187,6 +187,11 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(created.body.result.agentId, "custom/image-prototype-v1");
     assert.equal(created.body.workbench.works.find((work: { runId?: string }) => work.runId === created.body.result.runId)?.state, "waiting_user");
     assert.equal(created.body.workbench.selectedRun.plan.title, "Meta-Agent 创建 Agent 计划");
+    assertRunSandbox({
+      sandbox: created.body.workbench.selectedRun.sandbox,
+      runId: created.body.result.runId,
+      outputsPath: `artifacts/meta-agent-runs/${created.body.result.runId}`,
+    });
     assert.equal(created.body.workbench.selectedRun.middleware.title, "Meta-Agent 上下文装配管线");
     assert.equal(created.body.workbench.selectedRun.middleware.stages.length, 4);
     assert.equal(created.body.workbench.selectedRun.policy.title, "Meta-Agent 创建策略评估");
@@ -238,6 +243,11 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(draftRun.item.id, created.body.result.runId);
     assert.equal(draftRun.trace.run.agentId, "meta/create-agent");
     assert.equal(draftRun.trace.plan.title, "Meta-Agent 创建 Agent 计划");
+    assertRunSandbox({
+      sandbox: draftRun.trace.sandbox,
+      runId: created.body.result.runId,
+      outputsPath: `artifacts/meta-agent-runs/${created.body.result.runId}`,
+    });
     assert.equal(draftRun.trace.middleware.title, "Meta-Agent 上下文装配管线");
     assert.equal(draftRun.trace.policy.title, "Meta-Agent 创建策略评估");
     assert.equal(draftRun.trace.policy.state, "review_required");
@@ -394,6 +404,11 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(run.body.ok, true);
     assert.match(run.body.result.run_id, /^run-custom__image-prototype-v1-/);
     assert.equal(run.body.workbench.selectedRun.plan.title, "生图 Agent 运行计划");
+    assertRunSandbox({
+      sandbox: run.body.workbench.selectedRun.sandbox,
+      runId: run.body.result.run_id,
+      outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${run.body.result.run_id}`,
+    });
     assert.equal(run.body.workbench.selectedRun.middleware.title, "Agent 运行上下文装配管线");
     assert.equal(run.body.workbench.selectedRun.policy.title, "Agent 运行策略评估");
     assert.equal(run.body.workbench.selectedRun.policy.state, "review_required");
@@ -419,6 +434,11 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     const runDetail = await getJson(apiUrl(server.url, `/api/runs/${encodeURIComponent(run.body.result.run_id)}`));
     assert.equal(runDetail.ok, true);
     assert.equal(runDetail.trace.plan.title, "生图 Agent 运行计划");
+    assertRunSandbox({
+      sandbox: runDetail.trace.sandbox,
+      runId: run.body.result.run_id,
+      outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${run.body.result.run_id}`,
+    });
     assert.equal(runDetail.trace.middleware.title, "Agent 运行上下文装配管线");
     assert.equal(runDetail.trace.policy.title, "Agent 运行策略评估");
     assert.equal(runDetail.trace.policy.state, "review_required");
@@ -461,6 +481,11 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedDraft.selectedRun.agentId, "meta/create-agent");
     assert.equal(typeof selectedDraft.selectedRun.workId, "string");
     assert.equal(selectedDraft.selectedRun.plan.title, "Meta-Agent 创建 Agent 计划");
+    assertRunSandbox({
+      sandbox: selectedDraft.selectedRun.sandbox,
+      runId: created.body.result.runId,
+      outputsPath: `artifacts/meta-agent-runs/${created.body.result.runId}`,
+    });
     assert.equal(selectedDraft.selectedRun.middleware.title, "Meta-Agent 上下文装配管线");
     assert.equal(selectedDraft.selectedRun.policy.title, "Meta-Agent 创建策略评估");
     assert.equal(selectedDraft.selectedRun.execution.title, "Meta-Agent 创建执行模式");
@@ -494,6 +519,11 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(selectedRun.selectedRun.dryRun, true);
     assert.match(selectedRun.selectedRun.workId, /^work-run-custom__image-prototype-v1-/);
     assert.equal(selectedRun.selectedRun.plan.title, "生图 Agent 运行计划");
+    assertRunSandbox({
+      sandbox: selectedRun.selectedRun.sandbox,
+      runId: run.body.result.run_id,
+      outputsPath: `artifacts/agent-runs/custom__image-prototype-v1/${run.body.result.run_id}`,
+    });
     assert.equal(selectedRun.selectedRun.middleware.title, "Agent 运行上下文装配管线");
     assert.equal(selectedRun.selectedRun.middleware.stages.length, 4);
     assert.equal(selectedRun.selectedRun.policy.title, "Agent 运行策略评估");
@@ -599,6 +629,7 @@ test("Artifact preview API returns metadata-only responses for Office-like binar
     assert.equal(workbench.artifacts[0].preview.kind, "office");
     assert.equal(workbench.artifacts[0].preview.sandbox.scope, "artifacts");
     assert.equal(workbench.selectedRun.middleware, null);
+    assert.equal(workbench.selectedRun.sandbox, null);
     assert.equal(workbench.selectedRun.policy, null);
     assert.equal(workbench.selectedRun.execution, null);
     assert.equal(workbench.selectedRun.worker, null);
@@ -607,6 +638,7 @@ test("Artifact preview API returns metadata-only responses for Office-like binar
     const run = await getJson(apiUrl(server.url, "/api/runs/run-preview-office"));
     assert.equal(run.ok, true);
     assert.equal(run.trace.middleware, null);
+    assert.equal(run.trace.sandbox, null);
     assert.equal(run.trace.policy, null);
     assert.equal(run.trace.execution, null);
     assert.equal(run.trace.worker, null);
@@ -644,4 +676,35 @@ async function postJson(url: string, body: unknown) {
     status: response.status,
     body: await response.json(),
   };
+}
+
+function assertRunSandbox(input: { sandbox: any; runId: string; outputsPath: string }) {
+  const { sandbox, runId, outputsPath } = input;
+  assert.ok(sandbox, "sandbox should be present");
+  assert.equal(sandbox.id, `sandbox-${runId}`);
+  assert.equal(sandbox.runId, runId);
+  assert.equal(sandbox.scope, "run");
+  assert.equal(sandbox.state, "ready");
+  assert.equal(sandbox.relativeRoot, `artifacts/sandboxes/${runId}`);
+  assert.deepEqual(
+    sandbox.directories.map((directory: { kind: string }) => directory.kind),
+    ["workspace", "uploads", "outputs", "temp", "traces"],
+  );
+  assert.equal(findSandboxDirectory(sandbox, "workspace").relativePath, `artifacts/sandboxes/${runId}/workspace`);
+  assert.equal(findSandboxDirectory(sandbox, "uploads").relativePath, `artifacts/sandboxes/${runId}/uploads`);
+  assert.equal(findSandboxDirectory(sandbox, "outputs").relativePath, outputsPath);
+  assert.equal(findSandboxDirectory(sandbox, "outputs").cleanupPolicy, "keep");
+  assert.equal(findSandboxDirectory(sandbox, "temp").cleanupPolicy, "ephemeral");
+  assert.equal(findSandboxDirectory(sandbox, "traces").relativePath, `traces/${runId}`);
+  assert.equal(
+    sandbox.directories.every((directory: { writable?: boolean; created?: boolean }) => directory.writable && directory.created),
+    true,
+  );
+  assert.equal(sandbox.constraints.some((item: string) => item.includes("No process isolation")), true);
+}
+
+function findSandboxDirectory(sandbox: any, kind: string) {
+  const directory = sandbox.directories.find((item: { kind?: string }) => item.kind === kind);
+  assert.ok(directory, `sandbox should include ${kind}`);
+  return directory;
 }
