@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createReadStream } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
@@ -188,6 +189,18 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
       return;
     }
     writeJson(response, 200, { ok: true, ...detail });
+    return;
+  }
+
+  const artifactDownloadMatch = url.pathname.match(/^\/api\/artifacts\/([^/]+)\/download$/);
+  if (method === "GET" && artifactDownloadMatch) {
+    const artifactId = decodeURIComponent(artifactDownloadMatch[1]);
+    const artifact = await getArtifactDetail(artifactId, { tracesRoot: tracesRoot(rootDir) });
+    if (!artifact) {
+      writeJson(response, 404, { ok: false, error: "artifact not found" });
+      return;
+    }
+    await serveArtifactDownload(response, artifact);
     return;
   }
 
@@ -514,6 +527,34 @@ async function serveStaticFile(response: ServerResponse, rootDir: string, pathna
   }
 }
 
+async function serveArtifactDownload(
+  response: ServerResponse,
+  artifact: NonNullable<Awaited<ReturnType<typeof getArtifactDetail>>>,
+) {
+  if (artifact.preview.sandbox.scope === "external") {
+    writeJson(response, 403, { ok: false, error: "artifact is outside the download sandbox" });
+    return;
+  }
+
+  const info = await safeStat(artifact.path);
+  if (!info?.isFile()) {
+    writeJson(response, 410, { ok: false, error: "artifact file not found" });
+    return;
+  }
+
+  response.writeHead(200, {
+    "Content-Type": artifact.preview.mime || "application/octet-stream",
+    "Content-Length": String(info.size),
+    "Content-Disposition": `attachment; filename="${sanitizeDownloadFilename(artifact.name)}"`,
+    "Cache-Control": "no-store",
+    "X-Moyu-Artifact-Id": artifact.id,
+  });
+
+  const stream = createReadStream(artifact.path);
+  stream.on("error", (error) => response.destroy(error));
+  stream.pipe(response);
+}
+
 async function readJsonBody<T>(request: IncomingMessage): Promise<T> {
   const chunks: Buffer[] = [];
   let size = 0;
@@ -538,6 +579,15 @@ async function safeStat(filePath: string) {
   } catch {
     return null;
   }
+}
+
+function sanitizeDownloadFilename(name: string) {
+  const fallback = path.basename(name || "artifact");
+  const sanitized = fallback
+    .replace(/[\u0000-\u001f\u007f"\\/:*?<>|]+/g, "_")
+    .replace(/[^\x20-\x7e]/g, "_")
+    .trim();
+  return sanitized || "artifact";
 }
 
 function writeJson(response: ServerResponse, statusCode: number, body: unknown) {

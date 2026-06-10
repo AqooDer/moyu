@@ -228,9 +228,11 @@ const messages = {
     completed: "已完成",
     selectedArtifact: "已选择产物",
     open: "打开",
+    download: "下载",
     useAsContext: "作为上下文",
     openSucceeded: "已交给系统打开这个产物。",
     openFailed: "打开失败，请确认产物文件仍在本地。",
+    downloadStarted: "已开始下载这个产物。",
     artifactApiUnavailable: "当前页面不是 Workbench API 服务，启动 `npm run workbench:serve` 并打开它打印的地址后再操作。",
     contextQueued: "已把这个产物加入当前对话上下文。",
     previewContent: "文件内容预览",
@@ -606,9 +608,11 @@ const messages = {
     completed: "Completed",
     selectedArtifact: "Selected artifact",
     open: "Open",
+    download: "Download",
     useAsContext: "Use as context",
     openSucceeded: "Sent this artifact to the system opener.",
     openFailed: "Open failed. Make sure the artifact still exists locally.",
+    downloadStarted: "Started downloading this artifact.",
     artifactApiUnavailable: "This page is not served by the Workbench API. Start `npm run workbench:serve` and open the printed URL before using this action.",
     contextQueued: "Added this artifact to the current conversation context.",
     previewContent: "File preview",
@@ -1048,6 +1052,7 @@ function bindRunActions() {
   document.querySelector("[data-discard-install-conflict]")?.addEventListener("click", discardInstallConflict);
   document.querySelector("[data-run-agent]")?.addEventListener("click", runSelectedAgentFromWorkbench);
   document.querySelector("[data-open-artifact]")?.addEventListener("click", openSelectedArtifact);
+  document.querySelector("[data-download-artifact]")?.addEventListener("click", downloadSelectedArtifact);
   document.querySelector("[data-open-trace]")?.addEventListener("click", openCurrentRunTrace);
   document.querySelector("[data-use-artifact-context]")?.addEventListener("click", useSelectedArtifactAsContext);
   document.querySelectorAll("[data-run-action='adjust']").forEach((button) => button.addEventListener("click", () => {
@@ -3330,6 +3335,7 @@ function renderEmptyArtifactNote(detail, dict) {
 
 function setArtifactActionDisabled(disabled) {
   document.querySelector("[data-open-artifact]")?.toggleAttribute("disabled", disabled);
+  document.querySelector("[data-download-artifact]")?.toggleAttribute("disabled", disabled);
   document.querySelector("[data-use-artifact-context]")?.toggleAttribute("disabled", disabled);
 }
 
@@ -3822,6 +3828,24 @@ async function openSelectedArtifact() {
   } catch {
     setInstallStatus(dict.openFailed, "error");
   }
+}
+
+function downloadSelectedArtifact() {
+  const dict = messages[currentLang] ?? messages.zh;
+  const artifact = getSelectedArtifact(currentArtifacts);
+  if (!artifact?.id || !canUseWorkbenchApi()) {
+    setInstallStatus(dict.artifactApiUnavailable, "warning");
+    return;
+  }
+
+  const link = document.createElement("a");
+  link.href = `/api/artifacts/${encodeURIComponent(artifact.id)}/download`;
+  link.download = artifact.name || "artifact";
+  link.rel = "noopener";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setInstallStatus(dict.downloadStarted, "success");
 }
 
 function useSelectedArtifactAsContext() {

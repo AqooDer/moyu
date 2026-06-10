@@ -140,6 +140,7 @@ test("Workbench static routes expose the formal frontend and prototype compatibi
     assert.match(workbench, /Moyu Workbench/);
     assert.match(workbench, /\.\/src\/app\.js/);
     assert.match(workbench, /\.\/src\/modules\/settings-module\.js/);
+    assert.match(workbench, /data-download-artifact/);
     assert.match(workbench, /data-install-agent-diff/);
     assert.match(workbench, /data-discard-install-conflict/);
 
@@ -240,6 +241,15 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
     assert.equal(manifestPreview.binary, false);
     assert.match(manifestPreview.text, /agent_id: custom\/image-prototype-v1/);
     assert.match(manifestPreview.preview.sandbox.relativePath, /^artifacts\/meta-agent-runs\//);
+
+    const manifestDownload = await fetch(
+      apiUrl(server.url, `/api/artifacts/${encodeURIComponent(artifactId)}/download`),
+    );
+    assert.equal(manifestDownload.status, 200);
+    assert.match(manifestDownload.headers.get("content-type") || "", /text\/yaml/);
+    assert.match(manifestDownload.headers.get("content-disposition") || "", /filename="manifest.yaml"/);
+    assert.equal(manifestDownload.headers.get("x-moyu-artifact-id"), artifactId);
+    assert.match(await manifestDownload.text(), /agent_id: custom\/image-prototype-v1/);
 
     const draftRun = await getJson(apiUrl(server.url, `/api/runs/${encodeURIComponent(created.body.result.runId)}`));
     assert.equal(draftRun.ok, true);
@@ -621,6 +631,18 @@ test("Artifact preview API returns metadata-only responses for Office-like binar
               sha256: "sha",
               createdAt: "2026-01-01T00:00:00.500Z",
             },
+            {
+              id: "art-run-preview-external-1",
+              runId: "run-preview-office",
+              producerStepId: "manual",
+              type: "json",
+              role: "external",
+              name: "package.json",
+              path: path.join(previousCwd, "package.json"),
+              sizeBytes: null,
+              sha256: "sha",
+              createdAt: "2026-01-01T00:00:00.600Z",
+            },
           ],
           knowledgeWriteBacks: [],
           notes: [],
@@ -640,6 +662,18 @@ test("Artifact preview API returns metadata-only responses for Office-like binar
     assert.equal(preview.preview.canOpenExternal, true);
     assert.equal(preview.binary, true);
     assert.equal(preview.text, null);
+
+    const download = await fetch(apiUrl(server.url, "/api/artifacts/art-run-preview-office-1/download"));
+    assert.equal(download.status, 200);
+    assert.match(download.headers.get("content-type") || "", /wordprocessingml\.document/);
+    assert.equal(download.headers.get("content-length"), "4");
+    assert.match(download.headers.get("content-disposition") || "", /filename="report.docx"/);
+    assert.equal(download.headers.get("x-moyu-artifact-id"), "art-run-preview-office-1");
+    assert.deepEqual([...new Uint8Array(await download.arrayBuffer())], [0x50, 0x4b, 0x03, 0x04]);
+
+    const externalDownload = await fetch(apiUrl(server.url, "/api/artifacts/art-run-preview-external-1/download"));
+    assert.equal(externalDownload.status, 403);
+    assert.match(await externalDownload.text(), /outside the download sandbox/);
 
     const workbench = await getJson(apiUrl(server.url, "/api/workbench?runId=run-preview-office"));
     assert.equal(workbench.artifacts[0].preview.kind, "office");
