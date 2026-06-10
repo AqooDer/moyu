@@ -20,12 +20,18 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
   const previousImageProviderBaseUrl = process.env.MOYU_IMAGE_PROVIDER_BASE_URL;
   const previousImageProviderApiKey = process.env.MOYU_IMAGE_PROVIDER_API_KEY;
   const previousImageProviderModel = process.env.MOYU_IMAGE_PROVIDER_MODEL;
+  const previousLlmProviderBaseUrl = process.env.MOYU_LLM_PROVIDER_BASE_URL;
+  const previousLlmProviderApiKey = process.env.MOYU_LLM_PROVIDER_API_KEY;
+  const previousLlmProviderModel = process.env.MOYU_LLM_PROVIDER_MODEL;
 
   try {
     process.chdir(workspace);
     delete process.env.MOYU_IMAGE_PROVIDER_BASE_URL;
     delete process.env.MOYU_IMAGE_PROVIDER_API_KEY;
     delete process.env.MOYU_IMAGE_PROVIDER_MODEL;
+    delete process.env.MOYU_LLM_PROVIDER_BASE_URL;
+    delete process.env.MOYU_LLM_PROVIDER_API_KEY;
+    delete process.env.MOYU_LLM_PROVIDER_MODEL;
 
     const draft = await createAgentWithMeta({
       prompt: "Create an image prototype Agent that stores traceable UI concept artifacts",
@@ -475,6 +481,9 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     restoreEnv("MOYU_IMAGE_PROVIDER_BASE_URL", previousImageProviderBaseUrl);
     restoreEnv("MOYU_IMAGE_PROVIDER_API_KEY", previousImageProviderApiKey);
     restoreEnv("MOYU_IMAGE_PROVIDER_MODEL", previousImageProviderModel);
+    restoreEnv("MOYU_LLM_PROVIDER_BASE_URL", previousLlmProviderBaseUrl);
+    restoreEnv("MOYU_LLM_PROVIDER_API_KEY", previousLlmProviderApiKey);
+    restoreEnv("MOYU_LLM_PROVIDER_MODEL", previousLlmProviderModel);
     await rm(workspace, { recursive: true, force: true });
   }
 });
@@ -602,9 +611,15 @@ test("failed image Agent runs still persist trace, plan, and Workbench conversat
 test("failed Meta-Agent persist step still persists trace, plan, and Workbench conversation", async () => {
   const previousCwd = process.cwd();
   const workspace = await mkdtemp(path.join(tmpdir(), "moyu-workbench-failed-meta-"));
+  const previousLlmProviderBaseUrl = process.env.MOYU_LLM_PROVIDER_BASE_URL;
+  const previousLlmProviderApiKey = process.env.MOYU_LLM_PROVIDER_API_KEY;
+  const previousLlmProviderModel = process.env.MOYU_LLM_PROVIDER_MODEL;
 
   try {
     process.chdir(workspace);
+    delete process.env.MOYU_LLM_PROVIDER_BASE_URL;
+    delete process.env.MOYU_LLM_PROVIDER_API_KEY;
+    delete process.env.MOYU_LLM_PROVIDER_MODEL;
     await mkdir(path.join("agents", "custom__image-prototype-v1"), { recursive: true });
 
     await assert.rejects(
@@ -686,6 +701,9 @@ test("failed Meta-Agent persist step still persists trace, plan, and Workbench c
     assert.match(workbench.messages[2].content, /Target Agent folder already exists/);
   } finally {
     process.chdir(previousCwd);
+    restoreEnv("MOYU_LLM_PROVIDER_BASE_URL", previousLlmProviderBaseUrl);
+    restoreEnv("MOYU_LLM_PROVIDER_API_KEY", previousLlmProviderApiKey);
+    restoreEnv("MOYU_LLM_PROVIDER_MODEL", previousLlmProviderModel);
     await rm(workspace, { recursive: true, force: true });
   }
 });

@@ -32,7 +32,7 @@ Moyu 目前由单人维护，仍处于活跃原型开发阶段。它还没有大
 - `image-gen/prototype-v1` 是首个本地 Agent。
 - Runtime Trace 已拆成 `Run / Step / Artifact` 结构。
 - 产物可以通过 CLI 查询、查看和打开。
-- 元智能体可以生成 Agent 草案，并安装审核后的 Agent。
+- 元智能体可以生成 Agent 草案、安装审核后的 Agent，并在配置 OpenAI-compatible 对话模型后用真实模型先生成 Agent 规格草案。
 - Work 与对话消息会写入本地 Workbench store，支持任务会话恢复。
 - Workbench 默认中文，支持 English 切换。
 - 生图链路支持 OpenAI-compatible 图片接口，当前验证模型为 `gpt-image-2`。
@@ -66,6 +66,25 @@ npm run dev -- agent run image-gen/prototype-v1 \
 ```
 
 真实调用图片中转服务前，需要先配置本地 `.env`。配置说明见 [工程运行与状态](./docs/21-工程运行与状态.md)。
+
+## 配置 Meta-Agent 大模型
+
+如果希望 `meta create-agent` 先调用真实 OpenAI-compatible 对话模型生成 Agent 规格，再回退到本地规则，需要配置：
+
+```bash
+MOYU_LLM_PROVIDER_BASE_URL=https://api.openai.com
+MOYU_LLM_PROVIDER_API_KEY=your_api_key_here
+MOYU_LLM_PROVIDER_MODEL=gpt-4.1-mini
+```
+
+然后运行：
+
+```bash
+npm run dev -- meta create-agent \
+  --prompt "Create a research notes organizer Agent"
+```
+
+生成的 Trace 会记录规格来源是 `llm` 还是本地 `rule` 兜底。
 
 ## 文档
 

@@ -154,7 +154,13 @@ test("Workbench static routes expose the formal frontend and prototype compatibi
 test("Workbench API creates, installs, runs, and selects Agent runs", async () => {
   const previousCwd = process.cwd();
   const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-server-test-"));
+  const previousLlmProviderBaseUrl = process.env.MOYU_LLM_PROVIDER_BASE_URL;
+  const previousLlmProviderApiKey = process.env.MOYU_LLM_PROVIDER_API_KEY;
+  const previousLlmProviderModel = process.env.MOYU_LLM_PROVIDER_MODEL;
   process.chdir(workspace);
+  delete process.env.MOYU_LLM_PROVIDER_BASE_URL;
+  delete process.env.MOYU_LLM_PROVIDER_API_KEY;
+  delete process.env.MOYU_LLM_PROVIDER_MODEL;
 
   const server = await serveWorkbench({ port: 0, rootDir: workspace });
 
@@ -578,6 +584,9 @@ test("Workbench API creates, installs, runs, and selects Agent runs", async () =
   } finally {
     await server.close();
     process.chdir(previousCwd);
+    restoreEnv("MOYU_LLM_PROVIDER_BASE_URL", previousLlmProviderBaseUrl);
+    restoreEnv("MOYU_LLM_PROVIDER_API_KEY", previousLlmProviderApiKey);
+    restoreEnv("MOYU_LLM_PROVIDER_MODEL", previousLlmProviderModel);
     await rm(workspace, { recursive: true, force: true });
   }
 });
@@ -759,4 +768,12 @@ function findSandboxDirectory(sandbox: any, kind: string) {
   const directory = sandbox.directories.find((item: { kind?: string }) => item.kind === kind);
   assert.ok(directory, `sandbox should include ${kind}`);
   return directory;
+}
+
+function restoreEnv(key: string, value: string | undefined) {
+  if (typeof value === "undefined") {
+    delete process.env[key];
+    return;
+  }
+  process.env[key] = value;
 }

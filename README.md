@@ -32,7 +32,7 @@ The first end-to-end path is already working:
 - `image-gen/prototype-v1` is the first local Agent.
 - Runtime traces are modeled as `Run / Step / Artifact`.
 - Artifacts can be listed, inspected, and opened from the CLI.
-- The Meta-Agent can generate Agent drafts and install reviewed Agents.
+- The Meta-Agent can generate Agent drafts, install reviewed Agents, and use a configured OpenAI-compatible chat model for the first Agent specification draft.
 - Work and conversation messages now persist in a local Workbench store for session recovery.
 - The Workbench defaults to Chinese and supports English.
 - The image generation path supports an OpenAI-compatible image API, currently tested with `gpt-image-2`.
@@ -66,6 +66,25 @@ npm run dev -- agent run image-gen/prototype-v1 \
 ```
 
 Real image generation requires local `.env` configuration. See [Engineering Notes](./docs/21-工程运行与状态.md).
+
+## Configure Meta-Agent LLM
+
+To let `meta create-agent` use a real OpenAI-compatible chat model before falling back to local rules, configure:
+
+```bash
+MOYU_LLM_PROVIDER_BASE_URL=https://api.openai.com
+MOYU_LLM_PROVIDER_API_KEY=your_api_key_here
+MOYU_LLM_PROVIDER_MODEL=gpt-4.1-mini
+```
+
+Then run:
+
+```bash
+npm run dev -- meta create-agent \
+  --prompt "Create a research notes organizer Agent"
+```
+
+The generated trace records whether the spec came from `llm` or the local `rule` fallback.
 
 ## Documentation
 

@@ -2,6 +2,8 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { stringify } from "yaml";
 import { formatValidationResult, validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
+import { readMetaAgentLlmConfig, type ChatCompletionConfig } from "../lib/env.js";
+import { createChatCompletion } from "../lib/openai-compat-chat.js";
 import { createArtifactDeliveryRecord } from "../runtime/artifact-delivery.js";
 import { startInlineWorkerJob } from "../runtime/async-worker.js";
 import { createMetaAgentExecutionMode } from "../runtime/execution-mode.js";
@@ -34,6 +36,7 @@ export interface MetaCreateAgentResult {
   traceFile: string;
   files: string[];
   validation: AgentValidationResult;
+  specSource: AgentSpecGeneration["source"];
 }
 
 interface AgentSpec {
@@ -41,9 +44,28 @@ interface AgentSpec {
   folderName: string;
   name: string;
   description: string;
+  kind: "image" | "task";
   recipeRef: string;
   skillName: string;
   tags: string[];
+  generation: AgentSpecGeneration;
+}
+
+interface AgentSpecGeneration {
+  source: "llm" | "rule";
+  llmConfigured: boolean;
+  model: string | null;
+  provider: string | null;
+  durationMs: number | null;
+  fallbackReason: string | null;
+}
+
+interface MetaAgentLlmDraft {
+  agentId?: string;
+  name?: string;
+  description?: string;
+  kind?: "image" | "task";
+  tags?: string[];
 }
 
 export async function createAgentWithMeta(options: MetaCreateAgentOptions): Promise<MetaCreateAgentResult> {
@@ -62,6 +84,8 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
       prompt: options.prompt,
       target_agent_id: spec.agentId,
       persist: Boolean(options.persist),
+      spec_source: spec.generation.source,
+      llm_model: spec.generation.model,
     },
   });
   startInlineWorkerJob({
@@ -157,6 +181,7 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
         outputSummary: {
           prompt_chars: options.prompt.length,
           target_agent_id: spec.agentId,
+          llm_configured: spec.generation.llmConfigured,
         },
       }),
     });
@@ -167,12 +192,19 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
       kind: "llm",
       execute: () => ({
         outputSummary: {
+          source: spec.generation.source,
+          model: spec.generation.model,
+          provider: spec.generation.provider,
+          fallback_reason: spec.generation.fallbackReason,
           manifest: "manifest.yaml",
           ui: "ui.yaml",
           skill: spec.skillName,
         },
       }),
     });
+    if (spec.generation.fallbackReason) {
+      runtime.addNote(`Meta-Agent LLM draft fell back to local rules: ${spec.generation.fallbackReason}`);
+    }
 
     const files = await runRuntimeStep<string[]>({
       runtime,
@@ -317,6 +349,7 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
       traceFile,
       files,
       validation,
+      specSource: spec.generation.source,
     };
   } catch (error) {
     try {
@@ -342,6 +375,7 @@ export function formatMetaCreateAgentResult(result: MetaCreateAgentResult) {
     `agent_id: ${result.agentId}`,
     `agent_dir: ${path.relative(process.cwd(), result.agentPath)}`,
     `persisted: ${result.persisted ? "yes" : "no"}`,
+    `spec_source: ${result.specSource}`,
     `trace: ${path.relative(process.cwd(), result.traceFile)}`,
     `validation: ${result.validation.ok ? "ok" : "failed"}`,
     "",
@@ -358,23 +392,159 @@ export function formatMetaCreateAgentResult(result: MetaCreateAgentResult) {
 
 async function deriveAgentSpec(options: MetaCreateAgentOptions): Promise<AgentSpec> {
   const prompt = options.prompt.trim();
-  const name = options.name?.trim() || inferName(prompt);
-  const isImageAgent = /image|图片|生图|gpt-image|视觉|ui/i.test(prompt);
+  const llmDraft = await tryDraftAgentSpecWithLlm(options);
+  const name = options.name?.trim() || llmDraft.draft?.name || inferName(prompt);
+  const isImageAgent = llmDraft.draft?.kind === "image" || /image|图片|生图|gpt-image|视觉|ui/i.test(prompt);
   const baseSlug = isImageAgent ? "image-prototype" : slugify(name || prompt);
-  const requestedAgentId = normalizeAgentId(options.agentId || `custom/${baseSlug}-v1`);
+  const llmAgentId = options.agentId ? null : tryNormalizeAgentId(llmDraft.draft?.agentId);
+  const requestedAgentId = normalizeAgentId(options.agentId || llmAgentId || `custom/${baseSlug}-v1`);
   const agentId = options.agentId
     ? requestedAgentId
     : await chooseAvailableAgentId(requestedAgentId, options.rootDir || "agents");
   const skillName = isImageAgent ? "image_gen_via_relay" : "run_task";
+  const defaultTags = isImageAgent ? ["image-generation", "prototype", "meta-agent-generated"] : ["meta-agent-generated"];
+  const tags = normalizeTags(llmDraft.draft?.tags ?? defaultTags, defaultTags);
 
   return {
     agentId,
     folderName: agentIdToFolderName(agentId),
     name,
-    description: options.description?.trim() || inferDescription(prompt),
+    description: options.description?.trim() || llmDraft.draft?.description || inferDescription(prompt),
+    kind: isImageAgent ? "image" : "task",
     recipeRef: isImageAgent ? "image-gen/prototype-v1" : "custom/generated-agent-v1",
     skillName,
-    tags: isImageAgent ? ["image-generation", "prototype", "meta-agent-generated"] : ["meta-agent-generated"],
+    tags,
+    generation: llmDraft.generation,
+  };
+}
+
+async function tryDraftAgentSpecWithLlm(options: MetaCreateAgentOptions): Promise<{
+  draft: MetaAgentLlmDraft | null;
+  generation: AgentSpecGeneration;
+}> {
+  const config = readMetaAgentLlmConfig();
+  if (!config) {
+    return {
+      draft: null,
+      generation: {
+        source: "rule",
+        llmConfigured: false,
+        model: null,
+        provider: null,
+        durationMs: null,
+        fallbackReason: "missing_llm_provider_config",
+      },
+    };
+  }
+
+  try {
+    const result = await requestMetaAgentDraft(options, config);
+    return {
+      draft: result.draft,
+      generation: {
+        source: "llm",
+        llmConfigured: true,
+        model: result.model,
+        provider: result.provider,
+        durationMs: result.durationMs,
+        fallbackReason: null,
+      },
+    };
+  } catch (error) {
+    return {
+      draft: null,
+      generation: {
+        source: "rule",
+        llmConfigured: true,
+        model: config.model,
+        provider: config.baseUrl,
+        durationMs: null,
+        fallbackReason: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
+}
+
+async function requestMetaAgentDraft(
+  options: MetaCreateAgentOptions,
+  config: ChatCompletionConfig,
+): Promise<{
+  draft: MetaAgentLlmDraft;
+  model: string;
+  provider: string;
+  durationMs: number;
+}> {
+  const response = await createChatCompletion(config, {
+    temperature: 0.2,
+    messages: [
+      {
+        role: "system",
+        content: [
+          "You are Moyu Meta-Agent. Draft a small, reviewable local Agent specification.",
+          "Return JSON only. Do not include markdown.",
+          "Use stable, lowercase IDs and keep the result conservative.",
+        ].join("\n"),
+      },
+      {
+        role: "user",
+        content: [
+          `Requirement: ${options.prompt.trim()}`,
+          "",
+          "Return this JSON object:",
+          "{",
+          '  "agent_id": "domain/name-v1",',
+          '  "name": "short display name",',
+          '  "description": "one sentence description",',
+          '  "kind": "image" | "task",',
+          '  "tags": ["short-tag"]',
+          "}",
+          "",
+          "Rules:",
+          "- If the requirement involves image generation, UI visuals, product visuals, or gpt-image, use kind=image.",
+          "- Otherwise use kind=task.",
+          "- agent_id must match lowercase letters, numbers, dash, and slash only.",
+          "- Keep tags short and implementation-neutral.",
+        ].join("\n"),
+      },
+    ],
+  });
+
+  return {
+    draft: normalizeMetaAgentLlmDraft(parseJsonObject(response.content)),
+    model: response.model,
+    provider: response.provider,
+    durationMs: response.durationMs,
+  };
+}
+
+function parseJsonObject(content: string): unknown {
+  try {
+    return JSON.parse(content);
+  } catch {
+    const start = content.indexOf("{");
+    const end = content.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      return JSON.parse(content.slice(start, end + 1));
+    }
+    throw new Error("LLM draft was not valid JSON");
+  }
+}
+
+function normalizeMetaAgentLlmDraft(raw: unknown): MetaAgentLlmDraft {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new Error("LLM draft JSON must be an object");
+  }
+
+  const value = raw as Record<string, unknown>;
+  const kind = readString(value.kind);
+  return {
+    agentId: readString(value.agent_id) ?? readString(value.agentId),
+    name: readString(value.name),
+    description: readString(value.description),
+    kind: kind === "image" ? "image" : "task",
+    tags: Array.isArray(value.tags)
+      ? value.tags.map((tag) => readString(tag)).filter((tag): tag is string => Boolean(tag))
+      : undefined,
   };
 }
 
@@ -471,6 +641,8 @@ async function writeTrackedFile(files: string[], filePath: string, content: stri
 }
 
 function buildManifest(spec: AgentSpec, now: string) {
+  const modelRoleId = spec.kind === "image" ? "image-generation" : "conversation-primary";
+  const defaultModel = spec.kind === "image" ? "gpt-image-2" : "gpt-4.1-mini";
   return stringify({
     schema_version: "1",
     agent_id: spec.agentId,
@@ -514,12 +686,12 @@ function buildManifest(spec: AgentSpec, now: string) {
       },
     },
     routing: {
-      model_tiers: ["medium", "image-generation"],
-      default_model: "gpt-image-2",
+      model_tiers: ["medium", modelRoleId],
+      default_model: defaultModel,
       model_roles: {
-        "image-generation": {
+        [modelRoleId]: {
           provider: "openai-compat",
-          model: "gpt-image-2",
+          model: defaultModel,
         },
       },
     },
@@ -719,6 +891,17 @@ function normalizeAgentId(value: string) {
   return normalized;
 }
 
+function tryNormalizeAgentId(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+  try {
+    return normalizeAgentId(value);
+  } catch {
+    return null;
+  }
+}
+
 function agentIdToFolderName(agentId: string) {
   return agentId.replace(/\//g, "__");
 }
@@ -744,4 +927,23 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-+|-+$)/g, "");
   return slug || "generated-agent";
+}
+
+function normalizeTags(tags: string[], fallback: string[]) {
+  const normalized = tags
+    .map((tag) =>
+      tag
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9-]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, ""),
+    )
+    .filter(Boolean);
+  const unique = [...new Set([...normalized, "meta-agent-generated"])];
+  return unique.length > 0 ? unique.slice(0, 8) : fallback;
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
