@@ -16,7 +16,7 @@ A single task may involve several rounds of conversation, multiple intermediate 
 
 ## What Moyu Is Building
 
-- **Conversation-driven Agent creation**: a Meta-Agent turns user intent into Agent contracts, manifests, recipes, UI schemas, and validation records.
+- **Conversation-driven Agent creation**: a Meta-Agent collects requirements through Workbench chat, turns user intent into Agent contracts, manifests, recipes, UI schemas, and validation records.
 - **Code-driven orchestration**: Agents are connected through code, recipes, and runtime events instead of being limited to manual node graphs.
 - **Multi-artifact task sessions**: one work session can produce documents, images, slide decks, traces, configuration files, and review reports.
 - **Local-first runtime**: Agents, traces, artifacts, and configuration live in the local project by default, making them inspectable and versionable.
@@ -32,7 +32,7 @@ The first end-to-end path is already working:
 - `image-gen/prototype-v1` is the first local Agent.
 - Runtime traces are modeled as `Run / Step / Artifact`.
 - Artifacts can be listed, inspected, and opened from the CLI.
-- The Meta-Agent can generate Agent drafts, install reviewed Agents, and use a configured OpenAI-compatible chat model for the first Agent specification draft.
+- The Meta-Agent can collect requirements through Workbench conversation, generate Agent drafts, install reviewed Agents, and use a configured OpenAI-compatible chat model for the first Agent specification draft.
 - Work and conversation messages now persist in a local Workbench store for session recovery.
 - The Workbench defaults to Chinese and supports English.
 - The image generation path supports an OpenAI-compatible image API, currently tested with `gpt-image-2`.
@@ -85,6 +85,8 @@ npm run dev -- meta create-agent \
 ```
 
 The generated trace records whether the spec came from `llm` or the local `rule` fallback.
+
+You can also start `npm run workbench:serve`, select **Meta Agent**, describe the Agent in the composer, and reply `confirm create` after the Meta-Agent asks for confirmation.
 
 ## Documentation
 

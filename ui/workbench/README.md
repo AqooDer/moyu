@@ -10,7 +10,7 @@
 - 左侧区域：任务会话与 Agent 入口
 - 右侧区域：当前任务的产物、Trace、上下文和详情
 - 暂不做节点画布编辑器；Agent 调用 Agent 以运行步骤和 Trace 呈现
-- 当前演示主线：用户通过对话让“元智能体”创建一个可运行的 `image-gen/prototype-v1` Agent，产物是 Agent 契约、执行入口、示例 Recipe 与验证 Trace
+- 当前主线：用户通过 Workbench 对话让“元智能体”创建可审核 Agent 草案，产物是 Agent 契约、执行入口、示例 Recipe 与验证 Trace
 - 当前已补充“设置中心”原型：围绕 Models / Knowledge / Skills / Tools / MCP / Runtime 展示 Workspace 默认配置与 Agent 继承关系
 
 ## 打开方式
@@ -71,14 +71,30 @@ npm run workbench:export-data
 - `GET /api/artifact-preview?id=<artifact_id>`：读取统一产物预览响应
 - `GET /api/artifact-content?id=<artifact_id>`：读取文本产物内容，用于右侧检查器审核草案文件
 - `POST /api/artifact/open`：用系统默认应用打开某个本地产物文件
+- `POST /api/meta/conversation`：通过多轮对话收集需求，确认后创建 Agent 草案，并返回最新 Workbench 数据
 - `POST /api/meta/create-agent`：通过元智能体创建 Agent 草案，并返回最新 Workbench 数据
 - `POST /api/meta/install-agent`：把某次元智能体 Run 生成的 Agent 草案安装到正式 `agents/`；默认拒绝覆盖已存在的 Agent
 - `POST /api/meta/install-agent/version`：当安装冲突时，把草案安装为下一个未占用 Agent 版本
 - `GET /api/meta/install-agent/diff?runId=<run_id>`：查看草案与正式 Agent 目录的文件级差异摘要
 
-## 元智能体创建 Agent
+## 元智能体对话式创建 Agent
 
-原型里的“确认创建”现在对应一个最小可执行的 CLI 闭环：
+Workbench 中选择「元智能体」后，可以直接在底部输入框描述要创建的 Agent。当前最小闭环：
+
+1. 用户描述目标、输入、输出、模型 / 工具 / MCP。
+2. 信息不足时，元智能体继续追问。
+3. 信息足够时，元智能体回复确认 checkpoint。
+4. 用户回复「确认创建」后，Workbench 调用本地 `/api/meta/conversation`，生成可审核 Agent 草案。
+5. 右侧检查器显示本次 Run 的 Trace、Artifact Delivery、草案文件和验证记录。
+
+如果只想从 CLI 创建，仍可直接运行：
+
+```bash
+npm run dev -- meta create-agent \
+  --prompt "创建一个生图原型 Agent，调用 gpt-image-2 中转接口，默认生成 3 张 UI 概念图，保存图片、Trace 和提示词"
+```
+
+旧的完整参数示例：
 
 ```bash
 npm run dev -- meta create-agent \

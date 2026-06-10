@@ -151,6 +151,51 @@ test("Workbench static routes expose the formal frontend and prototype compatibi
   }
 });
 
+test("Workbench API creates Agent drafts through Meta-Agent conversation", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-meta-conversation-"));
+  const previousLlmProviderBaseUrl = process.env.MOYU_LLM_PROVIDER_BASE_URL;
+  const previousLlmProviderApiKey = process.env.MOYU_LLM_PROVIDER_API_KEY;
+  const previousLlmProviderModel = process.env.MOYU_LLM_PROVIDER_MODEL;
+  process.chdir(workspace);
+  delete process.env.MOYU_LLM_PROVIDER_BASE_URL;
+  delete process.env.MOYU_LLM_PROVIDER_API_KEY;
+  delete process.env.MOYU_LLM_PROVIDER_MODEL;
+
+  const server = await serveWorkbench({ port: 0, rootDir: workspace });
+
+  try {
+    const first = await postJson(apiUrl(server.url, "/api/meta/conversation"), {
+      message:
+        "创建一个研究摘要 Agent，输入 topic 和 docs，调用大模型和 search API，输出 markdown summary artifact 并保存 trace。",
+    });
+    assert.equal(first.status, 200);
+    assert.equal(first.body.ok, true);
+    assert.equal(first.body.conversation.state, "ready_to_create");
+    assert.equal(first.body.conversation.result, null);
+    assert.match(first.body.conversation.reply, /确认创建/);
+    assert.equal(first.body.workbench.messages.some((message: { kind?: string }) => message.kind === "checkpoint"), true);
+
+    const second = await postJson(apiUrl(server.url, "/api/meta/conversation"), {
+      workId: first.body.conversation.workId,
+      message: "确认创建",
+    });
+    assert.equal(second.status, 200);
+    assert.equal(second.body.ok, true);
+    assert.equal(second.body.conversation.state, "created");
+    assert.equal(second.body.conversation.result.agentId, "custom/agent-v1");
+    assert.equal(second.body.workbench.selectedRun.workId, first.body.conversation.workId);
+    assert.equal(second.body.workbench.messages.some((message: { kind?: string }) => message.kind === "summary"), true);
+  } finally {
+    await server.close();
+    process.chdir(previousCwd);
+    restoreEnv("MOYU_LLM_PROVIDER_BASE_URL", previousLlmProviderBaseUrl);
+    restoreEnv("MOYU_LLM_PROVIDER_API_KEY", previousLlmProviderApiKey);
+    restoreEnv("MOYU_LLM_PROVIDER_MODEL", previousLlmProviderModel);
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
 test("Workbench API creates, installs, runs, and selects Agent runs", async () => {
   const previousCwd = process.cwd();
   const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-server-test-"));

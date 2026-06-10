@@ -790,7 +790,9 @@ const prototypeState = {
   isInstalling: false,
   isLoadingInstallDiff: false,
   isRunningAgent: false,
+  isSendingConversation: false,
   lastInstallConflict: null,
+  metaConversationWorkId: "",
   selectedWorkId: "",
   selectedAgentId: "",
   selectedSettingsSection: "overview",
@@ -1028,10 +1030,10 @@ function bindComposer() {
   textarea?.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       event.preventDefault();
-      appendDemoExchange();
+      submitComposerMessage();
     }
   });
-  sendButton?.addEventListener("click", appendDemoExchange);
+  sendButton?.addEventListener("click", submitComposerMessage);
   syncComposer();
 }
 
@@ -2468,6 +2470,9 @@ async function selectWorkbenchWork(work) {
   prototypeState.isLoadingInstallDiff = false;
   if (work.agentId) {
     prototypeState.selectedAgentId = work.agentId;
+    if (work.agentId === "meta/create-agent") {
+      prototypeState.metaConversationWorkId = work.id;
+    }
   }
   renderWorks(workbenchData?.works || []);
   renderAgents(workbenchData?.agents || []);
@@ -3873,6 +3878,89 @@ function setRunDetailStatus(text, variant) {
   }
   status.textContent = text;
   status.dataset.variant = variant || "";
+}
+
+async function submitComposerMessage() {
+  const textarea = document.querySelector(".composer textarea");
+  const value = textarea?.value.trim();
+  if (!value || prototypeState.isSendingConversation) {
+    return;
+  }
+
+  if (!shouldUseMetaConversationApi()) {
+    appendDemoExchange();
+    return;
+  }
+
+  prototypeState.isSendingConversation = true;
+  setComposerSending(true);
+  try {
+    const response = await fetch("/api/meta/conversation", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: value,
+        workId: getMetaConversationWorkId(),
+      }),
+    });
+    const data = await response.json().catch(() => null);
+    if (!response.ok || !data?.ok) {
+      appendConversationError(data?.error || messages[currentLang].createFailedReply);
+      return;
+    }
+
+    if (textarea) {
+      textarea.value = "";
+      textarea.dispatchEvent(new Event("input"));
+    }
+    prototypeState.metaConversationWorkId = data.conversation?.workId || prototypeState.metaConversationWorkId;
+    prototypeState.selectedWorkId = prototypeState.metaConversationWorkId || prototypeState.selectedWorkId;
+    if (data.conversation?.result?.agentId) {
+      prototypeState.selectedAgentId = "meta/create-agent";
+      setActiveInspectorTab("artifacts");
+    }
+    if (data.workbench) {
+      workbenchData = data.workbench;
+      renderWorkbenchData();
+      scrollMessagesToBottom();
+      return;
+    }
+    appendConversationError(messages[currentLang].queuedReply);
+  } catch {
+    appendConversationError(messages[currentLang].createFailedReply);
+  } finally {
+    prototypeState.isSendingConversation = false;
+    setComposerSending(false);
+  }
+}
+
+function shouldUseMetaConversationApi() {
+  return canUseWorkbenchApi() && prototypeState.selectedAgentId === "meta/create-agent";
+}
+
+function getMetaConversationWorkId() {
+  if (prototypeState.metaConversationWorkId) {
+    return prototypeState.metaConversationWorkId;
+  }
+  const selectedWork = workbenchData?.works?.find((work) => work.id === prototypeState.selectedWorkId);
+  return selectedWork?.agentId === "meta/create-agent" ? selectedWork.id : "";
+}
+
+function setComposerSending(isSending) {
+  const button = document.querySelector("[data-send-message]");
+  if (button) {
+    button.disabled = Boolean(isSending);
+    button.setAttribute("aria-busy", String(Boolean(isSending)));
+  }
+}
+
+function appendConversationError(text) {
+  const scroll = document.querySelector("[data-message-scroll]");
+  if (!scroll) {
+    return;
+  }
+  scroll.append(createMessage("agent", "Moyu", text));
+  scrollMessagesToBottom();
 }
 
 function appendDemoExchange() {

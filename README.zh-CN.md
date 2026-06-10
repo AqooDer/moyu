@@ -16,7 +16,7 @@ Moyu 是一个早期开源项目，用来通过对话创建、运行和演进 AI
 
 ## 核心能力
 
-- **通过对话创建 Agent**：元智能体把自然语言需求转成 Agent 契约、Manifest、Recipe、UI Schema 和验证记录。
+- **通过对话创建 Agent**：元智能体在 Workbench 对话中收集需求，并把自然语言需求转成 Agent 契约、Manifest、Recipe、UI Schema 和验证记录。
 - **代码驱动编排**：Agent 之间通过代码、Recipe 和 Runtime 事件串联，不依赖手工节点画布。
 - **多产物任务会话**：一个 Work 可以包含文档、图片、PPT、Trace、配置文件、审核报告等多种产物。
 - **本地优先运行**：Agent、Trace、Artifact 和配置默认保存在本地项目中，便于审查、版本化和迁移。
@@ -32,7 +32,7 @@ Moyu 目前由单人维护，仍处于活跃原型开发阶段。它还没有大
 - `image-gen/prototype-v1` 是首个本地 Agent。
 - Runtime Trace 已拆成 `Run / Step / Artifact` 结构。
 - 产物可以通过 CLI 查询、查看和打开。
-- 元智能体可以生成 Agent 草案、安装审核后的 Agent，并在配置 OpenAI-compatible 对话模型后用真实模型先生成 Agent 规格草案。
+- 元智能体可以通过 Workbench 对话收集需求、生成 Agent 草案、安装审核后的 Agent，并在配置 OpenAI-compatible 对话模型后用真实模型先生成 Agent 规格草案。
 - Work 与对话消息会写入本地 Workbench store，支持任务会话恢复。
 - Workbench 默认中文，支持 English 切换。
 - 生图链路支持 OpenAI-compatible 图片接口，当前验证模型为 `gpt-image-2`。
@@ -85,6 +85,8 @@ npm run dev -- meta create-agent \
 ```
 
 生成的 Trace 会记录规格来源是 `llm` 还是本地 `rule` 兜底。
+
+也可以启动 `npm run workbench:serve`，在 Workbench 中选择 **元智能体**，直接在输入框里描述要创建的 Agent；当元智能体整理出确认项后，回复“确认创建”即可生成可审核草案。
 
 ## 文档
 

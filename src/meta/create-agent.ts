@@ -24,6 +24,7 @@ export interface MetaCreateAgentOptions {
   description?: string;
   outDir?: string;
   rootDir?: string;
+  workId?: string;
   persist?: boolean;
   force?: boolean;
 }
@@ -71,7 +72,7 @@ interface MetaAgentLlmDraft {
 export async function createAgentWithMeta(options: MetaCreateAgentOptions): Promise<MetaCreateAgentResult> {
   const spec = await deriveAgentSpec(options);
   const runId = createMetaRunId(spec);
-  const workId = createWorkIdFromRunId(runId);
+  const workId = options.workId || createWorkIdFromRunId(runId);
   const agentPath = resolveAgentPath(spec, runId, options);
   const runtime = RuntimeStore.createRun({
     id: runId,
@@ -394,7 +395,7 @@ async function deriveAgentSpec(options: MetaCreateAgentOptions): Promise<AgentSp
   const prompt = options.prompt.trim();
   const llmDraft = await tryDraftAgentSpecWithLlm(options);
   const name = options.name?.trim() || llmDraft.draft?.name || inferName(prompt);
-  const isImageAgent = llmDraft.draft?.kind === "image" || /image|图片|生图|gpt-image|视觉|ui/i.test(prompt);
+  const isImageAgent = llmDraft.draft?.kind === "image" || isImageAgentPrompt(prompt);
   const baseSlug = isImageAgent ? "image-prototype" : slugify(name || prompt);
   const llmAgentId = options.agentId ? null : tryNormalizeAgentId(llmDraft.draft?.agentId);
   const requestedAgentId = normalizeAgentId(options.agentId || llmAgentId || `custom/${baseSlug}-v1`);
@@ -907,7 +908,7 @@ function agentIdToFolderName(agentId: string) {
 }
 
 function inferName(prompt: string) {
-  if (/image|图片|生图|gpt-image|视觉|ui/i.test(prompt)) {
+  if (isImageAgentPrompt(prompt)) {
     return "生图原型 Agent";
   }
   return "自定义 Agent";
@@ -927,6 +928,11 @@ function slugify(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-+|-+$)/g, "");
   return slug || "generated-agent";
+}
+
+function isImageAgentPrompt(prompt: string) {
+  return /图片|生图|视觉|界面|概念图|gpt-image/i.test(prompt) ||
+    /\b(image|images|visual|visuals|ui|interface|concept art)\b/i.test(prompt);
 }
 
 function normalizeTags(tags: string[], fallback: string[]) {

@@ -5,6 +5,7 @@ import type { AddressInfo } from "node:net";
 import path from "node:path";
 import { findAgent, listAgents } from "../agent/registry.js";
 import { runImageAgent } from "../agent/run.js";
+import { sendMetaAgentConversationMessage } from "../meta/conversation.js";
 import { createAgentWithMeta } from "../meta/create-agent.js";
 import { listAgentDraftRecords, type AgentDraftState } from "../meta/agent-draft.js";
 import {
@@ -35,6 +36,11 @@ interface MetaCreateRequest {
   name?: string;
   description?: string;
   persist?: boolean;
+}
+
+interface MetaConversationRequest extends MetaCreateRequest {
+  message?: string;
+  workId?: string;
 }
 
 interface MetaInstallRequest {
@@ -302,6 +308,34 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
     });
     const workbench = await buildServerWorkbenchData(rootDir);
     writeJson(response, result.validation.ok ? 200 : 422, { ok: result.validation.ok, result, workbench });
+    return;
+  }
+
+  if (method === "POST" && url.pathname === "/api/meta/conversation") {
+    const payload = await readJsonBody<MetaConversationRequest>(request);
+    const message = payload.message?.trim();
+    if (!message) {
+      writeJson(response, 400, { ok: false, error: "message is required" });
+      return;
+    }
+
+    const conversation = await sendMetaAgentConversationMessage(
+      {
+        message,
+        workId: payload.workId,
+        agentId: payload.agentId,
+        name: payload.name,
+        description: payload.description,
+        persist: Boolean(payload.persist),
+      },
+      { storePath: workStorePath(rootDir) },
+    );
+    const selectedRunId = conversation.result?.runId;
+    writeJson(response, 200, {
+      ok: true,
+      conversation,
+      workbench: await buildServerWorkbenchData(rootDir, { selectedRunId }),
+    });
     return;
   }
 

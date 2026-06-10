@@ -356,7 +356,7 @@ uiCommand
     }
     console.log(`workbench: ${server.url}`);
     console.log(
-      "api: /api/workbench, /api/settings, /api/plugins, /api/policies, /api/works, /api/messages, /api/agents, /api/runs/:id, /api/artifacts/:id, /api/artifacts/:id/download, /api/artifact-preview, /api/artifact-content, /api/artifact/open, /api/run/open-trace, /api/meta/create-agent, /api/meta/install-agent, /api/meta/install-agent/version, /api/meta/install-agent/diff, /api/agent/run",
+      "api: /api/workbench, /api/settings, /api/plugins, /api/policies, /api/works, /api/messages, /api/agents, /api/runs/:id, /api/artifacts/:id, /api/artifacts/:id/download, /api/artifact-preview, /api/artifact-content, /api/artifact/open, /api/run/open-trace, /api/meta/conversation, /api/meta/create-agent, /api/meta/install-agent, /api/meta/install-agent/version, /api/meta/install-agent/diff, /api/agent/run",
     );
   });
 
