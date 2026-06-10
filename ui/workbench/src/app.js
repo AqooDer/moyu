@@ -95,6 +95,25 @@ const messages = {
     trace: "Trace",
     context: "上下文",
     details: "详情",
+    executionModeTitle: "执行模式",
+    executionModeEmpty: "暂无执行模式",
+    executionModeFallback: "等待运行写入 execution trace",
+    executionMode: "模式",
+    executionDispatch: "调度",
+    executionEntrypoint: "入口",
+    executionRequestedBy: "请求方",
+    executionDryRunRequested: "请求 dry-run",
+    executionDryRunEffective: "实际 dry-run",
+    executionReason: "原因",
+    executionConstraints: "限制",
+    executionCapabilityState: "状态",
+    executionModeDryRun: "Dry run",
+    executionModeLive: "Live",
+    executionModeReplay: "Replay",
+    executionCapabilityEnabled: "启用",
+    executionCapabilityPlanned: "规划中",
+    executionCapabilitySkipped: "跳过",
+    executionCapabilityBlocked: "阻断",
     contextPipelineTitle: "运行上下文管线",
     contextPipelineEmpty: "暂无上下文管线",
     contextPipelineFallback: "等待真实运行写入 middleware trace",
@@ -425,6 +444,25 @@ const messages = {
     trace: "Trace",
     context: "Context",
     details: "Details",
+    executionModeTitle: "Execution mode",
+    executionModeEmpty: "No execution mode",
+    executionModeFallback: "Waiting for a run to write execution trace",
+    executionMode: "Mode",
+    executionDispatch: "Dispatch",
+    executionEntrypoint: "Entrypoint",
+    executionRequestedBy: "Requested by",
+    executionDryRunRequested: "Dry-run requested",
+    executionDryRunEffective: "Dry-run effective",
+    executionReason: "Reason",
+    executionConstraints: "Constraints",
+    executionCapabilityState: "State",
+    executionModeDryRun: "Dry run",
+    executionModeLive: "Live",
+    executionModeReplay: "Replay",
+    executionCapabilityEnabled: "Enabled",
+    executionCapabilityPlanned: "Planned",
+    executionCapabilitySkipped: "Skipped",
+    executionCapabilityBlocked: "Blocked",
     contextPipelineTitle: "Runtime context pipeline",
     contextPipelineEmpty: "No context pipeline",
     contextPipelineFallback: "Waiting for a real run to write middleware trace",
@@ -1231,7 +1269,13 @@ function renderWorkbenchData() {
   updateArtifactDetail(getSelectedArtifact(currentArtifacts));
   renderTimelineSteps(getVisibleTimelineSteps());
   renderRunDetails(run, currentArtifacts);
-  renderContextPipeline(run?.middleware || null, run?.policy || null, run?.worker || null, run?.events || []);
+  renderContextPipeline(
+    run?.execution || null,
+    run?.middleware || null,
+    run?.policy || null,
+    run?.worker || null,
+    run?.events || [],
+  );
   renderRunState();
   renderStateMessages();
   renderActionHint();
@@ -1535,7 +1579,7 @@ function createTimelineItem(step) {
   return item;
 }
 
-function renderContextPipeline(pipeline, policy, worker, events) {
+function renderContextPipeline(execution, pipeline, policy, worker, events) {
   const root = document.querySelector("[data-context-pipeline]");
   if (!root) {
     return;
@@ -1543,6 +1587,7 @@ function renderContextPipeline(pipeline, policy, worker, events) {
 
   const dict = messages[currentLang] ?? messages.zh;
   const nodes = [];
+  nodes.push(createExecutionModeSection(execution, dict));
   if (!pipeline || !Array.isArray(pipeline.stages) || pipeline.stages.length === 0) {
     nodes.push(createContextEmptyState(dict.contextPipelineEmpty, dict.contextPipelineFallback));
   } else {
@@ -1553,6 +1598,80 @@ function renderContextPipeline(pipeline, policy, worker, events) {
   nodes.push(createWorkerJobSection(worker, dict));
   nodes.push(createTraceEventSection(events, dict));
   root.replaceChildren(...nodes);
+}
+
+function createExecutionModeSection(execution, dict) {
+  if (!execution) {
+    return createContextEmptyState(dict.executionModeEmpty, dict.executionModeFallback);
+  }
+
+  const section = document.createElement("section");
+  section.className = "context-section execution-mode";
+  const header = document.createElement("div");
+  header.className = "context-pipeline-head";
+  header.append(
+    createText("strong", execution.title || dict.executionModeTitle),
+    createStatusPill(resolveExecutionMode(execution.mode), execution.mode || "dry_run"),
+    createText("small", `${execution.entrypoint || "-"} · ${execution.queue || "-"}`),
+  );
+
+  const list = document.createElement("ol");
+  list.className = "context-stage-list";
+  const summary = document.createElement("li");
+  summary.className = `context-stage ${execution.mode || "dry_run"}`;
+  const marker = document.createElement("span");
+  marker.className = "context-stage-index";
+  marker.textContent = "E";
+  const body = document.createElement("div");
+  body.className = "context-stage-body";
+  const head = document.createElement("div");
+  head.className = "context-stage-head";
+  head.append(
+    createText("strong", execution.entrypoint || dict.executionModeTitle),
+    createStatusPill(resolveExecutionMode(execution.mode), execution.mode || "dry_run"),
+  );
+  body.append(
+    head,
+    createText("small", execution.id || "-"),
+    createContextSummaryRow(dict.executionMode, resolveExecutionMode(execution.mode)),
+    createContextSummaryRow(dict.executionDispatch, execution.dispatch || "-"),
+    createContextSummaryRow(dict.workerQueue, execution.queue || "-"),
+    createContextSummaryRow(dict.executionRequestedBy, execution.requestedBy || "-"),
+    createContextSummaryRow(dict.executionDryRunRequested, execution.dryRunRequested ? dict.yes : dict.no),
+    createContextSummaryRow(dict.executionDryRunEffective, execution.dryRunEffective ? dict.yes : dict.no),
+    createContextSummaryRow(dict.executionReason, execution.reason),
+    createContextTagRow(dict.executionConstraints, execution.constraints),
+  );
+  summary.append(marker, body);
+  list.append(summary);
+
+  const capabilities = Array.isArray(execution.capabilities) ? execution.capabilities : [];
+  capabilities.forEach((capability, index) => {
+    const item = document.createElement("li");
+    item.className = `context-stage ${capability.state || "planned"}`;
+    const capabilityMarker = document.createElement("span");
+    capabilityMarker.className = "context-stage-index";
+    capabilityMarker.textContent = String(index + 1);
+    const capabilityBody = document.createElement("div");
+    capabilityBody.className = "context-stage-body";
+    const capabilityHead = document.createElement("div");
+    capabilityHead.className = "context-stage-head";
+    capabilityHead.append(
+      createText("strong", capability.title || capability.id || "-"),
+      createStatusPill(resolveExecutionCapabilityState(capability.state), capability.state || "planned"),
+    );
+    capabilityBody.append(
+      capabilityHead,
+      createContextSummaryRow(dict.policyGateSummary, capability.summary),
+      createContextSummaryRow(dict.executionCapabilityState, resolveExecutionCapabilityState(capability.state)),
+      createContextTagRow(dict.contextPipelineSources, capability.sources),
+    );
+    item.append(capabilityMarker, capabilityBody);
+    list.append(item);
+  });
+
+  section.append(header, list);
+  return section;
 }
 
 function createMiddlewarePipelineSection(pipeline, dict) {
@@ -1807,6 +1926,27 @@ function resolveContextPipelineState(state) {
     failed: "contextPipelineFailed",
   };
   return dict[keyMap[state] || "contextPipelinePlanned"] || state || "-";
+}
+
+function resolveExecutionMode(mode) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    dry_run: "executionModeDryRun",
+    live: "executionModeLive",
+    replay: "executionModeReplay",
+  };
+  return dict[keyMap[mode] || "executionModeDryRun"] || mode || "-";
+}
+
+function resolveExecutionCapabilityState(state) {
+  const dict = messages[currentLang] ?? messages.zh;
+  const keyMap = {
+    enabled: "executionCapabilityEnabled",
+    planned: "executionCapabilityPlanned",
+    skipped: "executionCapabilitySkipped",
+    blocked: "executionCapabilityBlocked",
+  };
+  return dict[keyMap[state] || "executionCapabilityPlanned"] || state || "-";
 }
 
 function resolveWorkerState(state) {

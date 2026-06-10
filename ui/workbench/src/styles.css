@@ -2278,6 +2278,8 @@ kbd {
 }
 
 .context-stage.allowed,
+.context-stage.enabled,
+.context-stage.live,
 .context-stage.succeeded {
   border-color: rgba(7, 140, 132, 0.16);
   background: rgba(224, 244, 241, 0.28);
@@ -2290,6 +2292,8 @@ kbd {
 }
 
 .context-stage.review_required,
+.context-stage.dry_run,
+.context-stage.skipped,
 .context-stage.unknown {
   border-color: rgba(228, 185, 80, 0.2);
   background: rgba(255, 246, 217, 0.58);
@@ -2406,6 +2410,8 @@ kbd {
 }
 
 .context-status-pill[data-state="allowed"],
+.context-status-pill[data-state="enabled"],
+.context-status-pill[data-state="live"],
 .context-status-pill[data-state="succeeded"] {
   border-color: rgba(7, 140, 132, 0.2);
   background: var(--accent-soft);
@@ -2413,6 +2419,7 @@ kbd {
 }
 
 .context-status-pill[data-state="queued"],
+.context-status-pill[data-state="replay"],
 .context-status-pill[data-state="running"] {
   border-color: rgba(67, 117, 204, 0.28);
   background: rgba(230, 239, 255, 0.78);
@@ -2421,7 +2428,9 @@ kbd {
 
 .context-status-pill[data-state="partial"],
 .context-status-pill[data-state="planned"],
+.context-status-pill[data-state="dry_run"],
 .context-status-pill[data-state="review_required"],
+.context-status-pill[data-state="skipped"],
 .context-status-pill[data-state="unknown"] {
   border-color: rgba(228, 185, 80, 0.3);
   background: #fff6d9;

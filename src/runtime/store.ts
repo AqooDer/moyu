@@ -4,6 +4,9 @@ import path from "node:path";
 import type {
   ArtifactRecord,
   ArtifactRole,
+  ExecutionCapabilityState,
+  ExecutionMode,
+  ExecutionModeRecord,
   MiddlewarePipelineRecord,
   MiddlewarePipelineState,
   MiddlewareStageKind,
@@ -39,6 +42,7 @@ export class RuntimeStore {
       plan: null,
       middleware: null,
       policy: null,
+      execution: null,
       worker: null,
       events: [],
       steps: [],
@@ -137,6 +141,25 @@ export class RuntimeStore {
       },
     });
     return this.trace.policy;
+  }
+
+  setExecutionMode(execution: ExecutionModeRecord) {
+    this.trace.execution = normalizeExecutionMode(execution, this.trace.run.id, this.trace.run.workId);
+    this.recordEvent({
+      kind: "execution_mode_selected",
+      title: this.trace.execution.title,
+      summary: this.trace.execution.reason,
+      state: this.trace.execution.mode,
+      data: {
+        executionId: this.trace.execution.id,
+        mode: this.trace.execution.mode,
+        queue: this.trace.execution.queue,
+        entrypoint: this.trace.execution.entrypoint,
+        dryRunRequested: this.trace.execution.dryRunRequested,
+        dryRunEffective: this.trace.execution.dryRunEffective,
+      },
+    });
+    return this.trace.execution;
   }
 
   createWorkerJob(input: {
@@ -615,6 +638,54 @@ function normalizePolicyCheckKind(value: unknown): PolicyCheckKind {
   return ["capability", "permission", "mcp", "runtime", "model", "artifact"].includes(String(value))
     ? (value as PolicyCheckKind)
     : "runtime";
+}
+
+function normalizeExecutionMode(
+  execution: ExecutionModeRecord,
+  runId: string,
+  workId?: string | null,
+): ExecutionModeRecord {
+  const updatedAt =
+    typeof execution.updatedAt === "string" && execution.updatedAt ? execution.updatedAt : now();
+  return {
+    id: execution.id || `execution-${runId}`,
+    runId,
+    workId: workId || execution.workId || `work-${runId}`,
+    title: execution.title || "Runtime execution mode",
+    mode: normalizeExecutionModeValue(execution.mode),
+    dispatch: execution.dispatch === "background" ? "background" : "inline",
+    queue: execution.queue || "runtime.inline",
+    entrypoint: execution.entrypoint || "runtime",
+    requestedBy: execution.requestedBy || "unknown",
+    dryRunRequested: Boolean(execution.dryRunRequested),
+    dryRunEffective: Boolean(execution.dryRunEffective),
+    replayOfRunId:
+      typeof execution.replayOfRunId === "string" && execution.replayOfRunId ? execution.replayOfRunId : null,
+    reason: typeof execution.reason === "string" ? execution.reason : "",
+    capabilities: Array.isArray(execution.capabilities)
+      ? execution.capabilities.map((capability) => ({
+          id: capability.id,
+          title: capability.title,
+          state: normalizeExecutionCapabilityState(capability.state),
+          summary: typeof capability.summary === "string" ? capability.summary : "",
+          sources: normalizeStringList(capability.sources),
+        }))
+      : [],
+    constraints: normalizeStringList(execution.constraints),
+    createdAt:
+      typeof execution.createdAt === "string" && execution.createdAt ? execution.createdAt : updatedAt,
+    updatedAt,
+  };
+}
+
+function normalizeExecutionModeValue(value: unknown): ExecutionMode {
+  return ["dry_run", "live", "replay"].includes(String(value)) ? (value as ExecutionMode) : "dry_run";
+}
+
+function normalizeExecutionCapabilityState(value: unknown): ExecutionCapabilityState {
+  return ["enabled", "planned", "skipped", "blocked"].includes(String(value))
+    ? (value as ExecutionCapabilityState)
+    : "planned";
 }
 
 function normalizePolicyDecisionState(value: unknown): PolicyDecisionState {

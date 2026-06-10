@@ -3,6 +3,7 @@ import path from "node:path";
 import { stringify } from "yaml";
 import { formatValidationResult, validateAgentFolder, type AgentValidationResult } from "../agent/validate.js";
 import { startInlineWorkerJob } from "../runtime/async-worker.js";
+import { createMetaAgentExecutionMode } from "../runtime/execution-mode.js";
 import { createMetaAgentMiddlewarePipeline } from "../runtime/middleware-pipeline.js";
 import { createPolicyEvaluationRecord } from "../runtime/policy-gate.js";
 import { createPlanRecord, formatPlanSummary } from "../runtime/plans.js";
@@ -126,6 +127,13 @@ export async function createAgentWithMeta(options: MetaCreateAgentOptions): Prom
       run: runtime.snapshot.run,
       middleware,
       title: "Meta-Agent 创建策略评估",
+      createdAt: runtime.snapshot.run.startedAt,
+    }),
+  );
+  runtime.setExecutionMode(
+    createMetaAgentExecutionMode({
+      run: runtime.snapshot.run,
+      persist: Boolean(options.persist),
       createdAt: runtime.snapshot.run.startedAt,
     }),
   );

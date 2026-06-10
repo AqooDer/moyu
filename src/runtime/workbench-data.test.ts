@@ -47,6 +47,19 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftTrace.policy.title, "Meta-Agent 创建策略评估");
     assert.equal(draftTrace.policy.state, "review_required");
     assert.equal(draftTrace.policy.summary.reviewRequired > 0, true);
+    assert.equal(draftTrace.execution.title, "Meta-Agent 创建执行模式");
+    assert.equal(draftTrace.execution.mode, "dry_run");
+    assert.equal(draftTrace.execution.dispatch, "inline");
+    assert.equal(draftTrace.execution.queue, "meta.create-agent.inline");
+    assert.equal(draftTrace.execution.dryRunRequested, true);
+    assert.equal(draftTrace.execution.dryRunEffective, true);
+    assert.equal(
+      draftTrace.execution.capabilities.some(
+        (capability: { id?: string; state?: string }) =>
+          capability.id === "install-review" && capability.state === "planned",
+      ),
+      true,
+    );
     assert.equal(
       draftTrace.policy.checks.some(
         (check: { permissionIds?: string[]; state?: string; riskLevel?: string }) =>
@@ -71,6 +84,10 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     );
     assert.equal(draftTrace.worker.queue, "meta.create-agent.inline");
     assert.equal(draftTrace.worker.state, "succeeded");
+    assert.equal(
+      draftTrace.events.some((event: { kind?: string; state?: string }) => event.kind === "execution_mode_selected" && event.state === "dry_run"),
+      true,
+    );
     assert.equal(
       draftTrace.events.some(
         (event: { kind?: string; stepId?: string }) =>
@@ -177,6 +194,19 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runTrace.policy.title, "Agent 运行策略评估");
     assert.equal(runTrace.policy.state, "unknown");
     assert.equal(runTrace.policy.summary.unknown > 0, true);
+    assert.equal(runTrace.execution.title, "Agent 运行执行模式");
+    assert.equal(runTrace.execution.mode, "dry_run");
+    assert.equal(runTrace.execution.queue, "agent.run.inline");
+    assert.equal(runTrace.execution.entrypoint, "agent.run.image");
+    assert.equal(runTrace.execution.dryRunRequested, true);
+    assert.equal(runTrace.execution.dryRunEffective, true);
+    assert.equal(
+      runTrace.execution.capabilities.some(
+        (capability: { id?: string; state?: string }) =>
+          capability.id === "image-provider-call" && capability.state === "skipped",
+      ),
+      true,
+    );
     assert.equal(
       runTrace.policy.checks.some(
         (check: { id?: string; permissionIds?: string[]; state?: string }) =>
@@ -242,6 +272,10 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runTrace.worker.queue, "agent.run.inline");
     assert.equal(runTrace.worker.state, "succeeded");
     assert.equal(
+      runTrace.events.some((event: { kind?: string; state?: string }) => event.kind === "execution_mode_selected" && event.state === "dry_run"),
+      true,
+    );
+    assert.equal(
       runTrace.events.some((event: { kind?: string; state?: string }) => event.kind === "worker_finished" && event.state === "succeeded"),
       true,
     );
@@ -261,6 +295,9 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(draftWorkbench.selectedRun?.middleware?.stages[2]?.state, "planned");
     assert.equal(draftWorkbench.selectedRun?.policy?.title, "Meta-Agent 创建策略评估");
     assert.equal(draftWorkbench.selectedRun?.policy?.state, "review_required");
+    assert.equal(draftWorkbench.selectedRun?.execution?.title, "Meta-Agent 创建执行模式");
+    assert.equal(draftWorkbench.selectedRun?.execution?.mode, "dry_run");
+    assert.equal(draftWorkbench.selectedRun?.execution?.queue, "meta.create-agent.inline");
     assert.equal(draftWorkbench.selectedRun?.worker?.queue, "meta.create-agent.inline");
     assert.equal(draftWorkbench.selectedRun?.worker?.state, "succeeded");
     assert.equal(
@@ -309,6 +346,9 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.equal(runWorkbench.selectedRun?.middleware?.title, "Agent 运行上下文装配管线");
     assert.equal(runWorkbench.selectedRun?.policy?.title, "Agent 运行策略评估");
     assert.equal(runWorkbench.selectedRun?.policy?.state, "unknown");
+    assert.equal(runWorkbench.selectedRun?.execution?.title, "Agent 运行执行模式");
+    assert.equal(runWorkbench.selectedRun?.execution?.mode, "dry_run");
+    assert.equal(runWorkbench.selectedRun?.execution?.dryRunEffective, true);
     assert.equal(runWorkbench.selectedRun?.worker?.queue, "agent.run.inline");
     assert.equal(runWorkbench.selectedRun?.worker?.state, "succeeded");
     assert.equal(
@@ -329,6 +369,9 @@ test("meta-created Agents can be installed, run, and selected in Workbench data"
     assert.match(formattedRun, /policy:/);
     assert.match(formattedRun, /Agent 运行策略评估/);
     assert.match(formattedRun, /permission-database\.query\.read/);
+    assert.match(formattedRun, /execution:/);
+    assert.match(formattedRun, /Agent 运行执行模式/);
+    assert.match(formattedRun, /image-provider-call skipped/);
     assert.match(formattedRun, /worker:/);
     assert.match(formattedRun, /agent\.run\.inline/);
     assert.match(formattedRun, /events:/);
@@ -412,6 +455,17 @@ test("failed image Agent runs still persist trace, plan, and Workbench conversat
     assert.equal(trace.middleware.state, "partial");
     assert.equal(trace.policy.title, "Agent 运行策略评估");
     assert.equal(trace.policy.state, "unknown");
+    assert.equal(trace.execution.title, "Agent 运行执行模式");
+    assert.equal(trace.execution.mode, "live");
+    assert.equal(trace.execution.dryRunRequested, false);
+    assert.equal(trace.execution.dryRunEffective, false);
+    assert.equal(
+      trace.execution.capabilities.some(
+        (capability: { id?: string; state?: string }) =>
+          capability.id === "image-provider-call" && capability.state === "enabled",
+      ),
+      true,
+    );
     assert.equal(trace.worker.queue, "agent.run.inline");
     assert.equal(trace.worker.state, "failed");
     assert.equal(trace.worker.error.code, "run_failed");
@@ -439,6 +493,7 @@ test("failed image Agent runs still persist trace, plan, and Workbench conversat
     assert.equal(workbench.selectedRun?.plan?.state, "failed");
     assert.equal(workbench.selectedRun?.middleware?.title, "Agent 运行上下文装配管线");
     assert.equal(workbench.selectedRun?.policy?.title, "Agent 运行策略评估");
+    assert.equal(workbench.selectedRun?.execution?.mode, "live");
     assert.equal(workbench.selectedRun?.worker?.state, "failed");
     assert.equal(
       workbench.selectedRun?.events.some((event) => event.kind === "worker_finished" && event.state === "failed"),
@@ -494,6 +549,10 @@ test("failed Meta-Agent persist step still persists trace, plan, and Workbench c
     assert.equal(trace.middleware.title, "Meta-Agent 上下文装配管线");
     assert.equal(trace.policy.title, "Meta-Agent 创建策略评估");
     assert.equal(trace.policy.state, "review_required");
+    assert.equal(trace.execution.title, "Meta-Agent 创建执行模式");
+    assert.equal(trace.execution.mode, "live");
+    assert.equal(trace.execution.dryRunRequested, false);
+    assert.equal(trace.execution.dryRunEffective, false);
     assert.equal(trace.worker.queue, "meta.create-agent.inline");
     assert.equal(trace.worker.state, "failed");
     assert.equal(trace.worker.error.code, "run_failed");
@@ -518,6 +577,7 @@ test("failed Meta-Agent persist step still persists trace, plan, and Workbench c
     assert.equal(workbench.selectedRun?.plan?.state, "failed");
     assert.equal(workbench.selectedRun?.middleware?.title, "Meta-Agent 上下文装配管线");
     assert.equal(workbench.selectedRun?.policy?.title, "Meta-Agent 创建策略评估");
+    assert.equal(workbench.selectedRun?.execution?.mode, "live");
     assert.equal(workbench.selectedRun?.worker?.state, "failed");
     assert.equal(
       workbench.selectedRun?.events.some((event) => event.kind === "worker_finished" && event.state === "failed"),

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createExecutionModeRecord } from "./execution-mode.js";
 import { createMiddlewarePipelineRecord } from "./middleware-pipeline.js";
 import { createPolicyEvaluationRecord } from "./policy-gate.js";
 import { createPlanRecord } from "./plans.js";
@@ -221,6 +222,52 @@ test("runtime store records policy evaluation snapshots", () => {
   assert.equal(policy.summary.allowed > 0, true);
   assert.equal(policy.checks.some((check) => check.id === "permission-artifact.write.scoped"), true);
   assert.equal(policy.checks.some((check) => check.id === "artifact-write-scope"), true);
+});
+
+test("runtime store records execution mode snapshots", () => {
+  const runtime = createRuntimeWithPlan("run-execution-mode");
+
+  const execution = runtime.setExecutionMode(
+    createExecutionModeRecord({
+      run: runtime.snapshot.run,
+      title: "Test execution mode",
+      mode: "dry_run",
+      dispatch: "inline",
+      queue: "test.inline",
+      entrypoint: "test.runner",
+      requestedBy: "test/runner",
+      dryRunEffective: true,
+      reason: "Test requested dry-run execution.",
+      createdAt: runtime.snapshot.run.startedAt,
+      capabilities: [
+        {
+          id: "test-capability",
+          title: "Test capability",
+          state: "skipped",
+          summary: "Skipped during dry-run.",
+          sources: ["test"],
+        },
+      ],
+      constraints: ["No external calls."],
+    }),
+  );
+
+  assert.equal(runtime.snapshot.execution?.id, "execution-run-execution-mode");
+  assert.equal(runtime.snapshot.execution?.title, "Test execution mode");
+  assert.equal(execution.mode, "dry_run");
+  assert.equal(execution.queue, "test.inline");
+  assert.equal(execution.dryRunRequested, true);
+  assert.equal(execution.dryRunEffective, true);
+  assert.equal(execution.capabilities[0].state, "skipped");
+  assert.equal(
+    runtime.snapshot.events.some(
+      (event) => event.kind === "execution_mode_selected" && event.state === "dry_run",
+    ),
+    true,
+  );
+  const event = runtime.snapshot.events.find((item) => item.kind === "execution_mode_selected");
+  assert.equal(event?.data.queue, "test.inline");
+  assert.equal(event?.data.entrypoint, "test.runner");
 });
 
 function createRuntimeWithPlan(runId: string) {

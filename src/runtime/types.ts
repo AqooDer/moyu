@@ -15,7 +15,10 @@ export type PolicyRiskLevel = "low" | "medium" | "high" | "unknown";
 export type PolicyCheckKind = "capability" | "permission" | "mcp" | "runtime" | "model" | "artifact";
 export type WorkerJobState = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 export type WorkerJobMode = "inline" | "background";
+export type ExecutionMode = "dry_run" | "live" | "replay";
+export type ExecutionCapabilityState = "enabled" | "planned" | "skipped" | "blocked";
 export type TraceEventKind =
+  | "execution_mode_selected"
   | "worker_queued"
   | "worker_started"
   | "worker_finished"
@@ -200,6 +203,34 @@ export interface WorkerJobRecord {
   updatedAt: string;
 }
 
+export interface ExecutionCapabilityRecord {
+  id: string;
+  title: string;
+  state: ExecutionCapabilityState;
+  summary: string;
+  sources: string[];
+}
+
+export interface ExecutionModeRecord {
+  id: string;
+  runId: string;
+  workId: string;
+  title: string;
+  mode: ExecutionMode;
+  dispatch: WorkerJobMode;
+  queue: string;
+  entrypoint: string;
+  requestedBy: string;
+  dryRunRequested: boolean;
+  dryRunEffective: boolean;
+  replayOfRunId: string | null;
+  reason: string;
+  capabilities: ExecutionCapabilityRecord[];
+  constraints: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TraceEventRecord {
   id: string;
   runId: string;
@@ -276,6 +307,7 @@ export interface RuntimeTrace {
   plan: PlanRecord | null;
   middleware: MiddlewarePipelineRecord | null;
   policy: PolicyEvaluationRecord | null;
+  execution: ExecutionModeRecord | null;
   worker: WorkerJobRecord | null;
   events: TraceEventRecord[];
   steps: StepRecord[];

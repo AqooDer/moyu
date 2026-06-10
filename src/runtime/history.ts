@@ -4,6 +4,9 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import type {
   ArtifactRecord,
+  ExecutionCapabilityState,
+  ExecutionMode,
+  ExecutionModeRecord,
   KnowledgeWriteBackRecord,
   MiddlewarePipelineRecord,
   PolicyCheckKind,
@@ -140,6 +143,8 @@ export function formatRunHistoryDetail(detail: RunHistoryDetail) {
     lines.push(...formatObjectLines(trace.run.input));
     lines.push("", "plan:");
     lines.push(...formatPlanLines(trace.plan));
+    lines.push("", "execution:");
+    lines.push(...formatExecutionLines(trace.execution));
     lines.push("", "middleware:");
     lines.push(...formatMiddlewareLines(trace.middleware));
     lines.push("", "policy:");
@@ -288,6 +293,7 @@ function normalizeRuntimeTrace(trace: RuntimeTrace): RuntimeTrace {
     plan: normalizePlan(trace.plan),
     middleware: normalizeMiddlewarePipeline(trace.middleware),
     policy: normalizePolicyEvaluation(trace.policy),
+    execution: normalizeExecutionMode(trace.execution),
     worker: normalizeWorkerJob(trace.worker),
     events: normalizeTraceEvents(trace.events),
     run: {
@@ -412,6 +418,46 @@ function normalizePolicyEvaluation(policy: unknown): PolicyEvaluationRecord | nu
   };
 }
 
+function normalizeExecutionMode(execution: unknown): ExecutionModeRecord | null {
+  if (!execution || typeof execution !== "object") {
+    return null;
+  }
+  const raw = execution as ExecutionModeRecord;
+  return {
+    id: typeof raw.id === "string" && raw.id ? raw.id : `execution-${raw.runId || "unknown"}`,
+    runId: typeof raw.runId === "string" && raw.runId ? raw.runId : "run-unknown",
+    workId: typeof raw.workId === "string" && raw.workId ? raw.workId : "work-unknown",
+    title: typeof raw.title === "string" && raw.title ? raw.title : "Runtime execution mode",
+    mode: normalizeExecutionModeValue(raw.mode),
+    dispatch: normalizeWorkerJobMode(raw.dispatch),
+    queue: typeof raw.queue === "string" && raw.queue ? raw.queue : "runtime.inline",
+    entrypoint: typeof raw.entrypoint === "string" && raw.entrypoint ? raw.entrypoint : "runtime",
+    requestedBy: typeof raw.requestedBy === "string" && raw.requestedBy ? raw.requestedBy : "unknown",
+    dryRunRequested: Boolean(raw.dryRunRequested),
+    dryRunEffective: Boolean(raw.dryRunEffective),
+    replayOfRunId:
+      typeof raw.replayOfRunId === "string" && raw.replayOfRunId ? raw.replayOfRunId : null,
+    reason: typeof raw.reason === "string" ? raw.reason : "",
+    capabilities: Array.isArray(raw.capabilities)
+      ? raw.capabilities.map((capability) => ({
+          id: typeof capability.id === "string" && capability.id ? capability.id : "capability-unknown",
+          title:
+            typeof capability.title === "string" && capability.title
+              ? capability.title
+              : "Untitled capability",
+          state: normalizeExecutionCapabilityState(capability.state),
+          summary: typeof capability.summary === "string" ? capability.summary : "",
+          sources: normalizeStringList(capability.sources),
+        }))
+      : [],
+    constraints: normalizeStringList(raw.constraints),
+    createdAt:
+      typeof raw.createdAt === "string" && raw.createdAt ? raw.createdAt : new Date(0).toISOString(),
+    updatedAt:
+      typeof raw.updatedAt === "string" && raw.updatedAt ? raw.updatedAt : new Date(0).toISOString(),
+  };
+}
+
 function normalizeWorkerJob(worker: unknown): WorkerJobRecord | null {
   if (!worker || typeof worker !== "object") {
     return null;
@@ -474,6 +520,27 @@ function formatMiddlewareLines(pipeline: MiddlewarePipelineRecord | null) {
     const capabilities = stage.capabilityIds.length > 0 ? ` capabilities=${stage.capabilityIds.join(",")}` : "";
     const policies = stage.policyIds.length > 0 ? ` policies=${stage.policyIds.join(",")}` : "";
     lines.push(`  - ${stage.id} [${stage.kind}] ${stage.state}${capabilities}${policies}: ${stage.title}`);
+  }
+  return lines;
+}
+
+function formatExecutionLines(execution: ExecutionModeRecord | null) {
+  if (!execution) {
+    return ["- none"];
+  }
+
+  const lines = [
+    `- ${execution.id} ${execution.title} mode=${execution.mode} dispatch=${execution.dispatch} queue=${execution.queue} requested_by=${execution.requestedBy} dry_requested=${execution.dryRunRequested ? "yes" : "no"} dry_effective=${execution.dryRunEffective ? "yes" : "no"}`,
+  ];
+  if (execution.reason) {
+    lines.push(`  reason: ${execution.reason}`);
+  }
+  for (const capability of execution.capabilities) {
+    const sources = capability.sources.length > 0 ? ` sources=${capability.sources.join(",")}` : "";
+    lines.push(`  - ${capability.id} ${capability.state}${sources}: ${capability.title}`);
+  }
+  if (execution.constraints.length > 0) {
+    lines.push(`  constraints: ${execution.constraints.join(" / ")}`);
   }
   return lines;
 }
@@ -627,8 +694,19 @@ function normalizeWorkerJobMode(value: unknown): WorkerJobMode {
   return ["inline", "background"].includes(String(value)) ? (value as WorkerJobMode) : "inline";
 }
 
+function normalizeExecutionModeValue(value: unknown): ExecutionMode {
+  return ["dry_run", "live", "replay"].includes(String(value)) ? (value as ExecutionMode) : "dry_run";
+}
+
+function normalizeExecutionCapabilityState(value: unknown): ExecutionCapabilityState {
+  return ["enabled", "planned", "skipped", "blocked"].includes(String(value))
+    ? (value as ExecutionCapabilityState)
+    : "planned";
+}
+
 function normalizeTraceEventKind(value: unknown): TraceEventKind {
   return [
+    "execution_mode_selected",
     "worker_queued",
     "worker_started",
     "worker_finished",
