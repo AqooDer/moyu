@@ -405,6 +405,69 @@ async function routeRequest(request: IncomingMessage, response: ServerResponse, 
     return;
   }
 
+  if (method === "POST" && url.pathname === "/api/meta/conversation/stream") {
+    const payload = await readJsonBody<MetaConversationRequest>(request);
+    const message = payload.message?.trim();
+    if (!message) {
+      writeJson(response, 400, { ok: false, error: "message is required" });
+      return;
+    }
+
+    writeSseHeaders(response);
+    try {
+      writeSseEvent(response, "progress", {
+        stage: "received_user_message",
+        message: "已收到你的 Agent 创建需求。",
+      });
+      writeSseEvent(response, "progress", {
+        stage: "loading_conversation_context",
+        message: "正在读取当前对话上下文。",
+      });
+      writeSseEvent(response, "progress", {
+        stage: "requesting_meta_agent",
+        message: "正在请求 Meta Agent 判断下一步。",
+      });
+
+      const conversation = await sendMetaAgentConversationMessage(
+        {
+          message,
+          workId: payload.workId,
+          agentId: payload.agentId,
+          name: payload.name,
+          description: payload.description,
+          persist: Boolean(payload.persist),
+          settingsDbPath: settingsDbPath(rootDir),
+          settingsKeyPath: settingsKeyPath(rootDir),
+          llmCallLogPath: llmCallLogPath(rootDir),
+        },
+        { storePath: workStorePath(rootDir) },
+      );
+      const selectedRunId = conversation.result?.runId;
+      writeSseEvent(response, "message", {
+        workId: conversation.workId,
+        state: conversation.state,
+        reply: conversation.reply,
+        createdAgentId: conversation.result?.agentId ?? null,
+      });
+      writeSseEvent(response, "workbench", {
+        ok: true,
+        conversation,
+        workbench: await buildServerWorkbenchData(rootDir, { selectedRunId }),
+      });
+      writeSseEvent(response, "done", { ok: true });
+    } catch (error) {
+      writeSseEvent(response, "error", {
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+        code: error instanceof MetaAgentConversationError ? error.code : undefined,
+      });
+      writeSseEvent(response, "done", { ok: false });
+    } finally {
+      response.end();
+    }
+    return;
+  }
+
   if (method === "POST" && url.pathname === "/api/meta/conversation") {
     const payload = await readJsonBody<MetaConversationRequest>(request);
     const message = payload.message?.trim();
@@ -748,6 +811,19 @@ function writeJson(response: ServerResponse, statusCode: number, body: unknown) 
     "Cache-Control": "no-store",
   });
   response.end(`${JSON.stringify(body, null, 2)}\n`);
+}
+
+function writeSseHeaders(response: ServerResponse) {
+  response.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-store, no-transform",
+    Connection: "keep-alive",
+  });
+}
+
+function writeSseEvent(response: ServerResponse, event: string, data: unknown) {
+  response.write(`event: ${event}\n`);
+  response.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
 function getContentType(filePath: string) {

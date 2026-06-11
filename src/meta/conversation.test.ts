@@ -256,6 +256,99 @@ test("Meta-Agent conversation can use encrypted SQLite provider settings without
   }
 });
 
+test("Meta-Agent conversation supports ask, ready, and created turns in one Work", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-meta-conversation-multiturn-"));
+  const restore = captureLlmEnv();
+  const previousFetch = globalThis.fetch;
+  const decisionPrompts: string[] = [];
+
+  try {
+    process.chdir(workspace);
+    setLlmEnv();
+    globalThis.fetch = async (input, init) => {
+      assert.equal(String(input), "https://llm.example.com/v1/chat/completions");
+      const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+      const messages = body.messages as Array<{ role?: string; content?: string }>;
+      const system = messages.find((message) => message.role === "system")?.content ?? "";
+
+      if (system.includes("decide the next conversation action")) {
+        const userPrompt = messages.find((message) => message.role === "user")?.content ?? "";
+        decisionPrompts.push(userPrompt);
+        if (userPrompt.includes("确认创建")) {
+          return jsonChatResponse({
+            action: "create",
+            reply: "收到确认，开始创建 docs-writer Agent 草案。",
+            creation_prompt:
+              "创建一个 docs-writer Agent，输入需求说明，输出 Markdown 实施计划，包含范围、非范围、验收标准和测试计划。",
+            missing: [],
+          });
+        }
+        if (userPrompt.includes("Markdown 实施计划")) {
+          return jsonChatResponse({
+            action: "ready",
+            reply: "需求已足够。我将创建 docs-writer Agent，确认请回复“确认创建”。",
+            creation_prompt:
+              "创建一个 docs-writer Agent，输入需求说明，输出 Markdown 实施计划，包含范围、非范围、验收标准和测试计划。",
+            missing: [],
+          });
+        }
+        return jsonChatResponse({
+          action: "ask",
+          reply: "请补充这个 Agent 的输入、输出和验收标准。",
+          creation_prompt: null,
+          missing: ["inputs", "outputs", "acceptance"],
+        });
+      }
+
+      return jsonChatResponse({
+        agent_id: "custom/docs-writer-v1",
+        name: "Docs Writer Agent",
+        description: "Turn requirements into Markdown implementation plans.",
+        kind: "task",
+        tags: ["docs", "planning"],
+      });
+    };
+
+    const first = await sendMetaAgentConversationMessage({ message: "帮我创建一个文档整理 Agent" });
+    assert.equal(first.state, "collecting");
+    assert.equal(first.result, null);
+    assert.match(first.reply, /补充/);
+    assert.equal(first.messages.length, 2);
+    assert.equal(first.messages[1].kind, "agent_message");
+
+    const second = await sendMetaAgentConversationMessage({
+      workId: first.workId,
+      message: "输入需求说明，输出 Markdown 实施计划，包含范围、非范围、验收标准和测试计划。",
+    });
+    assert.equal(second.state, "ready_to_create");
+    assert.equal(second.result, null);
+    assert.equal(second.workId, first.workId);
+    assert.match(second.reply, /确认创建/);
+    assert.equal(second.messages.some((message) => message.kind === "checkpoint"), true);
+
+    const third = await sendMetaAgentConversationMessage({ workId: first.workId, message: "确认创建" });
+    assert.equal(third.state, "created");
+    assert.equal(third.workId, first.workId);
+    assert.equal(third.result?.validation.ok, true);
+    assert.equal(third.result?.agentId, "custom/docs-writer-v1");
+    assert.equal(third.messages.some((message) => message.kind === "summary"), true);
+    assert.equal(decisionPrompts.length, 3);
+    assert.equal(decisionPrompts[1].includes("请补充这个 Agent 的输入"), true);
+
+    const store = await readWorkStore();
+    const work = store.works.find((item) => item.id === first.workId);
+    assert.ok(work);
+    assert.deepEqual(work.runIds, [third.result?.runId]);
+    assert.equal(store.messages.filter((message) => message.workId === first.workId && message.role === "user").length, 3);
+  } finally {
+    globalThis.fetch = previousFetch;
+    process.chdir(previousCwd);
+    restore();
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
 function jsonChatResponse(content: unknown) {
   return new Response(
     JSON.stringify({

@@ -245,6 +245,9 @@ test("Workbench static routes expose the formal frontend and prototype compatibi
     assert.match(appScript, /\/api\/settings\/llm-provider/);
     assert.match(appScript, /llmCallsTitle/);
     assert.match(appScript, /LLM 调用日志/);
+    assert.match(appScript, /\/api\/meta\/conversation\/stream/);
+    assert.match(appScript, /readSseStream/);
+    assert.match(appScript, /parseSseEvent/);
 
     const compatibility = await getText(apiUrl(server.url, "/ui/workbench-prototype/"));
     assert.match(compatibility, /ui\/workbench\//);
@@ -352,7 +355,27 @@ test("Workbench API creates Agent drafts through real Meta-Agent LLM conversatio
     assert.equal(second.body.conversation.result.agentId, "research/summary-agent-v1");
     assert.equal(second.body.conversation.result.specSource, "llm");
     assert.equal(second.body.workbench.selectedRun.workId, first.body.conversation.workId);
-    assert.equal(second.body.workbench.messages.some((message: { kind?: string }) => message.kind === "summary"), true);
+    assert.equal(second.body.workbench.selectedRun.id, second.body.conversation.result.runId);
+    assert.equal(
+      second.body.workbench.messages.filter((message: { role?: string; workId?: string }) =>
+        message.workId === first.body.conversation.workId && message.role === "user",
+      ).length,
+      2,
+    );
+    assert.equal(
+      second.body.workbench.messages.some(
+        (message: { kind?: string; workId?: string }) =>
+          message.workId === first.body.conversation.workId && message.kind === "checkpoint",
+      ),
+      true,
+    );
+    assert.equal(
+      second.body.workbench.messages.some(
+        (message: { kind?: string; workId?: string }) =>
+          message.workId === first.body.conversation.workId && message.kind === "summary",
+      ),
+      true,
+    );
     assert.equal(second.body.workbench.llmCalls.length, 3);
     assert.deepEqual(
       second.body.workbench.llmCalls.map((call: { purpose?: string }) => call.purpose).sort(),
@@ -386,6 +409,82 @@ test("Workbench API creates Agent drafts through real Meta-Agent LLM conversatio
     assert.match(rawLog, /meta\.conversation\.decision/);
     assert.match(rawLog, /meta\.create-agent\.spec-draft/);
     assert.match(rawLog, /研究摘要 Agent/);
+    assert.equal(rawLog.includes("test-key"), false);
+  } finally {
+    await server.close();
+    globalThis.fetch = previousFetch;
+    process.chdir(previousCwd);
+    restoreEnv("MOYU_LLM_PROVIDER_BASE_URL", previousLlmProviderBaseUrl);
+    restoreEnv("MOYU_LLM_PROVIDER_API_KEY", previousLlmProviderApiKey);
+    restoreEnv("MOYU_LLM_PROVIDER_MODEL", previousLlmProviderModel);
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test("Workbench API streams Meta-Agent conversation progress and final Workbench data", async () => {
+  const previousCwd = process.cwd();
+  const workspace = await mkdtemp(path.join(tmpdir(), "moyu-ui-meta-conversation-stream-"));
+  const previousLlmProviderBaseUrl = process.env.MOYU_LLM_PROVIDER_BASE_URL;
+  const previousLlmProviderApiKey = process.env.MOYU_LLM_PROVIDER_API_KEY;
+  const previousLlmProviderModel = process.env.MOYU_LLM_PROVIDER_MODEL;
+  const previousFetch = globalThis.fetch;
+  process.chdir(workspace);
+  process.env.MOYU_LLM_PROVIDER_BASE_URL = "https://llm.example.com/v1";
+  process.env.MOYU_LLM_PROVIDER_API_KEY = "test-key";
+  process.env.MOYU_LLM_PROVIDER_MODEL = "meta-model";
+
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (!url.startsWith("https://llm.example.com")) {
+      return previousFetch(input, init);
+    }
+    const body = JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+    const messages = body.messages as Array<{ role?: string; content?: string }>;
+    const system = messages.find((message) => message.role === "system")?.content ?? "";
+    if (system.includes("decide the next conversation action")) {
+      return jsonChatResponse({
+        action: "ready",
+        reply: "需求已足够，确认后我会创建 docs-writer Agent 草案。",
+        creation_prompt:
+          "创建一个 docs-writer Agent，输入需求说明，输出 Markdown 实施计划，包含范围、非范围、验收标准和测试计划。",
+        missing: [],
+      });
+    }
+    return previousFetch(input, init);
+  };
+
+  const server = await serveWorkbench({ port: 0, rootDir: workspace });
+
+  try {
+    const response = await fetch(apiUrl(server.url, "/api/meta/conversation/stream"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "创建一个 docs-writer Agent，输出 Markdown 实施计划。" }),
+    });
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get("content-type") || "", /text\/event-stream/);
+    const body = await response.text();
+    assert.match(body, /event: progress/);
+    assert.match(body, /event: message/);
+    assert.match(body, /event: workbench/);
+    assert.match(body, /event: done/);
+
+    const events = parseSseTestEvents(body);
+    const message = events.find((event) => event.event === "message")?.data;
+    assert.equal(message.state, "ready_to_create");
+    assert.match(message.reply, /确认/);
+    const workbench = events.find((event) => event.event === "workbench")?.data;
+    assert.equal(workbench.ok, true);
+    assert.equal(workbench.conversation.state, "ready_to_create");
+    assert.equal(
+      workbench.workbench.messages.some((item: { kind?: string; content?: string }) =>
+        item.kind === "checkpoint" && item.content?.includes("docs-writer"),
+      ),
+      true,
+    );
+
+    const rawLog = await readFile(path.join(workspace, ".moyu", "llm-calls.jsonl"), "utf8");
+    assert.match(rawLog, /meta\.conversation\.decision/);
     assert.equal(rawLog.includes("test-key"), false);
   } finally {
     await server.close();
@@ -984,6 +1083,21 @@ async function postJson(url: string, body: unknown) {
     status: response.status,
     body: await response.json(),
   };
+}
+
+function parseSseTestEvents(body: string) {
+  return body
+    .trim()
+    .split(/\n\n+/)
+    .map((block) => {
+      const lines = block.split(/\r?\n/);
+      const event = lines.find((line) => line.startsWith("event:"))?.slice("event:".length).trim() || "message";
+      const data = lines
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice("data:".length).trimStart())
+        .join("\n");
+      return { event, data: data ? JSON.parse(data) : null };
+    });
 }
 
 function jsonChatResponse(content: unknown) {

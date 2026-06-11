@@ -48,16 +48,17 @@ const messages = {
     realRunReply: "元智能体已经完成真实创建：Agent 文件、Recipe、Skill 与验证 Trace 已写入本地草案目录，右侧展示的是这次运行生成的真实产物。",
     apiUnavailableReply: "本地 Workbench API 未连接。请启动 `npm run workbench:serve` 后再执行真实操作。",
     createFailedReply: "元智能体创建失败，请查看本地终端或 Trace 后重试。",
+    streamConnecting: "正在连接 Meta Agent...",
     checkpoint: "需要确认",
-    checkpointTitle: "是否按这个契约创建新的生图原型 Agent？",
-    checkpointDesc: "确认后我会自动选择未占用的 Agent ID，写入文件骨架、示例 Recipe 和验证 Trace，并把它加入待安装队列。",
+    checkpointTitle: "是否按这个对话需求创建新的 Agent？",
+    checkpointDesc: "确认后我会自动选择未占用的 Agent ID，写入可审核的 Agent 草案、示例 Recipe 和验证 Trace，并把它加入待安装队列。",
     approve: "确认创建",
-    adjust: "修改契约",
-    adjustContractHint: "请在输入框补充要修改的 Agent 要求。",
-    composerHint: "描述你想创建的 Agent，或补充输入、输出、工具和验证要求",
+    adjust: "继续补充",
+    adjustContractHint: "请在输入框补充要修改或完善的 Agent 要求。",
+    composerHint: "选择左侧 Meta Agent 后，描述你想创建的 Agent，或补充输入、输出、工具和验证要求",
     messageInput: "消息输入",
-    composerPlaceholder: "告诉元智能体这个 Agent 应该具备什么能力...",
-    selectedAgent: "当前：元智能体 / create-agent",
+    composerPlaceholder: "告诉 Meta Agent 这个 Agent 应该具备什么能力...",
+    selectedAgent: "当前：Meta Agent / create-agent",
     send: "发送",
     inspector: "检查器",
     currentWorkArtifacts: "当前 Agent 的产物、Trace 与运行上下文",
@@ -425,13 +426,14 @@ const messages = {
     realRunReply: "The Meta Agent has completed a real creation run. Agent files, Recipe, Skill, and verification Trace were written to the local draft directory; the inspector now shows real artifacts from that run.",
     apiUnavailableReply: "The local Workbench API is not connected. Start `npm run workbench:serve` before running real actions.",
     createFailedReply: "Meta Agent creation failed. Check the local terminal or Trace, then try again.",
+    streamConnecting: "Connecting to Meta Agent...",
     checkpoint: "Needs confirmation",
-    checkpointTitle: "Create a new image prototype Agent from this contract?",
-    checkpointDesc: "After approval I will choose an available Agent ID, write the skeleton, sample Recipe, and verification trace, then queue it for installation.",
-    approve: "Create",
-    adjust: "Revise contract",
-    adjustContractHint: "Add the Agent changes in the composer.",
-    composerHint: "Describe the Agent you want to create, or add inputs, outputs, tools, and verification rules",
+    checkpointTitle: "Create a new Agent from this conversation?",
+    checkpointDesc: "After approval I will choose an available Agent ID, write a reviewable Agent draft, sample Recipe, and verification trace, then queue it for installation.",
+    approve: "Confirm create",
+    adjust: "Continue refining",
+    adjustContractHint: "Add the Agent changes or missing requirements in the composer.",
+    composerHint: "Select Meta Agent on the left, then describe the Agent you want to create or add inputs, outputs, tools, and verification rules",
     messageInput: "Message input",
     composerPlaceholder: "Tell the Meta Agent what this Agent should do...",
     selectedAgent: "Current: Meta Agent / create-agent",
@@ -862,6 +864,8 @@ function bindTabs() {
     });
   });
 
+  document.querySelector(".new-work-button")?.addEventListener("click", startMetaAgentCreation);
+
   document.querySelectorAll("[data-inspector-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       const target = button.getAttribute("data-inspector-tab");
@@ -869,6 +873,22 @@ function bindTabs() {
       showPanel(`[data-inspector-panel="${target}"]`, "[data-inspector-panel]");
     });
   });
+}
+
+function startMetaAgentCreation() {
+  openConversationView();
+  const agentTab = document.querySelector('[data-left-tab="agents"]');
+  if (agentTab) {
+    setActive(agentTab, "[data-left-tab]");
+    showPanel('[data-left-panel="agents"]', "[data-left-panel]");
+  }
+  prototypeState.selectedAgentId = "meta/create-agent";
+  prototypeState.metaConversationWorkId = "";
+  renderAgents(workbenchData?.agents || []);
+  syncRunAgentButton();
+  renderActionHint();
+  const textarea = document.querySelector(".composer textarea");
+  textarea?.focus();
 }
 
 function setActive(activeNode, selector) {
@@ -3891,6 +3911,81 @@ async function submitComposerMessage() {
   prototypeState.isSendingConversation = true;
   setComposerSending(true);
   try {
+    const streamed = await submitComposerMessageStream(value, textarea);
+    if (!streamed) {
+      await submitComposerMessageJson(value, textarea);
+    }
+  } finally {
+    prototypeState.isSendingConversation = false;
+    setComposerSending(false);
+  }
+}
+
+async function submitComposerMessageStream(value, textarea) {
+  if (!window.TextDecoder || !window.ReadableStream) {
+    return false;
+  }
+
+  let appliedWorkbench = false;
+  const statusMessage = appendStreamingConversationMessage(messages[currentLang].streamConnecting || "正在连接 Meta Agent...");
+  try {
+    const response = await fetch("/api/meta/conversation/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: value,
+        workId: getMetaConversationWorkId(),
+      }),
+    });
+
+    if (!response.ok || !response.body) {
+      statusMessage?.remove();
+      return false;
+    }
+
+    clearComposerTextarea(textarea);
+    let streamError = false;
+    await readSseStream(response, (event) => {
+      if (event.event === "progress") {
+        updateStreamingConversationMessage(statusMessage, event.data?.message || event.data?.stage || "...");
+        return;
+      }
+      if (event.event === "message") {
+        updateStreamingConversationMessage(statusMessage, event.data?.reply || "");
+        prototypeState.metaConversationWorkId = event.data?.workId || prototypeState.metaConversationWorkId;
+        prototypeState.selectedWorkId = prototypeState.metaConversationWorkId || prototypeState.selectedWorkId;
+        if (event.data?.createdAgentId) {
+          prototypeState.selectedAgentId = "meta/create-agent";
+          setActiveInspectorTab("artifacts");
+        }
+        return;
+      }
+      if (event.event === "workbench") {
+        applyConversationWorkbenchPayload(event.data);
+        appliedWorkbench = true;
+        return;
+      }
+      if (event.event === "error") {
+        streamError = true;
+        updateStreamingConversationMessage(statusMessage, event.data?.error || messages[currentLang].createFailedReply);
+      }
+    });
+    if (!appliedWorkbench) {
+      if (!streamError) {
+        statusMessage?.remove();
+        return false;
+      }
+      return true;
+    }
+    return true;
+  } catch {
+    statusMessage?.remove();
+    return false;
+  }
+}
+
+async function submitComposerMessageJson(value, textarea) {
+  try {
     const response = await fetch("/api/meta/conversation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -3905,29 +4000,95 @@ async function submitComposerMessage() {
       return;
     }
 
-    if (textarea) {
-      textarea.value = "";
-      textarea.dispatchEvent(new Event("input"));
-    }
-    prototypeState.metaConversationWorkId = data.conversation?.workId || prototypeState.metaConversationWorkId;
-    prototypeState.selectedWorkId = prototypeState.metaConversationWorkId || prototypeState.selectedWorkId;
-    if (data.conversation?.result?.agentId) {
-      prototypeState.selectedAgentId = "meta/create-agent";
-      setActiveInspectorTab("artifacts");
-    }
-    if (data.workbench) {
-      workbenchData = data.workbench;
-      renderWorkbenchData();
-      scrollMessagesToBottom();
-      return;
-    }
-    appendConversationError(messages[currentLang].createFailedReply);
+    clearComposerTextarea(textarea);
+    applyConversationWorkbenchPayload(data);
   } catch {
     appendConversationError(messages[currentLang].createFailedReply);
-  } finally {
-    prototypeState.isSendingConversation = false;
-    setComposerSending(false);
   }
+}
+
+function applyConversationWorkbenchPayload(data) {
+  prototypeState.metaConversationWorkId = data?.conversation?.workId || prototypeState.metaConversationWorkId;
+  prototypeState.selectedWorkId = prototypeState.metaConversationWorkId || prototypeState.selectedWorkId;
+  if (data?.conversation?.result?.agentId) {
+    prototypeState.selectedAgentId = "meta/create-agent";
+    setActiveInspectorTab("artifacts");
+  }
+  if (data?.workbench) {
+    workbenchData = data.workbench;
+    renderWorkbenchData();
+    scrollMessagesToBottom();
+    return true;
+  }
+  appendConversationError(messages[currentLang].createFailedReply);
+  return false;
+}
+
+function clearComposerTextarea(textarea) {
+  if (!textarea) {
+    return;
+  }
+  textarea.value = "";
+  textarea.dispatchEvent(new Event("input"));
+}
+
+async function readSseStream(response, onEvent) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const parts = buffer.split("\n\n");
+    buffer = parts.pop() || "";
+    for (const part of parts) {
+      const event = parseSseEvent(part);
+      if (event) {
+        onEvent(event);
+      }
+    }
+    if (done) {
+      break;
+    }
+  }
+  const event = parseSseEvent(buffer);
+  if (event) {
+    onEvent(event);
+  }
+}
+
+function parseSseEvent(block) {
+  const lines = String(block || "").split(/\r?\n/);
+  const event = lines.find((line) => line.startsWith("event:"))?.slice("event:".length).trim() || "message";
+  const dataLines = lines.filter((line) => line.startsWith("data:")).map((line) => line.slice("data:".length).trimStart());
+  if (dataLines.length === 0) {
+    return null;
+  }
+  try {
+    return { event, data: JSON.parse(dataLines.join("\n")) };
+  } catch {
+    return { event, data: { text: dataLines.join("\n") } };
+  }
+}
+
+function appendStreamingConversationMessage(text) {
+  const scroll = document.querySelector("[data-message-scroll]");
+  if (!scroll) {
+    return null;
+  }
+  const node = createMessage("agent", "Moyu", text, { stateMessage: true });
+  scroll.append(node);
+  scrollMessagesToBottom();
+  return node;
+}
+
+function updateStreamingConversationMessage(node, text) {
+  const paragraph = node?.querySelector(".message-body p");
+  if (!paragraph) {
+    return;
+  }
+  paragraph.textContent = text;
+  scrollMessagesToBottom();
 }
 
 function shouldUseMetaConversationApi() {
